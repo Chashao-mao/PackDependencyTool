@@ -333,6 +333,37 @@ public sealed class ScannerAndGraphTests
         Assert.DoesNotContain(result.Issues, issue => issue.Kind == IssueKind.Incompatible);
     }
 
+    [Fact]
+    public void StandaloneModIsNotHiddenWhenAnotherJarEmbedsTheSameId()
+    {
+        var scan = new ScanResult
+        {
+            RootPath = "C:/pack",
+            ModsDirectory = "C:/pack/mods",
+            Profile = new PackProfile { McVersion = "1.21.1", Loader = LoaderKind.NeoForge },
+        };
+        scan.Jars.Add(new JarScanResult
+        {
+            FilePath = "mods/sodium.jar",
+            AbsolutePath = "C:/pack/mods/sodium.jar",
+            Mods = [new ParsedMod { ModId = "sodium", Name = "Sodium", Version = "0.8.13", Loader = LoaderKind.NeoForge }],
+        });
+        scan.Jars.Add(new JarScanResult
+        {
+            FilePath = "mods/parent.jar",
+            AbsolutePath = "C:/pack/mods/parent.jar",
+            Mods = [new ParsedMod { ModId = "parent", Name = "Parent", Version = "1.0", Loader = LoaderKind.NeoForge }],
+            Embedded = [new ParsedEmbedded { ModId = "sodium", Name = "Sodium", Version = "0.8.13" }],
+        });
+
+        var result = new DependencyGraphBuilder().Build(scan);
+        var sodium = result.Graph.FindNode("sodium")!;
+
+        Assert.False(sodium.IsEmbedded);
+        Assert.DoesNotContain(result.Graph.Edges, edge =>
+            edge.From == "parent" && edge.To == "sodium" && edge.Type == EdgeType.Embedded);
+    }
+
     private static JarScanResult Jar(string path, ParsedMod mod) => new()
     {
         FilePath = path,
