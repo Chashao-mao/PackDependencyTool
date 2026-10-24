@@ -17,7 +17,7 @@ public sealed partial class NodeItemViewModel : ObservableObject
         Icon = ModIconCache.Get(model);
         Initial = BuildInitial(model);
         AvatarBrush = new SolidColorBrush(GraphPalette.LoaderColor(model.Loader));
-        SideText = GraphPalette.SideText(model.Side);
+        SideText = GraphPalette.SideText(model.Side) + (model.SideInferred ? "*" : string.Empty);
         SideBrush = new SolidColorBrush(model.Side switch
         {
             ModSide.Both => GraphPalette.Success,
@@ -91,6 +91,9 @@ public sealed partial class NodeItemViewModel : ObservableObject
     public string CategoryText => ModCategoryText.Name(Model.Category);
     public string LoaderText => GraphPalette.LoaderText(Model.Loader);
     public string SideText { get; }
+    public string SideTooltip => Model.SideInferred
+        ? "模组未声明侧，按依赖关系或双端默认推断"
+        : "模组元数据声明的运行侧";
     public IBrush SideBrush { get; }
     public string Version { get; }
     public string IndexText { get; }

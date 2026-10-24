@@ -108,6 +108,7 @@ public static class GraphExporter
             Key("n_loader", "node", "loader", "string"),
             Key("n_status", "node", "status", "string"),
             Key("n_side", "node", "side", "string"),
+            Key("n_side_inferred", "node", "sideInferred", "boolean"),
             Key("n_category", "node", "category", "string"),
             Key("n_source", "node", "source", "string"),
             Key("n_file", "node", "filePath", "string"),
@@ -144,6 +145,7 @@ public static class GraphExporter
                 Data(ns, "n_loader", node.Loader.ToString().ToLowerInvariant()),
                 Data(ns, "n_status", node.Status.ToString().ToLowerInvariant()),
                 Data(ns, "n_side", node.Side.ToString().ToLowerInvariant()),
+                Data(ns, "n_side_inferred", node.SideInferred ? "true" : "false"),
                 Data(ns, "n_category", node.Category.ToString().ToLowerInvariant()),
                 Data(ns, "n_source", node.Source.ToString().ToLowerInvariant()),
                 Data(ns, "n_file", node.FilePath),
@@ -187,14 +189,14 @@ public static class GraphExporter
             .Select(edge => edge.To));
 
         var nodes = new StringBuilder();
-        nodes.AppendLine("id,name,nameZh,version,loader,side,category,status,source,filePath,mcVersions," +
+        nodes.AppendLine("id,name,nameZh,version,loader,side,sideInferred,category,status,source,filePath,mcVersions," +
                          "curseforgeId,modrinthId,slug,embedded,missing,requires,optional,incompatible,embeddedDeps,recommends");
         foreach (var node in graph.Nodes.OrderBy(n => n.Id, StringComparer.Ordinal))
         {
             nodes.AppendLine(string.Join(',',
                 Csv(node.Id), Csv(node.Name), Csv(node.NameZh), Csv(node.Version),
                 Csv(node.Loader.ToString().ToLowerInvariant()), Csv(node.Side.ToString().ToLowerInvariant()),
-                Csv(node.Category.ToString().ToLowerInvariant()),
+                Csv(node.SideInferred ? "true" : "false"), Csv(node.Category.ToString().ToLowerInvariant()),
                 Csv(node.Status.ToString().ToLowerInvariant()), Csv(node.Source.ToString().ToLowerInvariant()),
                 Csv(node.FilePath), Csv(string.Join('|', node.McVersions)), Csv(node.ProjectIds.CurseForge),
                 Csv(node.ProjectIds.Modrinth), Csv(node.Slug ?? node.ProjectIds.Slug),

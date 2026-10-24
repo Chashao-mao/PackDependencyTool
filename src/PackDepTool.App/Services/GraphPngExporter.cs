@@ -168,7 +168,7 @@ public static class GraphPngExporter
 
             textPaint.TextSize = 8.8f * (float)scale;
             textPaint.Color = muted;
-            canvas.DrawText(Truncate($"{GraphPalette.SideText(node.Model.Side)} · " +
+            canvas.DrawText(Truncate($"{GraphPalette.SideText(node.Model.Side)}{(node.Model.SideInferred ? "*" : string.Empty)} · " +
                                      $"{GraphPalette.LoaderText(node.Model.Loader)} · " +
                                      $"{GraphPalette.StatusText(node.Model.Status)}",
                 textPaint, (float)textWidth), textLeft, rect.Top + 55 * (float)scale, textPaint);

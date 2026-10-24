@@ -1685,7 +1685,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             DetailRows.Add(new DetailRowViewModel("百科 ID", node.McmodId.Value.ToString()));
         DetailRows.Add(new DetailRowViewModel("版本", node.DisplayVersion));
         DetailRows.Add(new DetailRowViewModel("加载器", GraphPalette.LoaderText(node.Loader)));
-        DetailRows.Add(new DetailRowViewModel("侧", GraphPalette.SideText(node.Side)));
+        DetailRows.Add(new DetailRowViewModel("侧",
+            GraphPalette.SideText(node.Side) + (node.SideInferred ? "（推断）" : string.Empty)));
         var mcText = node.McVersions.Count > 0
             ? string.Join(", ", node.McVersions)
             : (string.IsNullOrWhiteSpace(node.McVersionRange) ? "unknown" : node.McVersionRange);

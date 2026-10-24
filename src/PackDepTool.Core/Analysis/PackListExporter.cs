@@ -30,7 +30,7 @@ public static class PackListExporter
             builder.AppendLine(
                 $"| {Escape(node.Name)} | {Escape(node.Id)} | {Escape(ModCategoryText.Name(node.Category))} | " +
                 $"{Escape(node.DisplayVersion)} | " +
-                $"{Escape(GraphText.Loader(node.Loader))} | {Escape(GraphText.Side(node.Side))} | " +
+                $"{Escape(GraphText.Loader(node.Loader))} | {Escape(GraphText.Side(node.Side) + (node.SideInferred ? "*" : string.Empty))} | " +
                 $"{Escape(GraphText.Status(node.Status))} | {Escape(DependencyText(outgoing.GetValueOrDefault(node.Id, [])))} | " +
                 $"{Escape(node.FilePath)} |");
         }
@@ -70,7 +70,7 @@ public static class PackListExporter
     public static string ExportModListCsv(ScanResult scan, GraphDocument graph, string path)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("name,modId,chineseName,category,version,loader,side,status," +
+        builder.AppendLine("name,modId,chineseName,category,version,loader,side,sideInferred,status," +
                            "requires,optional,incompatible,embedded,recommends,file,curseforge,modrinth");
         var outgoing = graph.Edges
             .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
@@ -90,6 +90,7 @@ public static class PackListExporter
                 Csv(node.DisplayVersion),
                 Csv(GraphText.Loader(node.Loader)),
                 Csv(GraphText.Side(node.Side)),
+                Csv(node.SideInferred ? "true" : "false"),
                 Csv(GraphText.Status(node.Status)),
                 Csv(Targets(node.Id, EdgeType.Requires)),
                 Csv(Targets(node.Id, EdgeType.Optional)),

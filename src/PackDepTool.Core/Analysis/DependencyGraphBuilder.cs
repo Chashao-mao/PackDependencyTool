@@ -405,6 +405,8 @@ public sealed class DependencyGraphBuilder
             });
         }
 
+        InferMissingSides(graph);
+
         issues = issues
             .OrderByDescending(i => i.Severity)
             .ThenBy(i => i.Kind)
@@ -417,6 +419,27 @@ public sealed class DependencyGraphBuilder
             Scan = scan,
             Issues = issues,
         };
+    }
+
+    private static void InferMissingSides(GraphDocument graph)
+    {
+        foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic && node.Side == ModSide.Unknown))
+        {
+            var sides = graph.Edges
+                .Where(edge => string.Equals(edge.From, node.Id, StringComparison.OrdinalIgnoreCase))
+                .Select(edge => edge.Side)
+                .Where(side => side != ModSide.Unknown)
+                .Distinct()
+                .ToList();
+
+            node.Side = sides.Count == 0
+                ? ModSide.Both
+                : sides.Contains(ModSide.Both) ||
+                  (sides.Contains(ModSide.Client) && sides.Contains(ModSide.Server))
+                    ? ModSide.Both
+                    : sides[0];
+            node.SideInferred = true;
+        }
     }
 
     private static void ApplyAliases(

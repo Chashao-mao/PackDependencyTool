@@ -85,7 +85,7 @@ public sealed class ExporterTests
     {
         var (nodes, edges) = GraphExporter.ToCsv(SampleGraph());
         Assert.Contains("id,name,nameZh,version", nodes);
-        Assert.Contains(",side,category,", nodes);
+        Assert.Contains(",side,sideInferred,category,", nodes);
         Assert.Contains(",requires,optional,incompatible,embeddedDeps,recommends", nodes);
         Assert.Contains("\"line1\nline2, with comma\"", edges);
         Assert.Contains("e1", edges);

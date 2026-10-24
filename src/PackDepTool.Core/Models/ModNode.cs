@@ -22,6 +22,9 @@ public sealed class ModNode
     public string? Description { get; set; }
     public string? Authors { get; set; }
     public ModSide Side { get; set; } = ModSide.Unknown;
+
+    /// <summary>True when the physical side was inferred from dependency metadata or defaults.</summary>
+    public bool SideInferred { get; set; }
     public string? Slug { get; set; }
     /// <summary>User-provided Chinese display name. No third-party translation index is bundled.</summary>
     public string? NameZh { get; set; }
