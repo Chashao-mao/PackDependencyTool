@@ -23,7 +23,7 @@ public partial class App : Application
             var dialogs = new DialogService(
                 _services.Paths, _services.Keys, _services.CurseForge, _services.Http,
                 _services.Downloader, _services.Importer, _services.GameInstaller, _services.PclLocator,
-                _services.Settings, _services.SettingsStore);
+                _services.Settings, _services.SettingsStore, _services.DownloadQueue);
             var viewModel = new MainWindowViewModel(_services, dialogs);
             var window = new MainWindow { DataContext = viewModel };
 

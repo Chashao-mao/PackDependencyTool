@@ -39,6 +39,8 @@ public sealed class AppServices : IDisposable
         var apiCache = new ApiCacheStore(paths.ApiCacheDirectory);
         Downloader = new ModDownloadService(downloadHttp, modrinth, curseForge, userAgent, apiCache);
         Updater = new UpdateService(http, userAgent);
+        DownloadQueue = new DownloadQueueService(new ResumableDownloader(downloadHttp, userAgent),
+            settings.MaxParallelDownloads);
         Installer = new UpdateInstaller(http, userAgent);
         Importer = new ModpackImporter(Downloader, curseForge, keys);
         Icons = new ModIconService(http, modrinth, curseForge, userAgent, paths.IconsDirectory);
@@ -73,6 +75,7 @@ public sealed class AppServices : IDisposable
     public ModEnrichmentService Enrichment { get; }
     public UpdateService Updater { get; }
     public UpdateInstaller Installer { get; }
+    public DownloadQueueService DownloadQueue { get; }
     public ModDownloadService Downloader { get; }
     public ModpackImporter Importer { get; }
     public ModIconService Icons { get; }
@@ -139,6 +142,7 @@ public sealed class AppServices : IDisposable
 
     public void Dispose()
     {
+        DownloadQueue.Dispose();
         DownloadHttp.Dispose();
         Http.Dispose();
     }

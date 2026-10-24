@@ -300,6 +300,36 @@ public sealed class ModDownloadService
                 .ConfigureAwait(false);
     }
 
+    public async Task<DownloadFileRequest> CreateFileRequestAsync(
+        DownloadVersion version,
+        string destinationDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        var url = version.DownloadUrl;
+        if (string.IsNullOrWhiteSpace(url) && version.Source == DownloadSource.CurseForge)
+        {
+            if (!long.TryParse(version.ProjectId, out var modId) ||
+                !long.TryParse(version.VersionId, out var fileId))
+                throw new InvalidOperationException("CurseForge 文件地址不可用，请检查 API Key 或项目权限。");
+            url = await _curseForge.GetDownloadUrlAsync(modId, fileId, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.IsNullOrWhiteSpace(url))
+            throw new InvalidOperationException("该项目没有可用的下载地址（作者可能关闭了第三方下载）。");
+
+        var fileName = SafeFileName(version.FileName,
+            version.Source == DownloadSource.CurseForge ? "mod.jar" : "download.jar");
+        return new DownloadFileRequest
+        {
+            Url = url,
+            DestinationPath = Path.Combine(destinationDirectory, fileName),
+            ExpectedSha1 = version.Sha1,
+            ExpectedSha512 = version.Sha512,
+            ExpectedSize = version.FileSize,
+            DisplayName = version.FileName,
+        };
+    }
+
     public async Task<DownloadResult> DownloadAsync(
         DownloadVersion version,
         string destinationDirectory,

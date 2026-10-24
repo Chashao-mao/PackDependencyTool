@@ -23,6 +23,7 @@ public sealed class DialogService : IDialogService
     private readonly PclLocatorService _pclLocator;
     private readonly AppSettings _settings;
     private readonly SettingsStore _settingsStore;
+    private readonly DownloadQueueService _downloadQueue;
 
     public DialogService(
         AppPaths paths,
@@ -34,7 +35,8 @@ public sealed class DialogService : IDialogService
         MinecraftInstallService gameInstaller,
         PclLocatorService pclLocator,
         AppSettings settings,
-        SettingsStore settingsStore)
+        SettingsStore settingsStore,
+        DownloadQueueService downloadQueue)
     {
         _paths = paths;
         _keys = keys;
@@ -46,6 +48,7 @@ public sealed class DialogService : IDialogService
         _pclLocator = pclLocator;
         _settings = settings;
         _settingsStore = settingsStore;
+        _downloadQueue = downloadQueue;
     }
 
     public Window? Owner { get; set; }
@@ -108,8 +111,10 @@ public sealed class DialogService : IDialogService
         if (Owner is null) return null;
 
         var viewModel = new DownloadCenterViewModel(
-            _downloader, _importer, _http, context, () => PickFolderAsync("选择整合包导入目录"));
+            _downloader, _importer, _http, context, () => PickFolderAsync("选择整合包导入目录"),
+            _downloadQueue);
         var dialog = new DownloadCenterDialog { DataContext = viewModel };
+        dialog.Closed += (_, _) => viewModel.Dispose();
         return await dialog.ShowDialog<DownloadCenterResult?>(Owner);
     }
 

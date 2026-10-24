@@ -170,6 +170,47 @@
                          Value="{Binding ProgressValue}" Maximum="1" Height="5" />
             <TextBlock Text="{Binding ProgressText}" Classes="caption" IsVisible="{Binding IsBusy}"
                        TextTrimming="CharacterEllipsis" />
+
+            <Border IsVisible="{Binding HasQueue}" Background="{DynamicResource PanelAlt}"
+                    BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                    CornerRadius="8" Padding="8">
+              <Grid RowDefinitions="Auto,*" RowSpacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="下载队列" Classes="section" />
+                  <TextBlock Grid.Column="1" Text="{Binding Queue.Count, StringFormat='共 {0} 项'}"
+                             FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                </Grid>
+                <ListBox Grid.Row="1" ItemsSource="{Binding Queue}" MaxHeight="165"
+                         Background="Transparent">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DownloadQueueRow">
+                      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="5" Margin="0,2">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                          <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="SemiBold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding ProgressText}" FontSize="9"
+                                     Foreground="{DynamicResource TextMuted}" />
+                          <ProgressBar Value="{Binding Fraction}" Maximum="1" Height="3" />
+                          <TextBlock Text="{Binding ErrorText}" FontSize="9"
+                                     Foreground="{DynamicResource Danger}"
+                                     IsVisible="{Binding HasError}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="9.5"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3">
+                          <Button Content="{Binding ToggleText}" Command="{Binding ToggleCommand}"
+                                  IsVisible="{Binding CanToggle}" FontSize="9" Padding="5,1" MinHeight="22" />
+                          <Button Content="取消" Command="{Binding CancelCommand}"
+                                  IsVisible="{Binding CanToggle}" FontSize="9" Padding="5,1" MinHeight="22" />
+                          <Button Content="重试" Command="{Binding RetryCommand}"
+                                  IsVisible="{Binding CanRetry}" FontSize="9" Padding="5,1" MinHeight="22" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Grid>
+            </Border>
           </StackPanel>
         </Grid>
       </Grid>

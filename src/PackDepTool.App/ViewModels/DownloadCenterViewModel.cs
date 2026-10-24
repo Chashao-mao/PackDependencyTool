@@ -94,7 +94,78 @@ public sealed class DownloadVersionItem
         : string.Empty;
 }
 
-public sealed partial class DownloadCenterViewModel : ObservableObject
+public sealed partial class DownloadQueueRow : ObservableObject
+{
+    private readonly DownloadQueueService _queue;
+    public DownloadQueueRow(DownloadQueueService queue, DownloadQueueItem item)
+    {
+        _queue = queue;
+        Item = item;
+        Refresh();
+    }
+
+    public DownloadQueueItem Item { get; }
+    public string Title => Item.Title;
+    public string Detail => Item.Detail ?? string.Empty;
+
+    [ObservableProperty] private string _stateText = string.Empty;
+    [ObservableProperty] private string _progressText = string.Empty;
+    [ObservableProperty] private double _fraction;
+    [ObservableProperty] private string _errorText = string.Empty;
+    [ObservableProperty] private bool _canToggle;
+    [ObservableProperty] private bool _canRetry;
+    public string ToggleText => Item.State == DownloadQueueState.Paused ? "继续" : "暂停";
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
+
+    public void Refresh()
+    {
+        StateText = Item.State switch
+        {
+            DownloadQueueState.Queued => "排队中",
+            DownloadQueueState.Running => "下载中",
+            DownloadQueueState.Paused => "已暂停",
+            DownloadQueueState.Completed => "已完成",
+            DownloadQueueState.Failed => "失败",
+            DownloadQueueState.Cancelled => "已取消",
+            _ => string.Empty,
+        };
+        var progress = Item.Progress;
+        Fraction = progress?.Fraction ?? 0;
+        ProgressText = progress is { TotalBytes: > 0 }
+            ? $"{FormatBytes(progress.Bytes)} / {FormatBytes(progress.TotalBytes)}"
+            : progress is { Bytes: > 0 }
+                ? FormatBytes(progress.Bytes)
+                : string.Empty;
+        ErrorText = Item.Error ?? string.Empty;
+        CanToggle = Item.State is DownloadQueueState.Queued or DownloadQueueState.Running or DownloadQueueState.Paused;
+        CanRetry = Item.State is DownloadQueueState.Failed or DownloadQueueState.Cancelled;
+        OnPropertyChanged(nameof(ToggleText));
+        OnPropertyChanged(nameof(HasError));
+    }
+
+    [RelayCommand]
+    private void Toggle()
+    {
+        if (Item.State == DownloadQueueState.Paused) _queue.Resume(Item);
+        else _queue.Pause(Item);
+    }
+
+    [RelayCommand]
+    private void Cancel() => _queue.Cancel(Item);
+
+    [RelayCommand]
+    private void Retry() => _queue.Retry(Item);
+
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024L * 1024 => $"{bytes / 1024d:0.#} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / 1024d / 1024d:0.#} MB",
+        _ => $"{bytes / 1024d / 1024d / 1024d:0.##} GB",
+    };
+}
+
+public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposable
 {
     private readonly ModDownloadService _downloader;
     private readonly ModpackImporter _importer;
@@ -102,6 +173,8 @@ public sealed partial class DownloadCenterViewModel : ObservableObject
     private static readonly Dictionary<string, Bitmap?> IconCache = new(StringComparer.Ordinal);
     private readonly DownloadCenterContext _context;
     private readonly Func<Task<string?>> _pickFolder;
+    private readonly DownloadQueueService _queue;
+    private string? _lastDownloadedPath;
 
     private const int PageSize = 20;
     private CancellationTokenSource? _operationCts;
@@ -112,13 +185,16 @@ public sealed partial class DownloadCenterViewModel : ObservableObject
         ModpackImporter importer,
         HttpClient http,
         DownloadCenterContext context,
-        Func<Task<string?>> pickFolder)
+        Func<Task<string?>> pickFolder,
+        DownloadQueueService queue)
     {
         _downloader = downloader;
         _importer = importer;
         _http = http;
         _context = context;
         _pickFolder = pickFolder;
+        _queue = queue;
+        _queue.Changed += OnQueueChanged;
 
         TypeOptions =
         [
@@ -162,6 +238,8 @@ public sealed partial class DownloadCenterViewModel : ObservableObject
 
     public ObservableCollection<DownloadProjectItem> Projects { get; } = [];
     public ObservableCollection<DownloadVersionItem> Versions { get; } = [];
+    public ObservableCollection<DownloadQueueRow> Queue { get; } = [];
+    public bool HasQueue => Queue.Count > 0;
     public ObservableCollection<DownloadCategoryItem> Categories { get; } = [];
 
     [ObservableProperty] private DownloadCategoryItem? _selectedCategory;
@@ -346,6 +424,31 @@ public sealed partial class DownloadCenterViewModel : ObservableObject
         }
     }
 
+    private void OnQueueChanged() => Dispatcher.UIThread.Post(RefreshQueue);
+
+    private void RefreshQueue()
+    {
+        var snapshot = _queue.Snapshot();
+        foreach (var item in snapshot)
+        {
+            if (item.State == DownloadQueueState.Completed &&
+                File.Exists(item.Request.DestinationPath))
+                _lastDownloadedPath = item.Request.DestinationPath;
+
+            var row = Queue.FirstOrDefault(existing => existing.Item.Id == item.Id);
+            if (row is null)
+                Queue.Add(new DownloadQueueRow(_queue, item));
+            else
+                row.Refresh();
+        }
+
+        foreach (var row in Queue.Where(existing =>
+                     snapshot.All(item => item.Id != existing.Item.Id)).ToList())
+            Queue.Remove(row);
+
+        OnPropertyChanged(nameof(HasQueue));
+    }
+
     private async Task LoadProjectIconsAsync(IReadOnlyList<DownloadProjectItem> items, CancellationToken token)
     {
         foreach (var item in items)
@@ -441,6 +544,24 @@ public sealed partial class DownloadCenterViewModel : ObservableObject
         }
 
         var downloadVersion = SelectedVersion.Model;
+
+        if (!IsModpack)
+        {
+            try
+            {
+                var request = await _downloader.CreateFileRequestAsync(
+                    downloadVersion, Path.Combine(_context.PackRoot!, "mods"), CancellationToken.None);
+                _queue.Enqueue(request, SelectedProject.Name, SelectedVersion.Title);
+                StatusText = "已加入下载队列，可继续选择其他版本。";
+            }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or
+                                           InvalidOperationException or CurseForgeApiException or
+                                           ModrinthApiException or MissingApiKeyException)
+            {
+                StatusText = $"加入队列失败：{ex.Message}";
+            }
+            return;
+        }
 
         _operationCts?.Cancel();
         _operationCts?.Dispose();
@@ -550,7 +671,23 @@ public sealed partial class DownloadCenterViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Cancel() => Completed?.Invoke(null);
+    private void Cancel()
+    {
+        foreach (var item in _queue.Snapshot())
+            if (item.State is DownloadQueueState.Queued or DownloadQueueState.Running or DownloadQueueState.Paused)
+                _queue.Cancel(item);
+        Completed?.Invoke(string.IsNullOrWhiteSpace(_lastDownloadedPath)
+            ? null
+            : new DownloadCenterResult { ModFilePath = _lastDownloadedPath });
+    }
+
+    public void Dispose()
+    {
+        _queue.Changed -= OnQueueChanged;
+        foreach (var item in _queue.Snapshot())
+            if (item.State is DownloadQueueState.Queued or DownloadQueueState.Running or DownloadQueueState.Paused)
+                _queue.Cancel(item);
+    }
 
     private void UpdateTargetText()
     {
