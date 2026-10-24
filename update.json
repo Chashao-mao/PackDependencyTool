@@ -4,6 +4,6 @@
   "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.3/PackDependencyTool.exe",
   "sha256": "fc95f36d1569b9a9d81ae7c4ea07093dd8e024db6945d68cbbc18016f35f07d1",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "模组列表虚拟化与跨窗口依赖线、图标缓存与分类缓存、更新检查缓存/取消、独立模组被内嵌隐藏修复、新程序图标。",
+  "notes": "1.0.3：列表虚拟化/预加载、跨窗口依赖线、时间/分类/加载器排序与正倒序、自动关闭下载窗口、本地忽略缺失依赖、多加载器跟随实例、独立安装优先内嵌、图标/分类缓存、显式批量更新检查、新图标。",
   "publishedAt": "2026-10-24T08:35:03.373266+00:00"
 }
