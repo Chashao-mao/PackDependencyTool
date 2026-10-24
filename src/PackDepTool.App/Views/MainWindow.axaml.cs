@@ -619,13 +619,26 @@ public partial class MainWindow : Window
     private void DependencyLocate_Click(object? sender, RoutedEventArgs e)
     {
         if (_viewModel is null || sender is not Button { DataContext: DependencyRowViewModel row }) return;
-        var item = _viewModel.NodeItems.FirstOrDefault(node =>
-            string.Equals(node.Id, row.TargetId, StringComparison.OrdinalIgnoreCase));
-        if (item is null) return;
-        _viewModel.SelectedNodeItem = item;
-        ModuleList.SelectedItem = item;
-        ModuleList.ScrollIntoView(item);
-        ModuleList.Focus();
+        var item = _viewModel.LocateNode(row.TargetId);
+        if (item is not null)
+        {
+            _viewModel.SelectedNodeItem = item;
+            ModuleList.SelectedItem = item;
+            ModuleList.ScrollIntoView(item);
+            ModuleList.Focus();
+        }
+        else if (_viewModel.MissingNodeItems.FirstOrDefault(node =>
+                     string.Equals(node.Id, row.TargetId, StringComparison.OrdinalIgnoreCase)) is { } missing)
+        {
+            MissingList.SelectedItem = missing;
+            MissingList.ScrollIntoView(missing);
+        }
+        else if (_viewModel.OptionalNodeItems.FirstOrDefault(node =>
+                     string.Equals(node.Id, row.TargetId, StringComparison.OrdinalIgnoreCase)) is { } optional)
+        {
+            OptionalList.SelectedItem = optional;
+            OptionalList.ScrollIntoView(optional);
+        }
         e.Handled = true;
     }
 }

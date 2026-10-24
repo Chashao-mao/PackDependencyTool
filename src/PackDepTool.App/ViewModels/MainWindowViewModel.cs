@@ -1765,6 +1765,50 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _suppressSelectionSync = false;
     }
 
+    /// <summary>
+    /// Brings a dependency target into the mod list. If the target is hidden by
+    /// the current filters/search, the filters are reset so the locate button
+    /// never silently does nothing.
+    /// </summary>
+    public NodeItemViewModel? LocateNode(string id)
+    {
+        if (_graph is null || _graph.FindNode(id) is null) return null;
+
+        var item = NodeItems.FirstOrDefault(node =>
+            string.Equals(node.Id, id, StringComparison.OrdinalIgnoreCase));
+        if (item is not null)
+        {
+            ShowListView();
+            SelectNode(id, center: false);
+            return item;
+        }
+
+        var node = _graph.FindNode(id)!;
+        if (node.IsSynthetic)
+        {
+            ShowListView();
+            if (node.IsOptionalDependency || node.IsRecommendedDependency)
+                ShowUninstalledOptional = true;
+            else
+            {
+                ShowMissing = true;
+                IsMissingSectionExpanded = true;
+            }
+            SelectNode(id, center: false);
+            return null;
+        }
+
+        // Installed mod hidden by a filter or relation focus.
+        ClearRelationFocus();
+        ResetFilters();
+        OnlyUpdatable = false;
+        ShowMissing = true;
+        ShowListView();
+        SelectNode(id, center: false);
+        return NodeItems.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, id, StringComparison.OrdinalIgnoreCase));
+    }
+
     public void ShowGraphAndFocus(string id)
     {
         _pendingFocusNodeId = id;
@@ -3756,6 +3800,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(SortDirectionText));
         OnPropertyChanged(nameof(SortDirectionTooltip));
+        RefreshView();
     }
 
     partial void OnOnlyUpdatableChanged(bool value)
@@ -3836,7 +3881,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ShowNeoForge = true;
         ShowUnknown = true;
         OnlyProblems = false;
+        OnlyUpdatable = false;
         HideIsolated = false;
+        ShowMissing = true;
+        ShowUninstalledOptional = false;
         SelectedStatusFilter = StatusFilterOption.All[0];
         SelectedSideFilter = SideFilterOption.All[0];
         SelectedSortOption = ModSortOption.All[0];
