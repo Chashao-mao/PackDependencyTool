@@ -221,6 +221,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             .Where(loader => loader != LoaderKind.Unknown)
             .Distinct()
             .Count() > 1;
+
+    public bool ShowFabricFilter => HasLoader(LoaderKind.Fabric);
+    public bool ShowQuiltFilter => HasLoader(LoaderKind.Quilt);
+    public bool ShowForgeFilter => HasLoader(LoaderKind.Forge);
+    public bool ShowNeoForgeFilter => HasLoader(LoaderKind.NeoForge);
+    public bool ShowUnknownFilter => HasLoader(LoaderKind.Unknown);
+
+    private bool HasLoader(LoaderKind loader) =>
+        _graph?.Nodes.Any(node => !node.IsSynthetic && node.Loader == loader) == true;
     public string BasicInfoToggleText => IsBasicInfoExpanded ? "收起" : "展开";
     public string DescriptionToggleText => IsDescriptionExpanded ? "收起" : "展开";
     public string DependenciesToggleText => IsDependenciesExpanded ? "收起" : "展开";
@@ -2866,6 +2875,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ConflictCount = _graph.Nodes.Count(n => n.Status == ModStatus.Conflict);
         OnPropertyChanged(nameof(ProblemSummary));
         OnPropertyChanged(nameof(ShowLoaderFilters));
+        OnPropertyChanged(nameof(ShowFabricFilter));
+        OnPropertyChanged(nameof(ShowQuiltFilter));
+        OnPropertyChanged(nameof(ShowForgeFilter));
+        OnPropertyChanged(nameof(ShowNeoForgeFilter));
+        OnPropertyChanged(nameof(ShowUnknownFilter));
         _suppressSelectionSync = true;
         AvailableModIds.Clear();
         foreach (var id in _graph.Nodes.Select(n => n.Id).OrderBy(id => id, StringComparer.Ordinal))

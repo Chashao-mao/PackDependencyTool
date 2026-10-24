@@ -272,6 +272,7 @@ public sealed class ModScanner
         }
 
         AttachIcons(archive, jar.Mods);
+        AlignMultiLoaderMetadata(jar.Mods, preferredLoader, available);
 
         // Nested jars declared by Fabric's "jars" array.
         foreach (var mod in jar.Mods)
@@ -435,6 +436,33 @@ public sealed class ModScanner
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// A jar can ship metadata for several loaders (for example Fabric plus
+    /// Forge). The runtime loader is the pack loader, so use it when the
+    /// selected fallback metadata still describes a compatible loader.
+    /// </summary>
+    private static void AlignMultiLoaderMetadata(
+        IReadOnlyList<ParsedMod> mods,
+        LoaderKind preferredLoader,
+        IReadOnlyList<string> available)
+    {
+        if (mods.Count == 0 || available.Count < 2) return;
+        var hasFabric = available.Contains("fabric.mod.json", StringComparer.OrdinalIgnoreCase);
+        var hasForge = available.Contains("META-INF/mods.toml", StringComparer.OrdinalIgnoreCase);
+
+        switch (preferredLoader)
+        {
+            case LoaderKind.Quilt when hasFabric:
+                foreach (var mod in mods.Where(mod => mod.Loader == LoaderKind.Fabric))
+                    mod.Loader = LoaderKind.Quilt;
+                break;
+            case LoaderKind.NeoForge when hasFabric && hasForge:
+                foreach (var mod in mods.Where(mod => mod.Loader is LoaderKind.Fabric or LoaderKind.Forge))
+                    mod.Loader = LoaderKind.NeoForge;
+                break;
+        }
     }
 
     private static ParsedEmbedded ToEmbedded(ParsedMod mod, LoaderKind loader) => new()
