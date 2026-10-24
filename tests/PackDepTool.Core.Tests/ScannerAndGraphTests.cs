@@ -334,6 +334,27 @@ public sealed class ScannerAndGraphTests
     }
 
     [Fact]
+    public void StandaloneModIsNotMarkedEmbeddedByItsOwnNestedJar()
+    {
+        var scan = new ScanResult
+        {
+            RootPath = "C:/pack",
+            ModsDirectory = "C:/pack/mods",
+            Profile = new PackProfile { McVersion = "1.21.1", Loader = LoaderKind.NeoForge },
+        };
+        scan.Jars.Add(new JarScanResult
+        {
+            FilePath = "mods/sodium.jar",
+            AbsolutePath = "C:/pack/mods/sodium.jar",
+            Mods = [new ParsedMod { ModId = "sodium", Name = "Sodium", Version = "0.8.13", Loader = LoaderKind.NeoForge }],
+            Embedded = [new ParsedEmbedded { ModId = "sodium", Name = "Sodium", Version = "0.8.13", File = "META-INF/jarjar/sodium-mod.jar" }],
+        });
+
+        var sodium = new DependencyGraphBuilder().Build(scan).Graph.FindNode("sodium")!;
+        Assert.False(sodium.IsEmbedded);
+    }
+
+    [Fact]
     public void StandaloneModIsNotHiddenWhenAnotherJarEmbedsTheSameId()
     {
         var scan = new ScanResult

@@ -2992,12 +2992,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RebuildNodeList(nodeVms, term);
     }
 
-    private int CountActionableIssues(string nodeId) =>
-        _issues.Count(issue =>
-            issue.Severity is IssueSeverity.Warning or IssueSeverity.Error &&
-            (string.Equals(issue.NodeId, nodeId, StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(issue.RelatedNodeId, nodeId, StringComparison.OrdinalIgnoreCase)));
-
     private void RebuildNodeList(IReadOnlyList<GraphNodeVm> visibleNodes, string term)
     {
         var selectedId = SelectedNodeItem?.Id;
@@ -3082,6 +3076,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             .Where(node => !node.Model.IsEmbedded || !parentedEmbedded.Contains(node.Id))
             .ToList();
 
+        var actionableIssueCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var issue in _issues)
+        {
+            if (issue.Severity is not (IssueSeverity.Warning or IssueSeverity.Error)) continue;
+            var ids = new[] { issue.NodeId, issue.RelatedNodeId }
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in ids)
+                actionableIssueCounts[id] = actionableIssueCounts.GetValueOrDefault(id) + 1;
+        }
+        int IssueCountFor(string id) => actionableIssueCounts.GetValueOrDefault(id);
+
         _suppressSelectionSync = true;
         _suppressCheckedSync = true;
         NodeItems.Clear();
@@ -3090,7 +3096,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var index = 0;
         foreach (var node in matching)
         {
-            var issueCount = CountActionableIssues(node.Id);
+            var issueCount = IssueCountFor(node.Id);
             _updateStates.TryGetValue(node.Id, out var updateState);
             var item = new NodeItemViewModel(node.Model, _graph, ++index, issueCount,
                 updateState?.Available == true, updateState?.LatestVersion)
@@ -3104,7 +3110,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 var children = childIds
                     .Select(id => _graph?.FindNode(id))
                     .Where(child => child is not null)
-                    .Select(child => new NodeItemViewModel(child!, _graph, 0, CountActionableIssues(child!.Id)))
+                    .Select(child => new NodeItemViewModel(child!, _graph, 0, IssueCountFor(child!.Id)))
                     .ToList();
                 item.SetEmbeddedChildren(children,
                     _expandedEmbeddedParents.Contains(node.Id) || ShowEmbedded);
@@ -3114,9 +3120,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         foreach (var node in missing)
-            MissingNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, CountActionableIssues(node.Id)));
+            MissingNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, IssueCountFor(node.Id)));
         foreach (var node in optional)
-            OptionalNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, CountActionableIssues(node.Id)));
+            OptionalNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, IssueCountFor(node.Id)));
 
         HasMissingNodeItems = MissingNodeItems.Count > 0;
         HasOptionalNodeItems = OptionalNodeItems.Count > 0;

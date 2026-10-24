@@ -245,9 +245,7 @@ public sealed class DependencyGraphBuilder
                         // the same id. Otherwise the real mod is marked embedded and
                         // disappears from the main list (e.g. Sodium bundled by
                         // another jar).
-                        if (!embeddedNode.IsSynthetic && !embeddedNode.IsEmbedded &&
-                            !string.Equals(embeddedNode.FilePath, jar.FilePath,
-                                StringComparison.OrdinalIgnoreCase))
+                        if (!embeddedNode.IsSynthetic && !embeddedNode.IsEmbedded)
                             continue;
 
                         // The embedded jar satisfies a dependency that was previously missing.
