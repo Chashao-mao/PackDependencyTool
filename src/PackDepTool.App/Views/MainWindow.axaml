@@ -476,7 +476,7 @@
                        Background="Transparent">
                 <ListBox.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <VirtualizingStackPanel />
+                    <VirtualizingStackPanel CacheLength="1" />
                   </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>

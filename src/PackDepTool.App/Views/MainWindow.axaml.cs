@@ -343,6 +343,41 @@ public partial class MainWindow : Window
                 .GroupBy(value => value.Item.Id, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First().Container, StringComparer.OrdinalIgnoreCase);
 
+            var indexById = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var index = 0; index < items.Count; index++)
+                indexById[items[index].Id] = index;
+            var containerByIndex = new Dictionary<int, ListBoxItem>();
+            foreach (var (id, container) in containers)
+                if (indexById.TryGetValue(id, out var index))
+                    containerByIndex[index] = container;
+
+            var realizedIndexes = containerByIndex.Keys.OrderBy(index => index).ToList();
+            if (realizedIndexes.Count == 0) return;
+
+            var firstIndex = realizedIndexes[0];
+            var lastIndex = realizedIndexes[^1];
+            var firstPoint = containerByIndex[firstIndex].TranslatePoint(
+                new Point(0, containerByIndex[firstIndex].Bounds.Height / 2), DependencyRailOverlay);
+            if (firstPoint is not { } anchor) return;
+            var lastPoint = containerByIndex[lastIndex].TranslatePoint(
+                new Point(0, containerByIndex[lastIndex].Bounds.Height / 2), DependencyRailOverlay);
+            var rowHeight = 62.0;
+            if (lastPoint is { } last && lastIndex > firstIndex)
+                rowHeight = Math.Clamp((last.Y - anchor.Y) / (lastIndex - firstIndex), 44.0, 110.0);
+            var railBaseX = anchor.X;
+            var overlayHeight = DependencyRailOverlay.Bounds.Height > 0
+                ? DependencyRailOverlay.Bounds.Height
+                : ModuleList.Bounds.Height;
+
+            double RailY(int index)
+            {
+                if (containerByIndex.TryGetValue(index, out var container) &&
+                    container.TranslatePoint(new Point(0, container.Bounds.Height / 2),
+                        DependencyRailOverlay) is { } point)
+                    return point.Y;
+                return anchor.Y + (index - firstIndex) * rowHeight;
+            }
+
             var mode = viewModel.SelectedConnectionLineMode.Value;
             var edgeHash = 17;
             foreach (var edge in scene.Edges)
@@ -368,35 +403,32 @@ public partial class MainWindow : Window
 
             foreach (var group in groups)
             {
-                if (!containers.TryGetValue(group.ParentId, out var parentContainer)) continue;
+                if (!indexById.TryGetValue(group.ParentId, out var parentIndex)) continue;
 
-                var parentPoint = parentContainer.TranslatePoint(
-                    new Point(0, parentContainer.Bounds.Height / 2), DependencyRailOverlay);
-                if (parentPoint is not { } parent) continue;
-
-                var visibleChildren = new List<(Control Container, double Y)>();
+                var childYs = new List<double>();
                 foreach (var index in group.ChildIndices)
                 {
-                    var id = items[index].Id;
-                    if (!containers.TryGetValue(id, out var container)) continue;
-                    var point = container.TranslatePoint(
-                        new Point(0, container.Bounds.Height / 2), DependencyRailOverlay);
-                    if (point is { } childPoint) visibleChildren.Add((container, childPoint.Y));
+                    if (index < 0 || index >= items.Count) continue;
+                    childYs.Add(RailY(index));
                 }
-                if (visibleChildren.Count == 0) continue;
+                if (childYs.Count == 0) continue;
 
-                var laneX = parent.X + 66 + (group.VisualLane * 9);
-                var endX = parent.X + 104;
-                var minY = parent.Y;
-                var maxY = parent.Y;
-                foreach (var (_, y) in visibleChildren)
+                var parentY = RailY(parentIndex);
+                var minY = parentY;
+                var maxY = parentY;
+                foreach (var y in childYs)
                 {
                     if (y < minY) minY = y;
                     if (y > maxY) maxY = y;
                 }
+                if (maxY < 0 || minY > overlayHeight) continue;
+
+                var laneX = railBaseX + 66 + (group.VisualLane * 9);
+                var endX = railBaseX + 104;
                 var isActive = selectedId is not null &&
                                (string.Equals(group.ParentId, selectedId, StringComparison.OrdinalIgnoreCase) ||
                                 group.ChildIndices.Any(index =>
+                                    index >= 0 && index < items.Count &&
                                     string.Equals(items[index].Id, selectedId, StringComparison.OrdinalIgnoreCase)));
                 var opacity = selectedId is null ? 0.9 : isActive ? 1.0 : 0.22;
                 var strokeWidth = isActive ? 2.4 : 1.8;
@@ -405,10 +437,10 @@ public partial class MainWindow : Window
                     : new SolidColorBrush(RailLaneColors[group.VisualLane % RailLaneColors.Length]);
 
                 AddRailLine(laneX, minY, laneX, maxY, brush, strokeWidth, opacity);
-                AddRailLine(laneX, parent.Y, endX, parent.Y, brush, strokeWidth, opacity);
-                AddRailEndpoint(endX - 2, parent.Y, brush, opacity);
+                AddRailLine(laneX, parentY, endX, parentY, brush, strokeWidth, opacity);
+                AddRailEndpoint(endX - 2, parentY, brush, opacity);
 
-                foreach (var (_, y) in visibleChildren)
+                foreach (var y in childYs)
                 {
                     AddRailLine(laneX, y, endX, y, brush, strokeWidth, opacity);
                     AddRailEndpoint(endX - 2, y, brush, opacity);
