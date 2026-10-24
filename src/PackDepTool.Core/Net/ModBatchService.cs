@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
 using PackDepTool.Core.Scanning;
 
@@ -50,7 +51,8 @@ public sealed class ModBatchService
         string packRoot,
         IProgress<DownloadProgress>? progress = null,
         CancellationToken cancellationToken = default,
-        int maxConcurrency = 3)
+        int maxConcurrency = 3,
+        GraphDocument? graph = null)
     {
         var result = new BatchModResult { Action = BatchModAction.Download };
         var modsDirectory = Path.Combine(packRoot, "mods");
@@ -101,7 +103,11 @@ public sealed class ModBatchService
                     var versions = await _downloader.GetVersionsAsync(
                             project, profile.McVersion, profile.Loader, token)
                         .ConfigureAwait(false);
-                    var version = versions.FirstOrDefault(candidateVersion => candidateVersion.IsCompatible);
+                    var requiredRanges = IncomingRequiredRanges(graph, node.Id);
+                    var version = versions.FirstOrDefault(candidateVersion =>
+                        candidateVersion.IsCompatible &&
+                        requiredRanges.All(range =>
+                            VersionRange.Satisfies(range, candidateVersion.VersionNumber) != false));
                     if (version is null)
                     {
                         itemsByIndex[candidate.Index] = Fail(node, "没有兼容版本");
@@ -137,7 +143,8 @@ public sealed class ModBatchService
         string packRoot,
         IProgress<DownloadProgress>? progress = null,
         CancellationToken cancellationToken = default,
-        int maxConcurrency = 3)
+        int maxConcurrency = 3,
+        GraphDocument? graph = null)
     {
         var result = new BatchModResult { Action = BatchModAction.Upgrade };
         var trash = Path.Combine(packRoot, ".packdep-trash", DateTime.Now.ToString("yyyyMMdd-HHmmss"));
@@ -192,8 +199,11 @@ public sealed class ModBatchService
                         var versions = await _downloader.GetVersionsAsync(
                                 project, profile.McVersion, profile.Loader, token)
                             .ConfigureAwait(false);
+                        var requiredRanges = IncomingRequiredRanges(graph, node.Id);
                         var latest = versions
-                            .Where(version => version.IsCompatible)
+                            .Where(version => version.IsCompatible &&
+                                              requiredRanges.All(range =>
+                                                  VersionRange.Satisfies(range, version.VersionNumber) != false))
                             .OrderByDescending(version => version.PublishedAt ?? DateTimeOffset.MinValue)
                             .FirstOrDefault();
                         if (latest is null)
@@ -340,6 +350,18 @@ public sealed class ModBatchService
         if (a.Length == 0 || b.Length == 0) return false;
         return a == b || a.Contains(b, StringComparison.Ordinal) ||
                b.Contains(a, StringComparison.Ordinal);
+    }
+
+    private static List<string> IncomingRequiredRanges(GraphDocument? graph, string nodeId)
+    {
+        if (graph is null) return [];
+        return graph.Edges
+            .Where(edge => string.Equals(edge.To, nodeId, StringComparison.OrdinalIgnoreCase) &&
+                           edge.Type == EdgeType.Requires &&
+                           !string.IsNullOrWhiteSpace(edge.VersionRange))
+            .Select(edge => edge.VersionRange!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static void TryDeleteDirectory(string path)

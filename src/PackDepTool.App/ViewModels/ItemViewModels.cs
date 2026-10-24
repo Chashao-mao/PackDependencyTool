@@ -227,6 +227,7 @@ public sealed class DependencyRowViewModel
     public string ResultText { get; }
     public IBrush ResultBrush { get; }
     public string? Note { get; }
+    public bool HasNote => !string.IsNullOrWhiteSpace(Note);
     public bool IsManual { get; }
     public bool CanLocate { get; }
     public string GroupTitle { get; }

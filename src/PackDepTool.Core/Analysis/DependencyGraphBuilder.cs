@@ -426,6 +426,8 @@ public sealed class DependencyGraphBuilder
         };
     }
 
+    public static void InferSides(GraphDocument graph) => InferMissingSides(graph);
+
     private static void InferMissingSides(GraphDocument graph)
     {
         foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic && node.Side == ModSide.Unknown))

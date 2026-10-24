@@ -85,6 +85,7 @@ public sealed class VersionRangeTests
         Assert.True(ModVersion.Compare("1.0.0", "1.0.0-beta") > 0);
         Assert.True(ModVersion.Compare("1.0.0-beta", "1.0.0") < 0);
         Assert.True(ModVersion.Compare("1.0.0-beta.2", "1.0.0-beta.1") > 0);
+        Assert.Equal(0, ModVersion.Compare("1.0.0+build", "1.0.0"));
     }
 
     [Theory]

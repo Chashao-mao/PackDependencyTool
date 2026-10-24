@@ -226,7 +226,7 @@ public sealed class ModEnrichmentService
                             Type = dependency.Type,
                             Source = EdgeSource.Modrinth,
                             Confidence = 0.75,
-                            Note = "来源：Modrinth 项目依赖",
+                            Note = "来源：Modrinth 项目依赖；在线接口未提供版本范围",
                         };
 
                         if (TryAddEdge(graph, manualPairs, edgeKeys, edge)) stats.EdgesAdded++;
@@ -417,7 +417,7 @@ public sealed class ModEnrichmentService
                 Type = type.Value,
                 Source = EdgeSource.CurseForge,
                 Confidence = 0.7,
-                Note = "来源：CurseForge 文件依赖",
+                Note = "来源：CurseForge 文件依赖；在线接口未提供版本范围",
             };
 
             if (TryAddEdge(graph, manualPairs, edgeKeys, edge)) stats.EdgesAdded++;
@@ -439,9 +439,7 @@ public sealed class ModEnrichmentService
 
         var index = mod.LatestFilesIndexes.FirstOrDefault(i =>
             (string.IsNullOrWhiteSpace(i.GameVersion) ||
-             string.Equals(i.GameVersion, profile.McVersion, StringComparison.OrdinalIgnoreCase) ||
-             profile.McVersion.StartsWith(i.GameVersion + ".", StringComparison.OrdinalIgnoreCase) ||
-             i.GameVersion.StartsWith(profile.McVersion + ".", StringComparison.OrdinalIgnoreCase)) &&
+             MatchesMinecraftVersion(i.GameVersion, profile.McVersion)) &&
             (loaderId is null || string.IsNullOrWhiteSpace(i.ModLoader) || i.ModLoader == loaderId));
 
         if (index is not null)
@@ -450,8 +448,20 @@ public sealed class ModEnrichmentService
             if (byId is not null) return byId;
         }
 
-        return mod.LatestFiles.FirstOrDefault(f => f.Dependencies.Count > 0) ?? mod.LatestFiles[0];
+        // Do not fall back to an arbitrary file from another Minecraft version;
+        // that can attach dependencies from the wrong release.
+        var matchingFiles = mod.LatestFiles
+            .Where(file => file.GameVersions.Any(version =>
+                MatchesMinecraftVersion(version, profile.McVersion)))
+            .ToList();
+        return matchingFiles.FirstOrDefault(file => file.Dependencies.Count > 0) ??
+               matchingFiles.FirstOrDefault();
     }
+
+    private static bool MatchesMinecraftVersion(string declared, string packVersion) =>
+        string.Equals(declared, packVersion, StringComparison.OrdinalIgnoreCase) ||
+        packVersion.StartsWith(declared + ".", StringComparison.OrdinalIgnoreCase) ||
+        declared.StartsWith(packVersion + ".", StringComparison.OrdinalIgnoreCase);
 
     private static ModNode? FindInstalledNode(GraphDocument graph, ModrinthProjectInfo project)
     {

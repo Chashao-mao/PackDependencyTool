@@ -449,6 +449,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var newIssues = _services.Analyzer.Analyze(
                 _graph, _scanResult.Profile, new LocalRuleSet(_localRules));
             MergeIssues(newIssues);
+            // New online nodes/edges may not have a side yet.
+            DependencyGraphBuilder.InferSides(_graph);
             foreach (var message in stats.Messages.Take(10))
             {
                 _issues.Add(new AnalysisIssue
@@ -723,7 +725,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             result = await _services.Batch.DownloadAsync(
                 new[] { node }, _scanResult.Profile, _scanResult.RootPath, progress, cts.Token,
-                maxConcurrency: _services.Settings.MaxParallelDownloads);
+                maxConcurrency: _services.Settings.MaxParallelDownloads, graph: _graph);
             detail.Finish(result.FailedCount == 0,
                 $"成功 {result.SuccessCount} · 失败 {result.FailedCount}");
         }
@@ -3554,10 +3556,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             batchResult = action == BatchModAction.Download
                 ? await _services.Batch.DownloadAsync(
                     nodes, _scanResult.Profile, _scanResult.RootPath, progress, cts.Token,
-                    maxConcurrency: _services.Settings.MaxParallelDownloads)
+                    maxConcurrency: _services.Settings.MaxParallelDownloads, graph: _graph)
                 : await _services.Batch.UpgradeAsync(
                     nodes, _scanResult.Profile, _scanResult.RootPath, progress, cts.Token,
-                    maxConcurrency: _services.Settings.MaxParallelDownloads);
+                    maxConcurrency: _services.Settings.MaxParallelDownloads, graph: _graph);
             detail.Finish(batchResult.FailedCount == 0,
                 $"成功 {batchResult.SuccessCount} · 跳过 {batchResult.SkippedCount} · 失败 {batchResult.FailedCount}");
         }

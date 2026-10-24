@@ -820,6 +820,9 @@
                                           </Grid>
                                           <TextBlock Text="{Binding RangeText}" FontSize="10"
                                                      Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                                          <TextBlock Text="{Binding Note}" FontSize="9.5"
+                                                     Foreground="{DynamicResource TextMuted}"
+                                                     TextWrapping="Wrap" IsVisible="{Binding HasNote}" />
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Text="{Binding ResultText}" FontSize="10"
                                                    Foreground="{Binding ResultBrush}" VerticalAlignment="Center"

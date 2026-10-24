@@ -62,7 +62,9 @@ public static class ModVersion
         while (i < span.Length)
         {
             var c = span[i];
-            if (c is '.' or '-' or '+' or '_' or '~')
+            // Build metadata (everything after '+') does not affect precedence.
+            if (c == '+') break;
+            if (c is '.' or '-' or '_' or '~')
             {
                 i++;
                 continue;
