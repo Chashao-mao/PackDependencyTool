@@ -774,23 +774,29 @@ public sealed class DependencyGraphView : Control
         var manual = edge.Model.ManualOverride || edge.Model.Type == Core.Models.EdgeType.Manual;
         var color = selected
             ? (IsLightTheme ? Color.Parse("#17202B") : Colors.White)
-            : edge.IsInactiveConflict
-                ? GraphPalette.TextMuted
-                : GraphPalette.EdgeColor(edge.Model.Type, manual);
+            : edge.HasMissingEndpoint
+                ? GraphPalette.Danger
+                : edge.IsInactiveConflict
+                    ? GraphPalette.TextMuted
+                    : GraphPalette.EdgeColor(edge.Model.Type, manual);
 
-        var thickness = edge.IsInactiveConflict
-            ? 1.2
-            : edge.Model.Type == Core.Models.EdgeType.Incompatible ? 2.2 : 1.5;
+        var thickness = edge.HasMissingEndpoint
+            ? 1.8
+            : edge.IsInactiveConflict
+                ? 1.2
+                : edge.Model.Type == Core.Models.EdgeType.Incompatible ? 2.2 : 1.5;
         if (manual) thickness = 2.2;
         if (selected) thickness = 3;
         if (hovered) thickness += 0.6;
 
-        var dash = edge.Model.Type switch
-        {
-            Core.Models.EdgeType.Optional or Core.Models.EdgeType.Recommends => DashStyle.Dash,
-            Core.Models.EdgeType.Embedded => DashStyle.Dot,
-            _ => null,
-        };
+        var dash = edge.HasMissingEndpoint
+            ? DashStyle.Dash
+            : edge.Model.Type switch
+            {
+                Core.Models.EdgeType.Optional or Core.Models.EdgeType.Recommends => DashStyle.Dash,
+                Core.Models.EdgeType.Embedded => DashStyle.Dot,
+                _ => null,
+            };
 
         if (manual)
         {

@@ -148,6 +148,8 @@ public sealed class GraphEdgeVm
     public GraphNodeVm To { get; }
     public int ParallelIndex { get; }
     public bool IsInactiveConflict { get; }
+    public bool HasMissingEndpoint => From.Model.Status == ModStatus.Missing ||
+                                       To.Model.Status == ModStatus.Missing;
     public bool IsSearchMatch { get; set; } = true;
     public bool IsHighlighted { get; set; }
     public string Id => Model.Id;

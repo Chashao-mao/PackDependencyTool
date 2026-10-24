@@ -207,7 +207,7 @@
               </ComboBox>
             </Grid>
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="2"
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2"
                   Margin="0,2,0,0">
               <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
               <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
@@ -218,6 +218,9 @@
               <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
                         IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}"
                         ToolTip.Tip="勾选后才显示底部未安装的可选/推荐依赖" />
+              <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
+                        IsChecked="{Binding ShowMissing, Mode=TwoWay}"
+                        ToolTip.Tip="在列表和依赖图中显示未安装的必需依赖；缺失节点相关连线为红虚线" />
             </Grid>
 
             <TextBlock Text="功能分类" Classes="section" Margin="0,6,0,2" />

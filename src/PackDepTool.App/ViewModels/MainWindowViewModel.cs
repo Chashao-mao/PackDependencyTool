@@ -92,6 +92,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasMissingNodeItems;
     [ObservableProperty] private bool _isMissingSectionExpanded;
     [ObservableProperty] private bool _showUninstalledOptional;
+    [ObservableProperty] private bool _showMissing = true;
     [ObservableProperty] private bool _showOptionalInReport;
     [ObservableProperty] private ConnectionLineOption _selectedConnectionLineMode = ConnectionLineOptions[0];
     [ObservableProperty] private bool _isRelationFocus;
@@ -210,7 +211,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string VersionLabel => "v1.0.2";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
-    public bool ShowMissingSection => HasMissingNodeItems;
+    public bool ShowMissingSection => ShowMissing && HasMissingNodeItems;
     public string MissingToggleText => IsMissingSectionExpanded ? "收起" : "展开";
     public string ProblemSummary =>
         $"缺失 {MissingCount} · 冲突 {ConflictCount} · 版本 {MismatchCount} · 错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
@@ -2522,6 +2523,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         bool NodePassesFilter(ModNode node) =>
             loaderVisible(node.Loader) &&
+            (ShowMissing || node.Status != ModStatus.Missing) &&
             !node.IsEmbedded &&
             (!node.IsOptionalDependency || ShowUninstalledOptional) &&
             (!node.IsRecommendedDependency || ShowUninstalledOptional) &&
@@ -2688,10 +2690,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 .OrderBy(node => node.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList()
             : [];
-        var missing = uninstalled
-            .Where(node => !node.Model.IsOptionalDependency && !node.Model.IsRecommendedDependency)
-            .OrderBy(node => node.Title, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+        var missing = ShowMissing
+            ? uninstalled
+                .Where(node => !node.Model.IsOptionalDependency && !node.Model.IsRecommendedDependency)
+                .OrderBy(node => node.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ToList()
+            : [];
         matching = matching
             .Where(node => !node.Model.IsSynthetic)
             .ToList();
@@ -3312,6 +3316,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnShowLabelsChanged(bool value) => RefreshView();
 
     partial void OnShowOptionalInReportChanged(bool value) => RefreshIssueView();
+
+    partial void OnShowMissingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowMissingSection));
+        RefreshView();
+    }
 
     partial void OnShowUninstalledOptionalChanged(bool value)
     {

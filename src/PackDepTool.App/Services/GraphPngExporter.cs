@@ -99,14 +99,17 @@ public static class GraphPngExporter
             var toX = X(forward ? toPosition.X - halfWidth + 4 : toPosition.X + halfWidth - 4);
             var fromY = Y(fromPosition.Y);
             var toY = Y(toPosition.Y);
-            var color = ToColor(edge.IsInactiveConflict
-                ? GraphPalette.TextMuted
-                : GraphPalette.EdgeColor(edge.Model.Type,
-                    edge.Model.ManualOverride || edge.Model.Type == EdgeType.Manual));
+            var color = ToColor(edge.HasMissingEndpoint
+                ? GraphPalette.Danger
+                : edge.IsInactiveConflict
+                    ? GraphPalette.TextMuted
+                    : GraphPalette.EdgeColor(edge.Model.Type,
+                        edge.Model.ManualOverride || edge.Model.Type == EdgeType.Manual));
             edgePaint.Color = color;
-            edgePaint.StrokeWidth = (float)((edge.Model.Type == EdgeType.Incompatible ? 2.2 : 1.4) *
-                                            Math.Max(0.7, scale));
-            if (edge.Model.Type is EdgeType.Optional or EdgeType.Recommends)
+            edgePaint.StrokeWidth = (float)((edge.HasMissingEndpoint
+                ? 1.8
+                : edge.Model.Type == EdgeType.Incompatible ? 2.2 : 1.4) * Math.Max(0.7, scale));
+            if (edge.HasMissingEndpoint || edge.Model.Type is EdgeType.Optional or EdgeType.Recommends)
                 edgePaint.PathEffect = SKPathEffect.CreateDash(
                     [6f * (float)scale, 5f * (float)scale], 0);
             else
