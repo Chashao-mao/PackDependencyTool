@@ -20,17 +20,20 @@ public sealed class MinecraftInstallService
     private readonly ModDownloadService _downloader;
     private readonly string _userAgent;
     private readonly string _loaderCacheDirectory;
+    private readonly bool _allowMirror;
 
     public MinecraftInstallService(
         HttpClient http,
         ModDownloadService downloader,
         string userAgent,
-        string loaderCacheDirectory)
+        string loaderCacheDirectory,
+        bool allowMirror = true)
     {
         _http = http;
         _downloader = downloader;
         _userAgent = userAgent;
         _loaderCacheDirectory = loaderCacheDirectory;
+        _allowMirror = allowMirror;
     }
 
     public async Task<List<MinecraftVersionInfo>> GetMinecraftVersionsAsync(
@@ -853,6 +856,7 @@ public sealed class MinecraftInstallService
         CancellationToken cancellationToken,
         string? mirrorUrl = null)
     {
+        if (!_allowMirror) mirrorUrl = null;
         if (File.Exists(destination) && expectedSize > 0)
         {
             var length = new FileInfo(destination).Length;
@@ -885,8 +889,9 @@ public sealed class MinecraftInstallService
         }
     }
 
-    private static string? MirrorUrlFor(string url)
+    private string? MirrorUrlFor(string url)
     {
+        if (!_allowMirror) return null;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return null;
 
         var host = uri.Host.ToLowerInvariant();
@@ -1010,6 +1015,7 @@ public sealed class MinecraftInstallService
         string? mirrorUrl,
         CancellationToken cancellationToken)
     {
+        if (!_allowMirror) mirrorUrl = null;
         var text = await GetStringWithFallbackAsync(primaryUrl, mirrorUrl, cancellationToken)
             .ConfigureAwait(false);
         return JsonDocument.Parse(text);

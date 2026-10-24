@@ -7,6 +7,15 @@ using PackDepTool.Core.Persistence;
 
 namespace PackDepTool.App.ViewModels;
 
+public sealed record GameSourceOption(string Value, string Label)
+{
+    public static IReadOnlyList<GameSourceOption> All { get; } =
+    [
+        new("auto", "自动（官方 → BMCLAPI）"),
+        new("official", "仅官方"),
+    ];
+}
+
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly AppSettings _settings;
@@ -50,6 +59,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         ShowLabels = _settings.ShowLabels;
         MaxParallelDownloads = _settings.MaxParallelDownloads;
         UpdateFeedUrl = _settings.UpdateFeedUrl ?? string.Empty;
+        SelectedGameSource = GameSourceOption.All.FirstOrDefault(option =>
+            string.Equals(option.Value, _settings.GameDownloadSource, StringComparison.OrdinalIgnoreCase))
+            ?? GameSourceOption.All[0];
+        ModrinthApiBaseUrl = _settings.ModrinthApiBaseUrl ?? string.Empty;
+        CurseForgeApiBaseUrl = _settings.CurseForgeApiBaseUrl ?? string.Empty;
+        ModCdnBaseUrl = _settings.ModCdnBaseUrl ?? string.Empty;
         CheckUpdatesOnStartup = _settings.CheckUpdatesOnStartup;
         AutoDownloadUpdates = _settings.AutoDownloadUpdates;
         AutoInstallUpdates = _settings.AutoInstallUpdates;
@@ -78,6 +93,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _showLabels;
     [ObservableProperty] private int _maxParallelDownloads = 3;
     [ObservableProperty] private string _updateFeedUrl = string.Empty;
+    [ObservableProperty] private GameSourceOption _selectedGameSource = GameSourceOption.All[0];
+    [ObservableProperty] private string _modrinthApiBaseUrl = string.Empty;
+    [ObservableProperty] private string _curseForgeApiBaseUrl = string.Empty;
+    [ObservableProperty] private string _modCdnBaseUrl = string.Empty;
+
+    public IReadOnlyList<GameSourceOption> GameSourceOptions => GameSourceOption.All;
     [ObservableProperty] private bool _checkUpdatesOnStartup;
     [ObservableProperty] private bool _autoDownloadUpdates;
     [ObservableProperty] private bool _autoInstallUpdates;
@@ -110,11 +131,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.ShowLabels = ShowLabels;
         _settings.MaxParallelDownloads = Math.Clamp(MaxParallelDownloads, 1, 6);
         _settings.UpdateFeedUrl = string.IsNullOrWhiteSpace(UpdateFeedUrl) ? null : UpdateFeedUrl.Trim();
+        _settings.GameDownloadSource = SelectedGameSource.Value;
+        _settings.ModrinthApiBaseUrl = CleanUrl(ModrinthApiBaseUrl);
+        _settings.CurseForgeApiBaseUrl = CleanUrl(CurseForgeApiBaseUrl);
+        _settings.ModCdnBaseUrl = CleanUrl(ModCdnBaseUrl);
         _settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         _settings.AutoDownloadUpdates = AutoDownloadUpdates;
         _settings.AutoInstallUpdates = AutoInstallUpdates && AutoDownloadUpdates;
         Completed?.Invoke(_settings);
     }
+
+    private static string? CleanUrl(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim().TrimEnd('/');
 
     [RelayCommand]
     private void Cancel() => Completed?.Invoke(null);

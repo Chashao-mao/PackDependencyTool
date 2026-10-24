@@ -34,6 +34,32 @@
             <TextBlock Text="游戏本体/加载器下载会自动在官方源与 BMCLAPI 之间回退；本版本没有独立的 Modrinth/CurseForge 镜像输入框，更新源也不是镜像站。"
                        Classes="caption" TextWrapping="Wrap" />
 
+            <TextBlock Text="下载源与镜像（重启生效）" Classes="section" Margin="0,6,0,0" />
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="7">
+              <TextBlock Text="游戏文件下载源" VerticalAlignment="Center" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding GameSourceOptions}"
+                        SelectedItem="{Binding SelectedGameSource, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GameSourceOption">
+                    <TextBlock Text="{Binding Label}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+
+              <TextBlock Grid.Row="1" Text="Modrinth API 基址" VerticalAlignment="Center" />
+              <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ModrinthApiBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       Watermark="留空使用官方；镜像需填写完整 API 基址" />
+              <TextBlock Grid.Row="2" Text="CurseForge API 基址" VerticalAlignment="Center" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding CurseForgeApiBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       Watermark="留空使用官方；第三方镜像不会发送 API Key" />
+              <TextBlock Grid.Row="3" Text="Mod CDN 基址" VerticalAlignment="Center" />
+              <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding ModCdnBaseUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       Watermark="例如 https://镜像站；留空不替换官方 CDN" />
+            </Grid>
+            <TextBlock Text="镜像为可选第三方服务；填写前请确认其条款和隐私政策。CurseForge 使用镜像时不会发送本地 API Key。"
+                       Classes="caption" TextWrapping="Wrap" />
+
             <TextBlock Text="更新检查（可选）" Classes="section" Margin="0,6,0,0" />
             <TextBox Text="{Binding UpdateFeedUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Watermark="https://raw.githubusercontent.com/&lt;owner&gt;/PackDependencyTool/main/update.json" />

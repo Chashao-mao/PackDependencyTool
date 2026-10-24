@@ -23,15 +23,29 @@ public sealed class ModrinthClient
     private readonly HttpClient _http;
     private readonly RateLimiter _limiter;
     private readonly string _userAgent;
+    private readonly string _baseUrl;
+    private readonly string _cdnBase;
 
-    public ModrinthClient(HttpClient http, string userAgent, RateLimiter? limiter = null)
+    public ModrinthClient(
+        HttpClient http,
+        string userAgent,
+        RateLimiter? limiter = null,
+        string? baseUrl = null,
+        string? cdnBase = null)
     {
         _http = http;
         _limiter = limiter ?? new RateLimiter(TimeSpan.FromMilliseconds(250));
         _userAgent = string.IsNullOrWhiteSpace(userAgent)
             ? "PackDependencyTool/1.0.0 (local desktop app)"
             : userAgent;
+        _baseUrl = string.IsNullOrWhiteSpace(baseUrl) ? BaseUrl : baseUrl.TrimEnd('/');
+        _cdnBase = string.IsNullOrWhiteSpace(cdnBase) ? string.Empty : cdnBase.TrimEnd('/');
     }
+
+    private string Cdn(string? url) =>
+        string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(_cdnBase)
+            ? url ?? string.Empty
+            : url.Replace("https://cdn.modrinth.com", _cdnBase, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Exact hash lookup: POST /version_files. Returns hash -> version metadata.</summary>
     public async Task<Dictionary<string, ModrinthVersionInfo>> MatchBySha1Async(
@@ -43,7 +57,7 @@ public sealed class ModrinthClient
         {
             var body = JsonSerializer.Serialize(new { hashes = chunk, algorithm = "sha1" });
             using var doc = await SendAsync(
-                () => NewRequest(HttpMethod.Post, $"{BaseUrl}/version_files", body),
+                () => NewRequest(HttpMethod.Post, $"{_baseUrl}/version_files", body),
                 cancellationToken).ConfigureAwait(false);
 
             if (doc is null) continue;
@@ -65,7 +79,7 @@ public sealed class ModrinthClient
         foreach (var chunk in Chunk(ids.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList(), 100))
         {
             var json = JsonSerializer.Serialize(chunk);
-            var url = $"{BaseUrl}/projects?ids={Uri.EscapeDataString(json)}";
+            var url = $"{_baseUrl}/projects?ids={Uri.EscapeDataString(json)}";
             using var doc = await SendAsync(() => NewRequest(HttpMethod.Get, url), cancellationToken)
                 .ConfigureAwait(false);
             if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Array) continue;
@@ -98,7 +112,7 @@ public sealed class ModrinthClient
         var encodedFacets = Uri.EscapeDataString("[" + string.Join(",", facets) + "]");
         var safeOffset = Math.Max(0, offset);
         var safeLimit = Math.Clamp(limit, 1, 100);
-        var url = $"{BaseUrl}/search?query={Uri.EscapeDataString(query)}" +
+        var url = $"{_baseUrl}/search?query={Uri.EscapeDataString(query)}" +
                   $"&offset={safeOffset}&limit={safeLimit}&facets={encodedFacets}";
         using var doc = await SendAsync(() => NewRequest(HttpMethod.Get, url), cancellationToken)
             .ConfigureAwait(false);
@@ -133,7 +147,7 @@ public sealed class ModrinthClient
         CancellationToken cancellationToken = default)
     {
         using var doc = await SendAsync(
-                () => NewRequest(HttpMethod.Get, $"{BaseUrl}/tag/category"), cancellationToken)
+                () => NewRequest(HttpMethod.Get, $"{_baseUrl}/tag/category"), cancellationToken)
             .ConfigureAwait(false);
         if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Array) return [];
 
@@ -166,7 +180,7 @@ public sealed class ModrinthClient
         string projectId,
         CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/project/{Uri.EscapeDataString(projectId)}/version";
+        var url = $"{_baseUrl}/project/{Uri.EscapeDataString(projectId)}/version";
         using var doc = await SendAsync(() => NewRequest(HttpMethod.Get, url), cancellationToken)
             .ConfigureAwait(false);
         if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Array) return [];
@@ -195,7 +209,7 @@ public sealed class ModrinthClient
 
         var body = JsonSerializer.Serialize(new { hashes = distinct, algorithm = "sha1" });
         using var doc = await SendAsync(
-                () => NewRequest(HttpMethod.Post, $"{BaseUrl}/version_files", body),
+                () => NewRequest(HttpMethod.Post, $"{_baseUrl}/version_files", body),
                 cancellationToken)
             .ConfigureAwait(false);
         if (doc is null || doc.RootElement.ValueKind != JsonValueKind.Object)
@@ -240,7 +254,7 @@ public sealed class ModrinthClient
         return await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
-    private static ModrinthVersionInfo? ParseVersion(JsonElement element)
+    private ModrinthVersionInfo? ParseVersion(JsonElement element)
     {
         if (element.ValueKind != JsonValueKind.Object) return null;
         var projectId = GetString(element, "project_id");
@@ -283,7 +297,7 @@ public sealed class ModrinthClient
 
                 var info = new ModrinthFileInfo
                 {
-                    Url = url!,
+                    Url = Cdn(url),
                     FileName = fileName!,
                     Size = GetLong(file, "size") ?? 0,
                     IsPrimary = file.TryGetProperty("primary", out var primary) &&
@@ -329,13 +343,13 @@ public sealed class ModrinthClient
         return version;
     }
 
-    private static ModrinthProjectInfo ParseProject(JsonElement element) => new()
+    private ModrinthProjectInfo ParseProject(JsonElement element) => new()
     {
         Id = GetString(element, "id") ?? string.Empty,
         Slug = GetString(element, "slug") ?? string.Empty,
         Title = GetString(element, "title") ?? string.Empty,
         Description = GetString(element, "description"),
-        IconUrl = GetString(element, "icon_url"),
+        IconUrl = Cdn(GetString(element, "icon_url")),
         ProjectType = GetString(element, "project_type"),
     };
 

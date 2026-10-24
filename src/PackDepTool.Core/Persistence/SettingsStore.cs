@@ -20,6 +20,10 @@ public sealed class AppSettings
     public bool HideIsolated { get; set; }
     public bool ShowLabels { get; set; } = true;
     public int MaxParallelDownloads { get; set; } = 3;
+    public string GameDownloadSource { get; set; } = "auto";
+    public string? ModrinthApiBaseUrl { get; set; }
+    public string? CurseForgeApiBaseUrl { get; set; }
+    public string? ModCdnBaseUrl { get; set; }
     public string? UpdateFeedUrl { get; set; }
     public bool CheckUpdatesOnStartup { get; set; }
     public bool AutoDownloadUpdates { get; set; }
@@ -62,6 +66,10 @@ public sealed class AppSettings
         HideIsolated = other.HideIsolated;
         ShowLabels = other.ShowLabels;
         MaxParallelDownloads = other.MaxParallelDownloads;
+        GameDownloadSource = other.GameDownloadSource;
+        ModrinthApiBaseUrl = other.ModrinthApiBaseUrl;
+        CurseForgeApiBaseUrl = other.CurseForgeApiBaseUrl;
+        ModCdnBaseUrl = other.ModCdnBaseUrl;
         UpdateFeedUrl = other.UpdateFeedUrl;
         CheckUpdatesOnStartup = other.CheckUpdatesOnStartup;
         AutoDownloadUpdates = other.AutoDownloadUpdates;

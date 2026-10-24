@@ -45,7 +45,8 @@ public sealed class AppServices : IDisposable
         Importer = new ModpackImporter(Downloader, curseForge, keys);
         Icons = new ModIconService(http, modrinth, curseForge, userAgent, paths.IconsDirectory);
         PclExporter = new PclPackExportService(modrinth);
-        GameInstaller = new MinecraftInstallService(http, Downloader, userAgent, paths.LoaderCacheDirectory);
+        GameInstaller = new MinecraftInstallService(http, Downloader, userAgent, paths.LoaderCacheDirectory,
+            allowMirror: !string.Equals(settings.GameDownloadSource, "official", StringComparison.OrdinalIgnoreCase));
         PclLocator = new PclLocatorService();
         Audit = new PackAuditService();
         Categories = new ModCategoryClassifier();
@@ -120,8 +121,12 @@ public sealed class AppServices : IDisposable
         };
         var userAgent = BuildUserAgent(settings.ModrinthContact);
 
-        var modrinth = new ModrinthClient(http, userAgent);
-        var curseForge = new CurseForgeClient(http, keys, userAgent);
+        var modrinth = new ModrinthClient(http, userAgent,
+            baseUrl: settings.ModrinthApiBaseUrl, cdnBase: settings.ModCdnBaseUrl);
+        var cfBase = settings.CurseForgeApiBaseUrl;
+        var curseForge = new CurseForgeClient(http, keys, userAgent,
+            baseUrl: cfBase, cdnBase: settings.ModCdnBaseUrl,
+            sendApiKey: string.IsNullOrWhiteSpace(cfBase));
         var enrichment = new ModEnrichmentService(modrinth, curseForge, keys);
 
         return new AppServices(

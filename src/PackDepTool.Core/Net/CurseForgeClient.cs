@@ -35,18 +35,32 @@ public sealed class CurseForgeClient
     private readonly ApiKeyProvider _keys;
     private readonly RateLimiter _limiter;
     private readonly string _userAgent;
+    private readonly string _baseUrl;
+    private readonly string _cdnBase;
+    private readonly bool _sendApiKey;
 
     public CurseForgeClient(
         HttpClient http,
         ApiKeyProvider keys,
         string userAgent,
-        RateLimiter? limiter = null)
+        RateLimiter? limiter = null,
+        string? baseUrl = null,
+        string? cdnBase = null,
+        bool sendApiKey = true)
     {
         _http = http;
         _keys = keys;
         _userAgent = userAgent;
         _limiter = limiter ?? new RateLimiter(TimeSpan.FromMilliseconds(300));
+        _baseUrl = string.IsNullOrWhiteSpace(baseUrl) ? BaseUrl : baseUrl.TrimEnd('/');
+        _cdnBase = string.IsNullOrWhiteSpace(cdnBase) ? string.Empty : cdnBase.TrimEnd('/');
+        _sendApiKey = sendApiKey;
     }
+
+    private string Cdn(string? url) =>
+        string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(_cdnBase)
+            ? url ?? string.Empty
+            : url.Replace("https://edge.forgecdn.net", _cdnBase, StringComparison.OrdinalIgnoreCase);
 
     public async Task<bool> ValidateKeyAsync(CancellationToken cancellationToken = default)
     {
@@ -111,7 +125,7 @@ public sealed class CurseForgeClient
         int? categoryId,
         CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/mods/search?gameId={MinecraftGameId}&classId={classId}" +
+        var url = $"{_baseUrl}/mods/search?gameId={MinecraftGameId}&classId={classId}" +
                   $"&index={Math.Max(0, index)}&pageSize={Math.Clamp(pageSize, 1, 50)}" +
                   $"&searchFilter={Uri.EscapeDataString(query)}";
         if (categoryId is > 0)
@@ -127,7 +141,7 @@ public sealed class CurseForgeClient
         DownloadProjectType type,
         CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/categories?gameId={MinecraftGameId}&classId={classId}";
+        var url = $"{_baseUrl}/categories?gameId={MinecraftGameId}&classId={classId}";
         using var doc = await SendAsync(() => NewRequest(HttpMethod.Get, url), cancellationToken)
             .ConfigureAwait(false);
         if (doc is null || !doc.RootElement.TryGetProperty("data", out var data) ||
@@ -163,7 +177,7 @@ public sealed class CurseForgeClient
         LoaderKind loader,
         CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/mods/{modId}/files?pageSize=50";
+        var url = $"{_baseUrl}/mods/{modId}/files?pageSize=50";
         if (!string.IsNullOrWhiteSpace(gameVersion))
             url += $"&gameVersion={Uri.EscapeDataString(gameVersion)}";
 
@@ -181,7 +195,7 @@ public sealed class CurseForgeClient
         long fileId,
         CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/mods/{modId}/files/{fileId}";
+        var url = $"{_baseUrl}/mods/{modId}/files/{fileId}";
         using var doc = await SendAsync(() => NewRequest(HttpMethod.Get, url), cancellationToken)
             .ConfigureAwait(false);
         if (doc is null || !doc.RootElement.TryGetProperty("data", out var data) ||
@@ -196,14 +210,14 @@ public sealed class CurseForgeClient
         long fileId,
         CancellationToken cancellationToken = default)
     {
-        var url = $"{BaseUrl}/mods/{modId}/files/{fileId}/download-url";
+        var url = $"{_baseUrl}/mods/{modId}/files/{fileId}/download-url";
         using var doc = await SendAsync(() => NewRequest(HttpMethod.Get, url), cancellationToken)
             .ConfigureAwait(false);
         if (doc is null || !doc.RootElement.TryGetProperty("data", out var data) ||
             data.ValueKind != JsonValueKind.String)
             return null;
 
-        return data.GetString();
+        return Cdn(data.GetString());
     }
 
     public static int? LoaderTypeId(LoaderKind loader) => loader switch
@@ -228,7 +242,7 @@ public sealed class CurseForgeClient
         {
             var body = JsonSerializer.Serialize(new { modIds = chunk });
             using var doc = await SendAsync(
-                () => NewRequest(HttpMethod.Post, $"{BaseUrl}/mods", body),
+                () => NewRequest(HttpMethod.Post, $"{_baseUrl}/mods", body),
                 cancellationToken).ConfigureAwait(false);
             if (doc is null) continue;
             result.AddRange(ParseMods(doc.RootElement));
@@ -246,15 +260,18 @@ public sealed class CurseForgeClient
         Func<HttpRequestMessage> factory,
         CancellationToken cancellationToken)
     {
-        var key = await _keys.GetCurseForgeKeyAsync(cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(key)) throw new MissingApiKeyException();
+        var key = _sendApiKey
+            ? await _keys.GetCurseForgeKeyAsync(cancellationToken).ConfigureAwait(false)
+            : null;
+        if (_sendApiKey && string.IsNullOrWhiteSpace(key)) throw new MissingApiKeyException();
 
         using var response = await HttpRetry.SendAsync(
                 _http,
                 () =>
                 {
                     var request = factory();
-                    request.Headers.TryAddWithoutValidation("x-api-key", key);
+                    if (!string.IsNullOrWhiteSpace(key))
+                        request.Headers.TryAddWithoutValidation("x-api-key", key);
                     return request;
                 },
                 _limiter,
@@ -278,7 +295,7 @@ public sealed class CurseForgeClient
         return request;
     }
 
-    private static List<CurseForgeModInfo> ParseMods(JsonElement root)
+    private List<CurseForgeModInfo> ParseMods(JsonElement root)
     {
         var result = new List<CurseForgeModInfo>();
         if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
@@ -296,9 +313,9 @@ public sealed class CurseForgeClient
                 Name = GetString(item, "name") ?? string.Empty,
                 Slug = GetString(item, "slug") ?? string.Empty,
                 Summary = GetString(item, "summary"),
-                IconUrl = item.TryGetProperty("logo", out var logo) && logo.ValueKind == JsonValueKind.Object
+                IconUrl = Cdn(item.TryGetProperty("logo", out var logo) && logo.ValueKind == JsonValueKind.Object
                     ? (GetString(logo, "thumbnailUrl") ?? GetString(logo, "url"))
-                    : null,
+                    : null),
                 DownloadCount = item.TryGetProperty("downloadCount", out var downloads) &&
                                 downloads.TryGetInt64(out var downloadCount)
                     ? downloadCount
@@ -341,7 +358,7 @@ public sealed class CurseForgeClient
         return result;
     }
 
-    private static List<CurseForgeFileInfo> ParseFiles(JsonElement root)
+    private List<CurseForgeFileInfo> ParseFiles(JsonElement root)
     {
         var result = new List<CurseForgeFileInfo>();
         if (!root.TryGetProperty("data", out var data)) return result;
@@ -361,7 +378,7 @@ public sealed class CurseForgeClient
         return result;
     }
 
-    private static CurseForgeFileInfo ParseFile(JsonElement file)
+    private CurseForgeFileInfo ParseFile(JsonElement file)
     {
         var info = new CurseForgeFileInfo
         {
@@ -370,7 +387,7 @@ public sealed class CurseForgeClient
                 : 0,
             DisplayName = GetString(file, "displayName"),
             FileName = GetString(file, "fileName"),
-            DownloadUrl = GetString(file, "downloadUrl"),
+            DownloadUrl = Cdn(GetString(file, "downloadUrl")),
             FileLength = file.TryGetProperty("fileLength", out var length) && length.TryGetInt64(out var parsedLength)
                 ? parsedLength
                 : 0,
