@@ -237,6 +237,7 @@ public sealed partial class LoaderSwitchViewModel : ObservableObject
             DownloadAssets = false,
             UseTargetAsInstance = true,
             JavaPath = ShowJava ? JavaPath : null,
+            MaxConcurrency = _settings.MaxParallelDownloads,
         };
 
         IsInstalling = true;

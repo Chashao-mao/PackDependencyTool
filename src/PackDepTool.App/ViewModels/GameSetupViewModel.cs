@@ -268,6 +268,7 @@ public sealed partial class GameSetupViewModel : ObservableObject
             DownloadAssets = DownloadAssets,
             UseTargetAsInstance = UseTargetAsInstance,
             JavaPath = ShowJava ? JavaPath : null,
+            MaxConcurrency = _settings.MaxParallelDownloads,
         };
 
         IsInstalling = true;

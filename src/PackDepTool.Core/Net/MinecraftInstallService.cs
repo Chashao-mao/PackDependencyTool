@@ -299,7 +299,7 @@ public sealed class MinecraftInstallService
 
         await DownloadVanillaFilesAsync(
                 versionRoot, versionDirectory, librariesDirectory, assetsDirectory,
-                request.DownloadAssets, result, progress, cancellationToken)
+                request.DownloadAssets, request.MaxConcurrency, result, progress, cancellationToken)
             .ConfigureAwait(false);
 
         var finalVersionId = versionId;
@@ -394,6 +394,7 @@ public sealed class MinecraftInstallService
         string librariesDirectory,
         string assetsDirectory,
         bool downloadAssets,
+        int maxConcurrency,
         GameInstallResult result,
         IProgress<DownloadProgress>? progress,
         CancellationToken cancellationToken)
@@ -421,17 +422,11 @@ public sealed class MinecraftInstallService
             librariesElement.ValueKind == JsonValueKind.Array)
             libraries.AddRange(librariesElement.EnumerateArray());
 
-        var total = libraries.Count;
-        var done = 0;
+        var items = new List<DownloadItem>();
         foreach (var library in libraries)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            done++;
-            if (!LibraryAllowed(library))
-            {
-                progress?.Report(new DownloadProgress("下载运行库", done, total, "跳过非 Windows 库"));
-                continue;
-            }
+            if (!LibraryAllowed(library)) continue;
 
             if (library.TryGetProperty("downloads", out var libraryDownloads) &&
                 libraryDownloads.TryGetProperty("artifact", out var artifact))
@@ -442,15 +437,8 @@ public sealed class MinecraftInstallService
                 {
                     var destination = SafeCombine(librariesDirectory, relative);
                     if (destination is not null)
-                    {
-                        progress?.Report(new DownloadProgress(
-                            "下载运行库", done, total, Path.GetFileName(relative)));
-                        await DownloadFileAsync(
-                                url!, destination, GetString(artifact, "sha1"),
-                                GetLong(artifact, "size"), result, progress, cancellationToken,
-                                MirrorUrlFor(url!))
-                            .ConfigureAwait(false);
-                    }
+                        items.Add(new DownloadItem(url!, destination, GetString(artifact, "sha1"),
+                            GetLong(artifact, "size"), MirrorUrlFor(url!)));
                 }
             }
 
@@ -467,21 +455,45 @@ public sealed class MinecraftInstallService
                     {
                         var destination = SafeCombine(librariesDirectory, relative);
                         if (destination is not null)
-                        {
-                            await DownloadFileAsync(
-                                    url!, destination, GetString(native, "sha1"),
-                                    GetLong(native, "size"), result, progress, cancellationToken,
-                                    MirrorUrlFor(url!))
-                                .ConfigureAwait(false);
-                        }
+                            items.Add(new DownloadItem(url!, destination, GetString(native, "sha1"),
+                                GetLong(native, "size"), MirrorUrlFor(url!)));
                     }
                 }
             }
         }
 
+        await DownloadManyAsync("下载运行库", items, result, progress, cancellationToken,
+            maxConcurrency).ConfigureAwait(false);
+
         if (downloadAssets)
-            await DownloadAssetsAsync(versionRoot, assetsDirectory, result, progress, cancellationToken)
-                .ConfigureAwait(false);
+            await DownloadAssetsAsync(versionRoot, assetsDirectory, result, progress,
+                cancellationToken, maxConcurrency).ConfigureAwait(false);
+    }
+
+    private sealed record DownloadItem(string Url, string Destination, string? Sha1, long Size, string? Mirror);
+
+    private async Task DownloadManyAsync(
+        string phase,
+        IReadOnlyList<DownloadItem> items,
+        GameInstallResult result,
+        IProgress<DownloadProgress>? progress,
+        CancellationToken cancellationToken,
+        int maxConcurrency)
+    {
+        if (items.Count == 0) return;
+        var done = 0;
+        await Parallel.ForEachAsync(items, new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Math.Clamp(maxConcurrency, 1, 6),
+            CancellationToken = cancellationToken,
+        }, async (item, token) =>
+        {
+            var current = Interlocked.Increment(ref done);
+            progress?.Report(new DownloadProgress(phase, current, items.Count,
+                Path.GetFileName(item.Destination)));
+            await DownloadFileAsync(item.Url, item.Destination, item.Sha1, item.Size,
+                result, progress, token, item.Mirror).ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     private async Task DownloadAssetsAsync(
@@ -489,7 +501,8 @@ public sealed class MinecraftInstallService
         string assetsDirectory,
         GameInstallResult result,
         IProgress<DownloadProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int maxConcurrency)
     {
         if (!versionRoot.TryGetProperty("assetIndex", out var assetIndex))
             return;
@@ -520,26 +533,19 @@ public sealed class MinecraftInstallService
         }
 
         var objectsDirectory = Path.Combine(assetsDirectory, "objects");
-        var done = 0;
-        var total = hashes.Count;
+        var items = new List<DownloadItem>();
         foreach (var hash in hashes)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            done++;
             var prefix = hash[..2];
             var destination = Path.Combine(objectsDirectory, prefix, hash);
-            if (File.Exists(destination))
-            {
-                progress?.Report(new DownloadProgress("下载资源文件", done, total, hash));
-                continue;
-            }
-
-            var url = $"{ResourcesBase}{prefix}/{hash}";
-            progress?.Report(new DownloadProgress("下载资源文件", done, total, hash));
-            await DownloadFileAsync(url, destination, hash, 0, result, progress, cancellationToken,
-                    $"https://bmclapi2.bangbang93.com/assets/{prefix}/{hash}")
-                .ConfigureAwait(false);
+            if (File.Exists(destination) && new FileInfo(destination).Length > 0) continue;
+            items.Add(new DownloadItem(
+                $"{ResourcesBase}{prefix}/{hash}", destination, hash, 0,
+                $"https://bmclapi2.bangbang93.com/assets/{prefix}/{hash}"));
         }
+
+        await DownloadManyAsync("下载资源文件", items, result, progress, cancellationToken,
+            maxConcurrency).ConfigureAwait(false);
     }
 
     private async Task<string> InstallFabricLikeAsync(
@@ -860,8 +866,11 @@ public sealed class MinecraftInstallService
             var download = await _downloader.DownloadUrlAsync(
                     url, destination, sha1, null, expectedSize, progress, attempt.Token, mirrorUrl)
                 .ConfigureAwait(false);
-            result.FilesDownloaded++;
-            result.BytesDownloaded += download.Bytes;
+            lock (result)
+            {
+                result.FilesDownloaded++;
+                result.BytesDownloaded += download.Bytes;
+            }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

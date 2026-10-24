@@ -36,6 +36,7 @@ public sealed class GameInstallRequest
     public bool DownloadAssets { get; init; }
     public bool UseTargetAsInstance { get; init; }
     public string? JavaPath { get; init; }
+    public int MaxConcurrency { get; init; } = 3;
 }
 
 public sealed class GameInstallResult
