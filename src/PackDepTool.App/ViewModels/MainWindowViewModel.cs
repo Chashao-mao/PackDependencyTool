@@ -224,7 +224,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => ShowMissing && HasMissingNodeItems;
-    public string SortDirectionText => SortDescending ? "↓ 倒序" : "↑ 正序";
+    public string SortDirectionText => SortDescending ? "↓" : "↑";
+    public string SortDirectionTooltip => SortDescending ? "当前倒序，点击切换正序" : "当前正序，点击切换倒序";
     public bool ShowLoaderFilters => _graph is { } graph &&
         graph.Nodes.Where(node => !node.IsSynthetic)
             .Select(node => node.Loader)
@@ -3682,8 +3683,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void ToggleDependencies() => IsDependenciesExpanded = !IsDependenciesExpanded;
 
     partial void OnSelectedSortOptionChanged(ModSortOption value) => RefreshView();
-    partial void OnSortDescendingChanged(bool value) =>
+    partial void OnSortDescendingChanged(bool value)
+    {
         OnPropertyChanged(nameof(SortDirectionText));
+        OnPropertyChanged(nameof(SortDirectionTooltip));
+    }
 
     partial void OnOnlyUpdatableChanged(bool value)
     {

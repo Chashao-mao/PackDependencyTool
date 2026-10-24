@@ -390,10 +390,6 @@
                   <TextBlock Text="{Binding CountSummary}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}" />
                 </Border>
                 <Grid Grid.Column="2">
-                  <TextBlock Text="单击详情 · 双击定位"
-                             Classes="caption" IsVisible="{Binding !IsRelationFocus}"
-                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                             Margin="2,0,8,0" />
                   <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRelationFocus}"
                               VerticalAlignment="Center">
                     <TextBlock Text="{Binding RelationFocusTitle}" FontSize="10.5"
@@ -405,11 +401,9 @@
                 </Grid>
               </Grid>
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                <TextBlock Text="排序" Classes="caption" FontSize="10.5" VerticalAlignment="Center"
-                           IsVisible="{Binding IsListView}" />
                 <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
-                          IsVisible="{Binding IsListView}" Width="108" Height="30" FontSize="10.5"
-                          ToolTip.Tip="选择模组清单排序方式">
+                          IsVisible="{Binding IsListView}" Width="104" Height="30" FontSize="10.5"
+                          ToolTip.Tip="排序方式">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ModSortOption">
                       <TextBlock Text="{Binding Label}" />
@@ -417,11 +411,10 @@
                   </ComboBox.ItemTemplate>
                 </ComboBox>
                 <Button Content="{Binding SortDirectionText}" Command="{Binding ToggleSortDirectionCommand}"
-                        IsVisible="{Binding IsListView}" FontSize="9.5" Padding="7,3" MinHeight="28"
-                        ToolTip.Tip="切换正序 / 倒序" />
-                <TextBlock Text="视图" Classes="caption" FontSize="10.5" VerticalAlignment="Center" />
+                        IsVisible="{Binding IsListView}" FontSize="11" Width="34" Padding="0,3" MinHeight="28"
+                        ToolTip.Tip="{Binding SortDirectionTooltip}" />
                 <ComboBox ItemsSource="{Binding ViewOptions}" SelectedItem="{Binding SelectedViewOption, Mode=TwoWay}"
-                          Width="126" Height="30" FontSize="10.5">
+                          Width="108" Height="30" FontSize="10.5" ToolTip.Tip="切换模组清单 / 依赖图">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ViewOption">
                       <TextBlock Text="{Binding Label}" />
@@ -431,11 +424,9 @@
                 <CheckBox Content="简化连线" IsChecked="{Binding FocusEdgesOnly, Mode=TwoWay}"
                           IsVisible="{Binding IsGraphView}" FontSize="10" VerticalAlignment="Center"
                           ToolTip.Tip="折叠库/前置节点的密集入线，选中或悬停时展开相关连线" />
-                <TextBlock Text="连线" Classes="caption" FontSize="10.5" VerticalAlignment="Center"
-                           IsVisible="{Binding IsListView}" />
                 <ComboBox ItemsSource="{Binding ConnectionLineOptions}"
                           SelectedItem="{Binding SelectedConnectionLineMode, Mode=TwoWay}"
-                          IsVisible="{Binding IsListView}" Width="140" Height="30" FontSize="10.5"
+                          IsVisible="{Binding IsListView}" Width="128" Height="30" FontSize="10.5"
                           ToolTip.Tip="依赖轨道显示哪些关系">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ConnectionLineOption">
