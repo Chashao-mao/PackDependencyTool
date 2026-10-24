@@ -464,7 +464,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            await LayoutAsync(fit: true, cts.Token);
+            await LayoutVisibleAsync(fit: true, cts.Token);
             StatusText = "布局已更新";
         }
         catch (OperationCanceledException)
@@ -2211,6 +2211,44 @@ public sealed partial class MainWindowViewModel : ObservableObject
         EnsurePositions();
         BuildScene();
         RefreshDetailFromState();
+    }
+
+    private async Task LayoutVisibleAsync(bool fit, CancellationToken cancellationToken)
+    {
+        if (_graph is null) return;
+
+        var visibleIds = Scene?.Nodes
+            .Select(node => node.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+        if (visibleIds.Count == 0 || visibleIds.Count == _graph.Nodes.Count)
+        {
+            await LayoutAsync(fit, cancellationToken);
+            return;
+        }
+
+        var subgraph = new GraphDocument
+        {
+            Nodes = _graph.Nodes.Where(node => visibleIds.Contains(node.Id)).ToList(),
+            Edges = _graph.Edges
+                .Where(edge => visibleIds.Contains(edge.From) && visibleIds.Contains(edge.To))
+                .ToList(),
+        };
+        var algorithm = _services.Settings.LayoutAlgorithm;
+        var positions = await Task.Run(
+            () => _services.Layout.Compute(subgraph, new LayoutOptions { Algorithm = algorithm },
+                cancellationToken),
+            cancellationToken);
+
+        var merged = new Dictionary<string, LayoutPoint>(_positions, StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, position) in positions)
+            merged[id] = position;
+        _positions = merged;
+        BuildScene();
+
+        if (fit)
+            _graphView?.FitToView();
+        else
+            _graphView?.InvalidateVisual();
     }
 
     private async Task LayoutAsync(bool fit, CancellationToken cancellationToken)
