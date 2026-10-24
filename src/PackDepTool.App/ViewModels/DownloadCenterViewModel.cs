@@ -175,6 +175,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     private readonly Func<Task<string?>> _pickFolder;
     private readonly DownloadQueueService _queue;
     private string? _lastDownloadedPath;
+    private int _queueRefreshVersion;
 
     private const int PageSize = 20;
     private CancellationTokenSource? _operationCts;
@@ -419,7 +420,17 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
         }
     }
 
-    private void OnQueueChanged() => Dispatcher.UIThread.Post(RefreshQueue);
+    private void OnQueueChanged()
+    {
+        // Per-file progress can fire several times per second for each queued
+        // download. Coalesce updates so the UI thread is not flooded.
+        var version = ++_queueRefreshVersion;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (version != _queueRefreshVersion) return;
+            RefreshQueue();
+        }, TimeSpan.FromMilliseconds(50), DispatcherPriority.Background);
+    }
 
     private void RefreshQueue()
     {

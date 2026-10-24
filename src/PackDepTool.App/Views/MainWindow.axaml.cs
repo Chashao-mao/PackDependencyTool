@@ -296,7 +296,7 @@ public partial class MainWindow : Window
     }
 
     private bool _updatingRailOverlay;
-    private bool _railUpdateQueued;
+    private int _railUpdateVersion;
     private string? _railCacheKey;
     private IReadOnlyList<DependencyRailGroup> _railGroups = [];
     private readonly HashSet<string> _hiddenRailParents = new(StringComparer.OrdinalIgnoreCase);
@@ -304,13 +304,14 @@ public partial class MainWindow : Window
 
     private void QueueDependencyRailOverlayUpdate()
     {
-        if (_railUpdateQueued) return;
-        _railUpdateQueued = true;
-        Dispatcher.UIThread.Post(() =>
+        // Scroll and collection changes fire repeatedly. Redraw at most once per
+        // short interval instead of rebuilding the visual tree for every event.
+        var version = ++_railUpdateVersion;
+        DispatcherTimer.RunOnce(() =>
         {
-            _railUpdateQueued = false;
+            if (version != _railUpdateVersion) return;
             UpdateDependencyRailOverlay();
-        }, DispatcherPriority.Background);
+        }, TimeSpan.FromMilliseconds(45), DispatcherPriority.Background);
     }
 
     private void UpdateDependencyRailOverlay()
@@ -319,11 +320,15 @@ public partial class MainWindow : Window
         _updatingRailOverlay = true;
         try
         {
-            DependencyRailOverlay.Children.Clear();
             if (_viewModel is not { IsListView: true } viewModel ||
                 GraphView.Scene is not { } scene ||
                 viewModel.NodeItems.Count < 2)
+            {
+                DependencyRailOverlay.Children.Clear();
                 return;
+            }
+
+            DependencyRailOverlay.Children.Clear();
 
             var items = viewModel.NodeItems;
             var orderedIds = items.Select(item => item.Id).ToList();
@@ -368,25 +373,26 @@ public partial class MainWindow : Window
                     new Point(0, parentContainer.Bounds.Height / 2), DependencyRailOverlay);
                 if (parentPoint is not { } parent) continue;
 
-                var visibleChildren = group.ChildIndices
-                    .Select(index => items[index].Id)
-                    .Where(containers.ContainsKey)
-                    .Select(id => (id, container: containers[id]))
-                    .ToList();
+                var visibleChildren = new List<(Control Container, double Y)>();
+                foreach (var index in group.ChildIndices)
+                {
+                    var id = items[index].Id;
+                    if (!containers.TryGetValue(id, out var container)) continue;
+                    var point = container.TranslatePoint(
+                        new Point(0, container.Bounds.Height / 2), DependencyRailOverlay);
+                    if (point is { } childPoint) visibleChildren.Add((container, childPoint.Y));
+                }
                 if (visibleChildren.Count == 0) continue;
 
                 var laneX = parent.X + 66 + (group.VisualLane * 9);
                 var endX = parent.X + 104;
-                var ys = new List<double> { parent.Y };
-                foreach (var (_, container) in visibleChildren)
+                var minY = parent.Y;
+                var maxY = parent.Y;
+                foreach (var (_, y) in visibleChildren)
                 {
-                    var point = container.TranslatePoint(
-                        new Point(0, container.Bounds.Height / 2), DependencyRailOverlay);
-                    if (point is { } y) ys.Add(y.Y);
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
                 }
-
-                var minY = ys.Min();
-                var maxY = ys.Max();
                 var isActive = selectedId is not null &&
                                (string.Equals(group.ParentId, selectedId, StringComparison.OrdinalIgnoreCase) ||
                                 group.ChildIndices.Any(index =>
@@ -401,13 +407,10 @@ public partial class MainWindow : Window
                 AddRailLine(laneX, parent.Y, endX, parent.Y, brush, strokeWidth, opacity);
                 AddRailEndpoint(endX - 2, parent.Y, brush, opacity);
 
-                foreach (var (_, container) in visibleChildren)
+                foreach (var (_, y) in visibleChildren)
                 {
-                    var point = container.TranslatePoint(
-                        new Point(0, container.Bounds.Height / 2), DependencyRailOverlay);
-                    if (point is not { } child) continue;
-                    AddRailLine(laneX, child.Y, endX, child.Y, brush, strokeWidth, opacity);
-                    AddRailEndpoint(endX - 2, child.Y, brush, opacity);
+                    AddRailLine(laneX, y, endX, y, brush, strokeWidth, opacity);
+                    AddRailEndpoint(endX - 2, y, brush, opacity);
                 }
             }
         }
