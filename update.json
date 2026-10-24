@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.0",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.0/PackDependencyTool.exe",
-  "sha256": "479bc2446cdc2534809ca0aba6945c965536ad021e046e28de01c07dd50bcb60",
+  "version": "1.0.1",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.1",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.1/PackDependencyTool.exe",
+  "sha256": "0ac33eef06c9dc5de938cdb20162e1f75b9a306ad8055ea3fa20703f457cc23f",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "首个公开版本",
-  "publishedAt": "2026-10-23T00:00:00Z"
+  "notes": "侧标记与侧筛选、导出增强、关系按钮对齐、自动更换版本、永久删除、连接线修复、补全计划、游戏安装排版与代理修复。",
+  "publishedAt": "2026-10-24T03:51:17.614318+00:00"
 }

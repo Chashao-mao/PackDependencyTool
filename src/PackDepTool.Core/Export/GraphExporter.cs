@@ -107,6 +107,8 @@ public static class GraphExporter
             Key("n_version", "node", "version", "string"),
             Key("n_loader", "node", "loader", "string"),
             Key("n_status", "node", "status", "string"),
+            Key("n_side", "node", "side", "string"),
+            Key("n_category", "node", "category", "string"),
             Key("n_source", "node", "source", "string"),
             Key("n_file", "node", "filePath", "string"),
             Key("n_mc", "node", "mcVersions", "string"),
@@ -141,6 +143,8 @@ public static class GraphExporter
                 Data(ns, "n_version", node.Version),
                 Data(ns, "n_loader", node.Loader.ToString().ToLowerInvariant()),
                 Data(ns, "n_status", node.Status.ToString().ToLowerInvariant()),
+                Data(ns, "n_side", node.Side.ToString().ToLowerInvariant()),
+                Data(ns, "n_category", node.Category.ToString().ToLowerInvariant()),
                 Data(ns, "n_source", node.Source.ToString().ToLowerInvariant()),
                 Data(ns, "n_file", node.FilePath),
                 Data(ns, "n_mc", string.Join(",", node.McVersions)),
@@ -174,16 +178,30 @@ public static class GraphExporter
 
     public static (string NodesCsv, string EdgesCsv) ToCsv(GraphDocument graph)
     {
+        var outgoing = graph.Edges
+            .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+        string Targets(string id, EdgeType type) => string.Join('|', outgoing
+            .GetValueOrDefault(id, [])
+            .Where(edge => edge.Type == type)
+            .Select(edge => edge.To));
+
         var nodes = new StringBuilder();
-        nodes.AppendLine("id,name,version,loader,status,source,filePath,mcVersions,curseforgeId,modrinthId,slug,embedded,missing");
+        nodes.AppendLine("id,name,nameZh,version,loader,side,category,status,source,filePath,mcVersions," +
+                         "curseforgeId,modrinthId,slug,embedded,missing,requires,optional,incompatible,embeddedDeps,recommends");
         foreach (var node in graph.Nodes.OrderBy(n => n.Id, StringComparer.Ordinal))
         {
             nodes.AppendLine(string.Join(',',
-                Csv(node.Id), Csv(node.Name), Csv(node.Version), Csv(node.Loader.ToString().ToLowerInvariant()),
+                Csv(node.Id), Csv(node.Name), Csv(node.NameZh), Csv(node.Version),
+                Csv(node.Loader.ToString().ToLowerInvariant()), Csv(node.Side.ToString().ToLowerInvariant()),
+                Csv(node.Category.ToString().ToLowerInvariant()),
                 Csv(node.Status.ToString().ToLowerInvariant()), Csv(node.Source.ToString().ToLowerInvariant()),
                 Csv(node.FilePath), Csv(string.Join('|', node.McVersions)), Csv(node.ProjectIds.CurseForge),
                 Csv(node.ProjectIds.Modrinth), Csv(node.Slug ?? node.ProjectIds.Slug),
-                Csv(node.IsEmbedded ? "true" : "false"), Csv(node.IsSynthetic ? "true" : "false")));
+                Csv(node.IsEmbedded ? "true" : "false"), Csv(node.IsSynthetic ? "true" : "false"),
+                Csv(Targets(node.Id, EdgeType.Requires)), Csv(Targets(node.Id, EdgeType.Optional)),
+                Csv(Targets(node.Id, EdgeType.Incompatible)), Csv(Targets(node.Id, EdgeType.Embedded)),
+                Csv(Targets(node.Id, EdgeType.Recommends))));
         }
 
         var edges = new StringBuilder();

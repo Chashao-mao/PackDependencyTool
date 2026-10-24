@@ -120,6 +120,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private int _checkedCount;
     [ObservableProperty] private bool _hasChecked;
     [ObservableProperty] private StatusFilterOption _selectedStatusFilter = StatusFilterOption.All[0];
+    [ObservableProperty] private SideFilterOption _selectedSideFilter = SideFilterOption.All[0];
     [ObservableProperty] private ModSortOption _selectedSortOption = ModSortOption.All[0];
     [ObservableProperty] private CategoryFilterOption _selectedCategoryFilter = CategoryFilterOption.All[0];
 
@@ -183,6 +184,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<HistoryChangeItem> HistoryChanges { get; } = [];
     public ObservableCollection<CategoryChipItem> CategoryChips { get; } = [];
     public IReadOnlyList<StatusFilterOption> StatusFilters => StatusFilterOption.All;
+    public IReadOnlyList<SideFilterOption> SideFilters => SideFilterOption.All;
     public IReadOnlyList<ModSortOption> SortOptions => ModSortOption.All;
     public IReadOnlyList<CategoryFilterOption> CategoryFilters => CategoryFilterOption.All;
     public IReadOnlyList<ViewOption> ViewOptions => ViewOption.All;
@@ -193,7 +195,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string DataDirectory => _services.Paths.DataDirectory;
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
     public string NetworkStatusText => IsOffline ? "离线模式" : "联网可用";
-    public string VersionLabel => "v1.0.0";
+    public string VersionLabel => "v1.0.1";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public string ProblemSummary =>
@@ -1653,6 +1655,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             DetailRows.Add(new DetailRowViewModel("百科 ID", node.McmodId.Value.ToString()));
         DetailRows.Add(new DetailRowViewModel("版本", node.DisplayVersion));
         DetailRows.Add(new DetailRowViewModel("加载器", GraphPalette.LoaderText(node.Loader)));
+        DetailRows.Add(new DetailRowViewModel("侧", GraphPalette.SideText(node.Side)));
         var mcText = node.McVersions.Count > 0
             ? string.Join(", ", node.McVersions)
             : (string.IsNullOrWhiteSpace(node.McVersionRange) ? "unknown" : node.McVersionRange);
@@ -2459,6 +2462,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             (!node.IsRecommendedDependency || ShowUninstalledOptional) &&
             (!IsRelationFocus || _relationFocusIds.Contains(node.Id)) &&
             MatchesStatusFilter(node.Status) &&
+            MatchesSideFilter(node.Side) &&
             MatchesCategoryFilter(node.Category) &&
             (!OnlyProblems || node.Status is ModStatus.Missing or ModStatus.Conflict or ModStatus.VersionMismatch);
 
@@ -2617,6 +2621,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 .Where(node => LoaderVisible()(node.Loader) &&
                                MatchesCategoryFilter(node.Category) &&
                                MatchesStatusFilter(node.Status) &&
+                               MatchesSideFilter(node.Side) &&
                                MatchesSearch(node, term) &&
                                !OnlyProblems)
                 .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -2709,6 +2714,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         (node.ProjectTitle?.Contains(needle, StringComparison.OrdinalIgnoreCase) ?? false) ||
         GraphPalette.StatusText(node.Status).Contains(needle, StringComparison.OrdinalIgnoreCase) ||
         GraphPalette.LoaderText(node.Loader).Contains(needle, StringComparison.OrdinalIgnoreCase);
+
+    private bool MatchesSideFilter(ModSide side) => SelectedSideFilter.Value switch
+    {
+        ModSideFilter.Both => side == ModSide.Both,
+        ModSideFilter.Client => side == ModSide.Client,
+        ModSideFilter.Server => side == ModSide.Server,
+        ModSideFilter.Unknown => side == ModSide.Unknown,
+        _ => true,
+    };
 
     private bool MatchesStatusFilter(ModStatus status) => SelectedStatusFilter.Value switch
     {
@@ -3292,6 +3306,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     partial void OnSelectedStatusFilterChanged(StatusFilterOption value) => RefreshView();
+    partial void OnSelectedSideFilterChanged(SideFilterOption value) => RefreshView();
 
     partial void OnSelectedSortOptionChanged(ModSortOption value) => RefreshView();
 
@@ -3365,6 +3380,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnlyProblems = false;
         HideIsolated = false;
         SelectedStatusFilter = StatusFilterOption.All[0];
+        SelectedSideFilter = SideFilterOption.All[0];
         SelectedSortOption = ModSortOption.All[0];
         SelectedCategoryFilter = CategoryFilterOption.All[0];
         RefreshView();

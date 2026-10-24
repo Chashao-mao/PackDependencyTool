@@ -17,9 +17,12 @@ public static class PackListExporter
         builder.AppendLine($"- 模组：{graph.Nodes.Count(node => !node.IsSynthetic)}");
         builder.AppendLine($"- 导出时间：{DateTime.Now:yyyy-MM-dd HH:mm}");
         builder.AppendLine();
-        builder.AppendLine("| 模组 | modId | 分类 | 版本 | 加载器 | 状态 | 文件 |");
-        builder.AppendLine("| --- | --- | --- | --- | --- | --- | --- |");
+        builder.AppendLine("| 模组 | modId | 分类 | 版本 | 加载器 | 侧 | 状态 | 依赖 | 文件 |");
+        builder.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
+        var outgoing = graph.Edges
+            .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
         foreach (var node in graph.Nodes
                      .Where(node => !node.IsSynthetic)
                      .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -27,7 +30,8 @@ public static class PackListExporter
             builder.AppendLine(
                 $"| {Escape(node.Name)} | {Escape(node.Id)} | {Escape(ModCategoryText.Name(node.Category))} | " +
                 $"{Escape(node.DisplayVersion)} | " +
-                $"{Escape(GraphText.Loader(node.Loader))} | {Escape(GraphText.Status(node.Status))} | " +
+                $"{Escape(GraphText.Loader(node.Loader))} | {Escape(GraphText.Side(node.Side))} | " +
+                $"{Escape(GraphText.Status(node.Status))} | {Escape(DependencyText(outgoing.GetValueOrDefault(node.Id, [])))} | " +
                 $"{Escape(node.FilePath)} |");
         }
 
@@ -66,19 +70,35 @@ public static class PackListExporter
     public static string ExportModListCsv(ScanResult scan, GraphDocument graph, string path)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("name,modId,category,version,loader,status,file,chineseName");
+        builder.AppendLine("name,modId,chineseName,category,version,loader,side,status," +
+                           "requires,optional,incompatible,embedded,recommends,file,curseforge,modrinth");
+        var outgoing = graph.Edges
+            .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+        string Targets(string id, EdgeType type) => string.Join('|', outgoing
+            .GetValueOrDefault(id, [])
+            .Where(edge => edge.Type == type)
+            .Select(edge => edge.To));
         foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic)
                      .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase))
         {
             builder.AppendLine(string.Join(',',
                 Csv(node.Name),
                 Csv(node.Id),
+                Csv(node.NameZh ?? string.Empty),
                 Csv(ModCategoryText.Name(node.Category)),
                 Csv(node.DisplayVersion),
                 Csv(GraphText.Loader(node.Loader)),
+                Csv(GraphText.Side(node.Side)),
                 Csv(GraphText.Status(node.Status)),
+                Csv(Targets(node.Id, EdgeType.Requires)),
+                Csv(Targets(node.Id, EdgeType.Optional)),
+                Csv(Targets(node.Id, EdgeType.Incompatible)),
+                Csv(Targets(node.Id, EdgeType.Embedded)),
+                Csv(Targets(node.Id, EdgeType.Recommends)),
                 Csv(node.FilePath),
-                Csv(node.NameZh ?? string.Empty)));
+                Csv(node.ProjectIds.CurseForge),
+                Csv(node.ProjectIds.Modrinth)));
         }
 
         WriteText(path, builder);
@@ -150,6 +170,19 @@ public static class PackListExporter
             .Replace("\r", " ", StringComparison.Ordinal)
             .Replace("\n", " ", StringComparison.Ordinal);
 
+    private static string DependencyText(IReadOnlyList<DependencyEdge> edges)
+    {
+        var parts = new List<string>();
+        foreach (var type in new[] { EdgeType.Requires, EdgeType.Optional, EdgeType.Incompatible,
+                                     EdgeType.Embedded, EdgeType.Recommends })
+        {
+            var targets = edges.Where(edge => edge.Type == type).Select(edge => edge.To).ToList();
+            if (targets.Count > 0)
+                parts.Add($"{GraphText.Edge(type)}: {string.Join(", ", targets)}");
+        }
+        return parts.Count == 0 ? "无依赖" : string.Join("; ", parts);
+    }
+
     private static string Csv(string value)
     {
         if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n'))
@@ -167,6 +200,25 @@ internal static class GraphText
         LoaderKind.Forge => "Forge",
         LoaderKind.NeoForge => "NeoForge",
         _ => "未知",
+    };
+
+    public static string Side(ModSide side) => side switch
+    {
+        ModSide.Both => "双端",
+        ModSide.Client => "客户端",
+        ModSide.Server => "服务端",
+        _ => "未知",
+    };
+
+    public static string Edge(EdgeType type) => type switch
+    {
+        EdgeType.Requires => "必需",
+        EdgeType.Optional => "可选",
+        EdgeType.Incompatible => "冲突",
+        EdgeType.Embedded => "内嵌",
+        EdgeType.Recommends => "推荐",
+        EdgeType.Manual => "手动",
+        _ => "关系",
     };
 
     public static string Status(ModStatus status) => status switch

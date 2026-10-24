@@ -17,6 +17,14 @@ public sealed partial class NodeItemViewModel : ObservableObject
         Icon = ModIconCache.Get(model);
         Initial = BuildInitial(model);
         AvatarBrush = new SolidColorBrush(GraphPalette.LoaderColor(model.Loader));
+        SideText = GraphPalette.SideText(model.Side);
+        SideBrush = new SolidColorBrush(model.Side switch
+        {
+            ModSide.Both => GraphPalette.Success,
+            ModSide.Client => GraphPalette.EdgeRequires,
+            ModSide.Server => GraphPalette.Warning,
+            _ => GraphPalette.TextMuted,
+        });
         IndexText = index.ToString();
         Version = model.DisplayVersion;
         StatusText = model.IsSynthetic && model.Status == ModStatus.Unknown
@@ -82,6 +90,8 @@ public sealed partial class NodeItemViewModel : ObservableObject
         : $"{Model.Id} · {Model.DisplayVersion}") + $" · {CategoryText}";
     public string CategoryText => ModCategoryText.Name(Model.Category);
     public string LoaderText => GraphPalette.LoaderText(Model.Loader);
+    public string SideText { get; }
+    public IBrush SideBrush { get; }
     public string Version { get; }
     public string IndexText { get; }
     public Bitmap? Icon { get; }
@@ -350,6 +360,27 @@ public sealed record StatusFilterOption(ModStatusFilter Value, string Label)
         new(ModStatusFilter.Conflict, "仅冲突"),
         new(ModStatusFilter.VersionMismatch, "仅版本不符"),
         new(ModStatusFilter.Ok, "仅正常"),
+    ];
+}
+
+public enum ModSideFilter
+{
+    All,
+    Both,
+    Client,
+    Server,
+    Unknown,
+}
+
+public sealed record SideFilterOption(ModSideFilter Value, string Label)
+{
+    public static IReadOnlyList<SideFilterOption> All { get; } =
+    [
+        new(ModSideFilter.All, "全部侧"),
+        new(ModSideFilter.Both, "双端"),
+        new(ModSideFilter.Client, "客户端"),
+        new(ModSideFilter.Server, "服务端"),
+        new(ModSideFilter.Unknown, "未知侧"),
     ];
 }
 

@@ -416,14 +416,15 @@
             <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto" Background="{DynamicResource GraphBackground}">
               <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,0,0,1" Padding="12,6">
-                <Grid ColumnDefinitions="26,36,46,48,*,100,104,150,110">
+                <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96">
                   <TextBlock Text="选" Grid.Column="0" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Text="#" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="4" Text="模组" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="5" Text="加载器" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="6" Text="版本" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="7" Text="依赖关系" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="8" Text="状态" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="8" Text="侧" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="9" Text="状态" Classes="section" VerticalAlignment="Center" />
                 </Grid>
               </Border>
 
@@ -439,7 +440,7 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:NodeItemViewModel">
                     <StackPanel>
-                    <Grid ColumnDefinitions="26,36,46,48,*,100,104,150,110" ToolTip.Tip="{Binding Tooltip}">
+                    <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96" ToolTip.Tip="{Binding Tooltip}">
 
                       <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"
                                 MinWidth="0" Margin="0,0,2,0" />
@@ -596,12 +597,6 @@
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <Border Width="20" Height="2" Background="#F5C542" VerticalAlignment="Center" />
                     <TextBlock Text="手动关系" FontSize="10.5" />
-                  </StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,0,0">
-                    <Ellipse Width="7" Height="7" Fill="#60A5FA" VerticalAlignment="Center" />
-                    <TextBlock Text="Fabric" FontSize="10.5" />
-                    <Ellipse Width="7" Height="7" Fill="#E06C3C" VerticalAlignment="Center" Margin="6,0,0,0" />
-                    <TextBlock Text="Forge" FontSize="10.5" />
                   </StackPanel>
                   <TextBlock Text="滚轮缩放 · 拖拽平移 · Shift+拖拽框选" FontSize="10.5" Classes="caption" Margin="0,3,0,0" />
                   <TextBlock Text="简化连线：点击/悬停节点显示相关边" FontSize="9.5"
