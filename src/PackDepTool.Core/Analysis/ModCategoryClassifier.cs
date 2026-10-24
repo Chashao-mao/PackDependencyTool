@@ -18,7 +18,8 @@ public sealed class ModCategoryClassifier
             "c2me", "modernfix", "memoryleakfix", "embeddium", "rubidium", "canary", "saturn",
             "pluto", "redirector", "nvidium", "entityculling", "moreculling", "dynamic fps",
             "fps", "optimizer", "optimization", "optimisation", "performance", "ai improvements", "noisium",
-            "threadtweak", "fastload", "badoptimizations", "async", "smooth", "优化", "性能",
+            "threadtweak", "fastload", "badoptimizations", "async", "smooth", "leak", "lag",
+            "优化", "性能",
         ]),
         new(ModCategory.Library,
         [
@@ -27,7 +28,8 @@ public sealed class ModCategoryClassifier
             "midnightlib", "midnight lib", "owo lib", "owo-lib", "cardinal components", "trinkets",
             "forge config api", "kotlin for forge", "yacl", "yet another config", "iceberg",
             "prism lib", "resourceful lib", "supermartijn642configlib", "configured",
-            "kotlinforforge", "kotlin for forge", "kotlin", "api", "library", "前置", "库",
+            "kotlinforforge", "kotlin for forge", "kotlin", "moonlight", "lib", "framework",
+            "api", "library", "前置", "库",
         ]),
         new(ModCategory.Ui,
         [
@@ -46,7 +48,7 @@ public sealed class ModCategoryClassifier
             "create", "mekanism", "thermal", "industrial", "immersive engineering", "ae2",
             "applied energistics", "gregtech", "refined storage", "powah", "flux", "machine",
             "factory", "tech", "automation", "logistics", "pipe", "generator", "nuclear",
-            "reactor", "computercraft", "cc tweaked", "科技", "机械", "自动化", "能源",
+            "reactor", "computercraft", "cc tweaked", "ae2wtlib", "科技", "机械", "自动化", "能源",
         ]),
         new(ModCategory.Magic,
         [
@@ -72,7 +74,8 @@ public sealed class ModCategoryClassifier
         new(ModCategory.Utility,
         [
             "waystones", "gravestone", "corpse", "tombstone", "travel", "crafttweaker", "kubejs",
-            "guide", "book", "tool", "utility", "工具", "传送", "墓碑",
+            "guide", "book", "tool", "utility", "i18n", "translation", "汉化", "语言",
+            "工具", "传送", "墓碑",
         ]),
         new(ModCategory.Fix,
         [
