@@ -89,6 +89,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _progressText = string.Empty;
     [ObservableProperty] private bool _hasGraph;
     [ObservableProperty] private bool _hasOptionalNodeItems;
+    [ObservableProperty] private bool _hasMissingNodeItems;
     [ObservableProperty] private bool _showUninstalledOptional;
     [ObservableProperty] private bool _showOptionalInReport;
     [ObservableProperty] private ConnectionLineOption _selectedConnectionLineMode = ConnectionLineOptions[0];
@@ -171,6 +172,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<NodeItemViewModel> NodeItems { get; } = [];
     public ObservableCollection<NodeItemViewModel> OptionalNodeItems { get; } = [];
+    public ObservableCollection<NodeItemViewModel> MissingNodeItems { get; } = [];
     public ObservableCollection<IssueItemViewModel> Issues { get; } = [];
     public ObservableCollection<IssueItemViewModel> ReportIssues { get; } = [];
     public ObservableCollection<ManualLinkItemViewModel> ManualLinks { get; } = [];
@@ -198,6 +200,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string VersionLabel => "v1.0.1";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
+    public bool ShowMissingSection => HasMissingNodeItems;
     public string ProblemSummary =>
         $"缺失 {MissingCount} · 冲突 {ConflictCount} · 版本 {MismatchCount} · 错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
 
@@ -2649,21 +2652,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
         }
 
-        var optional = ShowUninstalledOptional && _graph is not null
-            ? _graph.Nodes
-                .Where(node => (node.IsOptionalDependency || node.IsRecommendedDependency) &&
-                               !node.IsEmbedded && node.IsSynthetic)
-                .Where(node => LoaderVisible()(node.Loader) &&
-                               MatchesCategoryFilter(node.Category) &&
-                               MatchesStatusFilter(node.Status) &&
-                               MatchesSideFilter(node.Side) &&
-                               MatchesSearch(node, term) &&
-                               !OnlyProblems)
-                .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase)
+        var uninstalled = matching
+            .Where(node => node.Model.IsSynthetic)
+            .ToList();
+        var optional = ShowUninstalledOptional
+            ? uninstalled
+                .Where(node => node.Model.IsOptionalDependency || node.Model.IsRecommendedDependency)
+                .OrderBy(node => node.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList()
             : [];
-        matching = matching
+        var missing = uninstalled
             .Where(node => !node.Model.IsOptionalDependency && !node.Model.IsRecommendedDependency)
+            .OrderBy(node => node.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        matching = matching
+            .Where(node => !node.Model.IsSynthetic)
             .ToList();
 
         var parentedEmbedded = embeddedByParent.Values
@@ -2677,6 +2680,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _suppressCheckedSync = true;
         NodeItems.Clear();
         OptionalNodeItems.Clear();
+        MissingNodeItems.Clear();
         var index = 0;
         foreach (var node in matching)
         {
@@ -2701,10 +2705,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             NodeItems.Add(item);
         }
 
+        foreach (var node in missing)
+            MissingNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, CountActionableIssues(node.Id)));
         foreach (var node in optional)
-            OptionalNodeItems.Add(new NodeItemViewModel(node, _graph, 0, CountActionableIssues(node.Id)));
+            OptionalNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, CountActionableIssues(node.Id)));
 
+        HasMissingNodeItems = MissingNodeItems.Count > 0;
         HasOptionalNodeItems = OptionalNodeItems.Count > 0;
+        OnPropertyChanged(nameof(ShowMissingSection));
         OnPropertyChanged(nameof(ShowOptionalSection));
         var visibleIds = NodeItems.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _checkedNodeIds.RemoveWhere(id => !visibleIds.Contains(id));

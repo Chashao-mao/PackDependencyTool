@@ -427,7 +427,7 @@
 
           <Grid Grid.Row="1">
             <!-- Structured mod list -->
-            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto" Background="{DynamicResource GraphBackground}">
+            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto,Auto" Background="{DynamicResource GraphBackground}">
               <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,0,0,1" Padding="12,6">
                 <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96">
@@ -557,7 +557,39 @@
               <Canvas Grid.Row="1" x:Name="DependencyRailOverlay"
                       IsHitTestVisible="False" ClipToBounds="True" />
 
-              <Border Grid.Row="2" IsVisible="{Binding ShowOptionalSection}"
+              <Border Grid.Row="2" IsVisible="{Binding ShowMissingSection}"
+                      Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                      BorderThickness="1,0,0,0" Padding="10,5,10,6">
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="未安装的必需依赖" Classes="section" />
+                    <TextBlock Grid.Column="1" Text="{Binding MissingNodeItems.Count, StringFormat='缺失 {0}'}"
+                               FontSize="10" Foreground="{DynamicResource Danger}" />
+                  </Grid>
+                  <ListBox Grid.Row="1" ItemsSource="{Binding MissingNodeItems}" MaxHeight="140"
+                           Background="Transparent">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NodeItemViewModel">
+                        <Grid ColumnDefinitions="*,Auto,74" ColumnSpacing="8" Margin="0,1">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="{DynamicResource TextMuted}"
+                                       TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="1" Text="缺失依赖" FontSize="10"
+                                     Foreground="{DynamicResource Danger}" VerticalAlignment="Center" />
+                          <Button Grid.Column="2" Content="下载" Click="OptionalDownload_Click"
+                                  FontSize="10" Padding="4,2" MinHeight="24"
+                                  ToolTip.Tip="直接下载这个缺失依赖" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Grid>
+              </Border>
+
+              <Border Grid.Row="3" IsVisible="{Binding ShowOptionalSection}"
                       Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="1,0,0,0" Padding="10,5,10,6">
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
