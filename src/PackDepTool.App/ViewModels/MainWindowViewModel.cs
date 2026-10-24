@@ -193,6 +193,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool IsListView => !string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
+    public string? RelationFocusId => _relationFocusId;
 
     public string DataDirectory => _services.Paths.DataDirectory;
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
@@ -524,7 +525,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = $"正在渲染关系图 PNG（{Scene.Nodes.Count} 个节点）…";
             var title = string.IsNullOrWhiteSpace(PackName) ? "Minecraft 模组关系图" : $"{PackName} · 模组关系图";
             var light = string.Equals(_services.Settings.Theme, "Light", StringComparison.OrdinalIgnoreCase);
-            await Task.Run(() => GraphPngExporter.Export(Scene, path, title, light));
+            await Task.Run(() => GraphPngExporter.Export(Scene, path, title, light, RelationFocusId));
             StatusText = $"关系图 PNG 已导出：{Path.GetFileName(path)}";
             await _dialogs.ShowMessageAsync("导出完成",
                 $"关系图已写入：{Environment.NewLine}{path}");

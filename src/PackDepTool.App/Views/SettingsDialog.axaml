@@ -31,6 +31,9 @@
               <ToggleSwitch Grid.Column="1" IsChecked="{Binding NetworkEnabled}" OnContent="开" OffContent="关" />
             </Grid>
 
+            <TextBlock Text="游戏本体/加载器下载会自动在官方源与 BMCLAPI 之间回退；本版本没有独立的 Modrinth/CurseForge 镜像输入框，更新源也不是镜像站。"
+                       Classes="caption" TextWrapping="Wrap" />
+
             <TextBlock Text="更新检查（可选）" Classes="section" Margin="0,6,0,0" />
             <TextBox Text="{Binding UpdateFeedUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Watermark="https://raw.githubusercontent.com/&lt;owner&gt;/PackDependencyTool/main/update.json" />
