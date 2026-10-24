@@ -31,6 +31,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly HashSet<string> _iconFetchAttempted = new(StringComparer.Ordinal);
     private ScanResult? _scanResult;
     private GraphDocument? _graph;
+    private bool _iconsPrimed;
+    private readonly SemaphoreSlim _graphRebuildGate = new(1, 1);
+    private int _graphRebuildVersion;
     private List<AnalysisIssue> _issues = [];
     private List<ManualLink> _manualLinks = [];
     private List<LocalRule> _localRules = [];
@@ -1262,7 +1265,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _localRules.RemoveAll(existing => existing.Id == rule.Id);
         await PersistLocalRulesAsync();
         SelectedLocalRule = null;
-        RebuildGraph();
+        await RebuildGraphAsync();
         StatusText = "已删除本地规则";
     }
 
@@ -1292,7 +1295,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         await PersistLocalRulesAsync();
-        RebuildGraph();
+        await RebuildGraphAsync();
         StatusText = $"已导入 {result.Rules.Count} 条本地规则";
     }
 
@@ -1323,7 +1326,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         else _localRules.Add(rule);
 
         await PersistLocalRulesAsync();
-        RebuildGraph();
+        await RebuildGraphAsync();
         SelectedLocalRule = LocalRules.FirstOrDefault(item =>
             string.Equals(item.Model.Id, rule.Id, StringComparison.OrdinalIgnoreCase));
         StatusText = $"已保存本地规则：{LocalRuleText.TypeName(rule.Type)}";
@@ -1354,7 +1357,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Dispatcher.UIThread.Post(async () =>
         {
             await PersistLocalRulesAsync();
-            RebuildGraph();
+            await RebuildGraphAsync();
             StatusText = item.IsEnabled
                 ? $"已启用本地规则：{LocalRuleText.TypeName(rule.Type)}"
                 : $"已停用本地规则：{LocalRuleText.TypeName(rule.Type)}";
@@ -2038,6 +2041,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             var scan = await _services.Scanner.ScanAsync(PackPath, progress, cts.Token);
             _scanResult = scan;
+            _iconsPrimed = false;
             PackPath = scan.RootPath;
             PackPathDisplay = scan.RootPath;
             PackName = scan.Profile.PackName ?? Path.GetFileName(scan.RootPath);
@@ -2444,7 +2448,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (node.IconData is null && previousIcons.TryGetValue(node.Id, out var icon))
                 node.IconData = icon;
         }
-        _services.Icons.LoadCachedIcons(_graph.Nodes);
+        // Cached online icons only need one disk pass per scanned pack. Rule
+        // edits rebuild the graph often; re-reading every icon on each edit
+        // made rule add/delete visibly stall.
+        if (!_iconsPrimed)
+        {
+            _services.Icons.LoadCachedIcons(_graph.Nodes);
+            _iconsPrimed = true;
+        }
         ApplyTranslations();
         _services.Categories.Classify(_graph);
         RefreshAnalysis();
@@ -2452,6 +2463,52 @@ public sealed partial class MainWindowViewModel : ObservableObject
         EnsurePositions();
         BuildScene();
         RefreshDetailFromState();
+    }
+
+    private async Task RebuildGraphAsync()
+    {
+        if (_scanResult is null) return;
+
+        var version = ++_graphRebuildVersion;
+        await _graphRebuildGate.WaitAsync();
+        try
+        {
+            var scan = _scanResult;
+            var manualLinks = _manualLinks.ToList();
+            var localRules = _localRules.ToList();
+            var previousIcons = _graph?.Nodes
+                .Where(node => node.IconData is { Length: > 0 })
+                .ToDictionary(node => node.Id, node => node.IconData!, StringComparer.OrdinalIgnoreCase)
+                ?? new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+
+            var result = await Task.Run(
+                () => _services.Builder.Build(scan, manualLinks, localRules)).ConfigureAwait(true);
+            if (version != _graphRebuildVersion || !ReferenceEquals(scan, _scanResult)) return;
+
+            _graph = result.Graph;
+            _issues = result.Issues;
+            foreach (var node in _graph.Nodes)
+                if (node.IconData is null && previousIcons.TryGetValue(node.Id, out var icon))
+                    node.IconData = icon;
+
+            if (!_iconsPrimed)
+            {
+                _services.Icons.LoadCachedIcons(_graph.Nodes);
+                _iconsPrimed = true;
+            }
+
+            ApplyTranslations();
+            _services.Categories.Classify(_graph);
+            RefreshAnalysis();
+            RefreshCategoryChips();
+            EnsurePositions();
+            BuildScene();
+            RefreshDetailFromState();
+        }
+        finally
+        {
+            _graphRebuildGate.Release();
+        }
     }
 
     private async Task LayoutVisibleAsync(bool fit, CancellationToken cancellationToken)
