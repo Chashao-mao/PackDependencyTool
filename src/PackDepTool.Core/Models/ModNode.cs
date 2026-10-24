@@ -14,6 +14,7 @@ public sealed class ModNode
 
     /// <summary>Path relative to the pack root (forward slashes). Null for synthetic nodes.</summary>
     public string? FilePath { get; set; }
+    public DateTimeOffset? FileModifiedAt { get; set; }
 
     public EdgeSource Source { get; set; } = EdgeSource.Local;
     public ModStatus Status { get; set; } = ModStatus.Ok;

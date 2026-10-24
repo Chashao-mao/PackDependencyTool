@@ -214,7 +214,7 @@
               </ComboBox>
             </Grid>
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2"
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2"
                   Margin="0,2,0,0">
               <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
               <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
@@ -228,6 +228,10 @@
               <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
                         IsChecked="{Binding ShowMissing, Mode=TwoWay}"
                         ToolTip.Tip="在列表和依赖图中显示未安装的必需依赖；缺失节点相关连线为红虚线" />
+              <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
+                        IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
+                        IsEnabled="{Binding !IsBusy}"
+                        ToolTip.Tip="只显示有可用更新的模组；首次勾选会联网检查，需要一点时间" />
             </Grid>
 
             <TextBlock Text="功能分类" Classes="section" Margin="0,6,0,2" />
@@ -412,6 +416,9 @@
                     </DataTemplate>
                   </ComboBox.ItemTemplate>
                 </ComboBox>
+                <Button Content="{Binding SortDirectionText}" Command="{Binding ToggleSortDirectionCommand}"
+                        IsVisible="{Binding IsListView}" FontSize="9.5" Padding="7,3" MinHeight="28"
+                        ToolTip.Tip="切换正序 / 倒序" />
                 <TextBlock Text="视图" Classes="caption" FontSize="10.5" VerticalAlignment="Center" />
                 <ComboBox ItemsSource="{Binding ViewOptions}" SelectedItem="{Binding SelectedViewOption, Mode=TwoWay}"
                           Width="126" Height="30" FontSize="10.5">
@@ -525,6 +532,9 @@
                         <TextBlock Text="{Binding IssueBadgeText}" FontSize="10.5"
                                    Foreground="{DynamicResource Warning}"
                                    IsVisible="{Binding HasIssueBadge}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding UpdateBadgeText}" FontSize="9.5"
+                                   Foreground="{DynamicResource Success}"
+                                   IsVisible="{Binding HasUpdateBadge}" TextTrimming="CharacterEllipsis" />
                       </StackPanel>
                     </Grid>
 

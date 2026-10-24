@@ -39,6 +39,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private List<LocalRule> _localRules = [];
     private Dictionary<string, string> _translationOverrides = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, LayoutPoint> _positions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed record ModUpdateState(bool Available, string? LatestVersion, string? Error);
 
     private string? _selectedNodeId;
     private string? _selectedEdgeId;
@@ -119,6 +122,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _showUnknown = true;
 
     [ObservableProperty] private bool _onlyProblems;
+    [ObservableProperty] private bool _onlyUpdatable;
+    [ObservableProperty] private bool _hasUpdateCheck;
+    [ObservableProperty] private bool _sortDescending;
     [ObservableProperty] private bool _hideIsolated;
     [ObservableProperty] private bool _showLabels = true;
     [ObservableProperty] private bool _focusEdgesOnly = true;
@@ -218,6 +224,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => ShowMissing && HasMissingNodeItems;
+    public string SortDirectionText => SortDescending ? "↓ 倒序" : "↑ 正序";
     public bool ShowLoaderFilters => _graph is { } graph &&
         graph.Nodes.Where(node => !node.IsSynthetic)
             .Select(node => node.Loader)
@@ -1213,6 +1220,131 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StatusText = $"已本地忽略缺失依赖：{missing.Id}";
     }
 
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        if (_graph is null || _scanResult is null || IsBusy || IsCheckingUpdates) return;
+        if (IsOffline)
+        {
+            StatusText = "离线模式：无法检查模组更新";
+            return;
+        }
+
+        var nodes = _graph.Nodes
+            .Where(node => !node.IsSynthetic && !PlatformModIds.IsPlatform(node.Id) &&
+                           !string.IsNullOrWhiteSpace(node.FilePath))
+            .ToList();
+        if (nodes.Count == 0) return;
+
+        var cts = BeginOperation();
+        IsBusy = true;
+        IsCheckingUpdates = true;
+        IsProgressIndeterminate = false;
+        ProgressValue = 0;
+        ProgressText = "检查可更新模组…";
+        StatusText = $"正在检查 {nodes.Count} 个模组的更新…";
+        var states = new System.Collections.Concurrent.ConcurrentDictionary<string, ModUpdateState>(
+            StringComparer.OrdinalIgnoreCase);
+        var completed = 0;
+        IProgress<(int Done, int Total, string Name)> progress =
+            new Progress<(int Done, int Total, string Name)>(value =>
+        {
+            ProgressValue = (double)value.Done / value.Total;
+            ProgressText = $"检查更新 {value.Done}/{value.Total}";
+            StatusText = $"检查更新 · {value.Name}";
+        });
+
+        try
+        {
+            await Parallel.ForEachAsync(
+                nodes,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = 3,
+                    CancellationToken = cts.Token,
+                },
+                async (node, token) =>
+                {
+                    var done = Interlocked.Increment(ref completed);
+                    progress.Report((done, nodes.Count, node.Name));
+                    try
+                    {
+                        var project = await _services.Resolver.ResolveAsync(node, token).ConfigureAwait(false);
+                        if (project is null)
+                        {
+                            states[node.Id] = new ModUpdateState(false, null, "未找到在线项目");
+                            return;
+                        }
+
+                        var versions = await _services.Downloader.GetVersionsAsync(
+                                project, _scanResult.Profile.McVersion, _scanResult.Profile.Loader, token)
+                            .ConfigureAwait(false);
+                        var ranges = _graph.Edges
+                            .Where(edge => string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase) &&
+                                           edge.Type == EdgeType.Requires &&
+                                           !string.IsNullOrWhiteSpace(edge.VersionRange))
+                            .Select(edge => edge.VersionRange!)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList();
+                        var latest = versions
+                            .Where(version => version.IsCompatible &&
+                                              ranges.All(range =>
+                                                  VersionRange.Satisfies(range, version.VersionNumber) != false))
+                            .OrderByDescending(version => version.PublishedAt ?? DateTimeOffset.MinValue)
+                            .FirstOrDefault();
+                        if (latest is null)
+                        {
+                            states[node.Id] = new ModUpdateState(false, null, "没有兼容版本");
+                            return;
+                        }
+
+                        var currentFile = string.IsNullOrWhiteSpace(node.FilePath)
+                            ? null
+                            : Path.GetFileName(node.FilePath);
+                        var differs = !string.Equals(latest.FileName, currentFile,
+                                           StringComparison.OrdinalIgnoreCase) ||
+                                      ModVersion.Compare(latest.VersionNumber, node.Version) > 0;
+                        states[node.Id] = new ModUpdateState(differs, latest.VersionNumber, null);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex) when (ex is HttpRequestException or IOException or
+                                                   InvalidOperationException or CurseForgeApiException or
+                                                   ModrinthApiException or MissingApiKeyException)
+                    {
+                        states[node.Id] = new ModUpdateState(false, null, ex.Message);
+                    }
+                }).ConfigureAwait(true);
+
+            _updateStates.Clear();
+            foreach (var (id, state) in states)
+                _updateStates[id] = state;
+            HasUpdateCheck = true;
+            RefreshView();
+            var updatable = _updateStates.Values.Count(state => state.Available);
+            StatusText = $"更新检查完成：{updatable} 个可更新";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "已取消更新检查";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"检查更新失败：{ex.Message}";
+        }
+        finally
+        {
+            EndOperation(cts);
+            IsBusy = false;
+            IsCheckingUpdates = false;
+            IsProgressIndeterminate = false;
+            ProgressValue = 0;
+            ProgressText = string.Empty;
+        }
+    }
+
     // ------------------------------------------------------------------ local rules
 
     [RelayCommand]
@@ -2042,6 +2174,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var scan = await _services.Scanner.ScanAsync(PackPath, progress, cts.Token);
             _scanResult = scan;
             _iconsPrimed = false;
+            _updateStates.Clear();
+            HasUpdateCheck = false;
+            OnlyUpdatable = false;
             PackPath = scan.RootPath;
             PackPathDisplay = scan.RootPath;
             PackName = scan.Profile.PackName ?? Path.GetFileName(scan.RootPath);
@@ -2754,6 +2889,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var selectedId = SelectedNodeItem?.Id;
         var matching = visibleNodes
             .Where(n => term.Length == 0 || n.IsSearchMatch)
+            .Where(n => !OnlyUpdatable || (_updateStates.TryGetValue(n.Id, out var update) && update.Available))
             .ToList();
 
         matching = SelectedSortOption.Value switch
@@ -2779,11 +2915,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 .OrderBy(n => GraphPalette.LoaderText(n.Model.Loader), StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
+            ModSortMode.Time => matching
+                .OrderByDescending(n => n.Model.FileModifiedAt ?? DateTimeOffset.MinValue)
+                .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
             _ => matching
                 .OrderBy(n => n.Model.Status is ModStatus.Ok or ModStatus.Unknown ? 1 : 0)
                 .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
         };
+
+        if (SortDescending)
+            matching = Enumerable.Reverse(matching).ToList();
 
         var embeddedByParent = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         if (_graph is not null)
@@ -2834,7 +2977,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         foreach (var node in matching)
         {
             var issueCount = CountActionableIssues(node.Id);
-            var item = new NodeItemViewModel(node.Model, _graph, ++index, issueCount)
+            _updateStates.TryGetValue(node.Id, out var updateState);
+            var item = new NodeItemViewModel(node.Model, _graph, ++index, issueCount,
+                updateState?.Available == true, updateState?.LatestVersion)
             {
                 IsChecked = _checkedNodeIds.Contains(node.Id),
             };
@@ -3537,6 +3682,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void ToggleDependencies() => IsDependenciesExpanded = !IsDependenciesExpanded;
 
     partial void OnSelectedSortOptionChanged(ModSortOption value) => RefreshView();
+    partial void OnSortDescendingChanged(bool value) =>
+        OnPropertyChanged(nameof(SortDirectionText));
+
+    partial void OnOnlyUpdatableChanged(bool value)
+    {
+        if (value && !HasUpdateCheck && !IsCheckingUpdates && !IsBusy)
+            _ = CheckUpdatesAsync();
+        RefreshView();
+    }
 
     partial void OnSelectedCategoryFilterChanged(CategoryFilterOption value)
     {
@@ -3589,6 +3743,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         foreach (var chip in CategoryChips)
             chip.IsActive = chip.Value == SelectedCategoryFilter.Value;
     }
+
+    [RelayCommand]
+    private void ToggleSortDirection() => SortDescending = !SortDescending;
 
     [RelayCommand]
     private void ResetFilters()

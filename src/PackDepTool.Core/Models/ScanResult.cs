@@ -17,6 +17,7 @@ public sealed class JarScanResult
     public string FilePath { get; set; } = string.Empty; // relative to pack root, forward slashes
     public string AbsolutePath { get; set; } = string.Empty;
     public string Sha1 { get; set; } = string.Empty;
+    public DateTimeOffset ModifiedAt { get; set; }
     public List<ParsedMod> Mods { get; set; } = [];
     public List<ParsedEmbedded> Embedded { get; set; } = [];
     public List<string> Warnings { get; set; } = [];

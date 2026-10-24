@@ -123,6 +123,7 @@ public sealed class ModScanner
         {
             AbsolutePath = absolutePath,
             FilePath = relative,
+            ModifiedAt = File.GetLastWriteTimeUtc(absolutePath),
         };
 
         try

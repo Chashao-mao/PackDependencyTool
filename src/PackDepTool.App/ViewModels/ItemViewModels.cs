@@ -10,7 +10,13 @@ namespace PackDepTool.App.ViewModels;
 
 public sealed partial class NodeItemViewModel : ObservableObject
 {
-    public NodeItemViewModel(ModNode model, GraphDocument? graph = null, int index = 0, int issueCount = 0)
+    public NodeItemViewModel(
+        ModNode model,
+        GraphDocument? graph = null,
+        int index = 0,
+        int issueCount = 0,
+        bool updateAvailable = false,
+        string? latestVersion = null)
     {
         Model = model;
         StatusBrush = GraphPalette.StatusBrush(model.Status);
@@ -79,6 +85,10 @@ public sealed partial class NodeItemViewModel : ObservableObject
         IssueCount = issueCount;
         IssueBadgeText = issueCount > 0 ? $"{issueCount} 项问题" : string.Empty;
         HasIssueBadge = issueCount > 0;
+        HasUpdateBadge = updateAvailable;
+        UpdateBadgeText = updateAvailable
+            ? $"可更新{(string.IsNullOrWhiteSpace(latestVersion) ? string.Empty : $" {latestVersion}")}"
+            : string.Empty;
     }
 
     public ModNode Model { get; }
@@ -145,6 +155,8 @@ public sealed partial class NodeItemViewModel : ObservableObject
     public int IssueCount { get; }
     public string IssueBadgeText { get; }
     public bool HasIssueBadge { get; }
+    public string UpdateBadgeText { get; }
+    public bool HasUpdateBadge { get; }
     public bool IsProblem => Model.Status is ModStatus.Missing or ModStatus.Conflict or ModStatus.VersionMismatch;
     public string Tooltip =>
         $"{Name}\n{Model.Id} · {Model.DisplayVersion}\n状态：{StatusText}\n依赖：{DependencySummary}" +
@@ -394,6 +406,7 @@ public enum ModSortMode
     Dependencies,
     Category,
     Loader,
+    Time,
 }
 
 public sealed record ModSortOption(ModSortMode Value, string Label)
@@ -406,6 +419,7 @@ public sealed record ModSortOption(ModSortMode Value, string Label)
         new(ModSortMode.Dependencies, "按依赖数"),
         new(ModSortMode.Category, "按分类"),
         new(ModSortMode.Loader, "按加载器"),
+        new(ModSortMode.Time, "按文件时间"),
     ];
 }
 
