@@ -788,8 +788,17 @@
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:DependencyGroupViewModel">
                             <StackPanel Spacing="4" Margin="0,0,0,7">
-                              <TextBlock Text="{Binding Title}" Foreground="{Binding Brush}"
-                                         FontSize="10" FontWeight="SemiBold" />
+                              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                <TextBlock Text="{Binding Title}" Foreground="{Binding Brush}"
+                                           FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                  <TextBlock Text="{Binding CountText}" FontSize="9.5"
+                                             Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                                  <Button Content="{Binding ToggleText}" Command="{Binding ToggleCommand}"
+                                          IsVisible="{Binding HasMore}" FontSize="9"
+                                          Padding="5,1" MinHeight="22" />
+                                </StackPanel>
+                              </Grid>
                               <ItemsControl ItemsSource="{Binding Rows}">
                                 <ItemsControl.ItemTemplate>
                                   <DataTemplate x:DataType="vm:DependencyRowViewModel">

@@ -237,6 +237,7 @@ public sealed partial class DependencyGroupViewModel : ObservableObject
     public IBrush Brush { get; }
     public ObservableCollection<DependencyRowViewModel> Rows { get; }
     public bool HasMore => _allRows.Count > CollapsedLimit;
+    public string CountText => _allRows.Count.ToString();
     public string ToggleText => IsExpanded ? "收起" : $"展开全部 ({_allRows.Count})";
     [ObservableProperty] private bool _isExpanded;
 
