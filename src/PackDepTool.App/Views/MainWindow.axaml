@@ -185,14 +185,16 @@
               <CheckBox Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
             </WrapPanel>
 
-            <TextBlock Text="加载器" Classes="section" Margin="0,4,0,0" />
-            <WrapPanel>
-              <CheckBox Content="Fabric" IsChecked="{Binding ShowFabric, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="Quilt" IsChecked="{Binding ShowQuilt, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="Forge" IsChecked="{Binding ShowForge, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}" />
-            </WrapPanel>
+            <StackPanel IsVisible="{Binding ShowLoaderFilters}" Spacing="5">
+              <TextBlock Text="加载器" Classes="section" Margin="0,4,0,0" />
+              <WrapPanel>
+                <CheckBox Content="Fabric" IsChecked="{Binding ShowFabric, Mode=TwoWay}" Margin="0,0,12,0" />
+                <CheckBox Content="Quilt" IsChecked="{Binding ShowQuilt, Mode=TwoWay}" Margin="0,0,12,0" />
+                <CheckBox Content="Forge" IsChecked="{Binding ShowForge, Mode=TwoWay}" Margin="0,0,12,0" />
+                <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}" Margin="0,0,12,0" />
+                <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}" />
+              </WrapPanel>
+            </StackPanel>
 
             <Grid ColumnDefinitions="44,*" ColumnSpacing="6" Margin="0,2,0,0">
               <TextBlock Text="侧" Classes="caption" VerticalAlignment="Center" />
@@ -761,8 +763,14 @@
                   <!-- Basic information -->
                   <Border Classes="detailCard">
                     <StackPanel Spacing="7">
-                      <TextBlock Text="基本信息" Classes="section" />
-                      <ItemsControl ItemsSource="{Binding DetailRows}">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBlock Text="基本信息" Classes="section" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="{Binding BasicInfoToggleText}"
+                                Command="{Binding ToggleBasicInfoCommand}"
+                                FontSize="9" Padding="6,1" MinHeight="22" />
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding DetailRows}"
+                                    IsVisible="{Binding IsBasicInfoExpanded}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:DetailRowViewModel">
                             <Grid ColumnDefinitions="76,*" Margin="0,0,0,5">
@@ -779,9 +787,15 @@
                   <!-- Description -->
                   <Border Classes="detailCard" IsVisible="{Binding HasDetailDescription}">
                     <StackPanel Spacing="6">
-                      <TextBlock Text="简介" Classes="section" />
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBlock Text="简介" Classes="section" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="{Binding DescriptionToggleText}"
+                                Command="{Binding ToggleDescriptionCommand}"
+                                FontSize="9" Padding="6,1" MinHeight="22" />
+                      </Grid>
                       <TextBlock Text="{Binding DetailDescription}" TextWrapping="Wrap" FontSize="11.5"
-                                 Foreground="{DynamicResource TextSecondary}" />
+                                 Foreground="{DynamicResource TextSecondary}"
+                                 IsVisible="{Binding IsDescriptionExpanded}" />
                     </StackPanel>
                   </Border>
 
@@ -789,9 +803,15 @@
                   <Border IsVisible="{Binding HasDependencyRows}" BorderBrush="{DynamicResource CardBorder}"
                           BorderThickness="0,1,0,0" Padding="0,8,0,0">
                     <StackPanel Spacing="4">
-                      <TextBlock Text="依赖关系" FontSize="10.5" FontWeight="SemiBold"
-                                 Foreground="{DynamicResource TextSecondary}" />
-                      <ItemsControl ItemsSource="{Binding SelectedDependencyGroups}" Margin="0,4,0,0">
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBlock Text="依赖关系" FontSize="10.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="{Binding DependenciesToggleText}"
+                                Command="{Binding ToggleDependenciesCommand}"
+                                FontSize="9" Padding="6,1" MinHeight="22" />
+                      </Grid>
+                      <ItemsControl ItemsSource="{Binding SelectedDependencyGroups}" Margin="0,4,0,0"
+                                    IsVisible="{Binding IsDependenciesExpanded}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate x:DataType="vm:DependencyGroupViewModel">
                             <StackPanel Spacing="4" Margin="0,0,0,7">

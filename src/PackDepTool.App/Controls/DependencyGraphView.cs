@@ -864,6 +864,7 @@ public sealed class DependencyGraphView : Control
         if (model.Status is Core.Models.ModStatus.Missing or Core.Models.ModStatus.Conflict)
             fill = IsLightTheme ? Color.Parse("#FDF0EF") : Color.Parse("#2A171A");
 
+        var missingNode = model.Status == Core.Models.ModStatus.Missing;
         var borderColor = model.Status switch
         {
             Core.Models.ModStatus.Missing or Core.Models.ModStatus.Conflict => GraphPalette.Danger,
@@ -872,8 +873,8 @@ public sealed class DependencyGraphView : Control
             _ => loaderColor,
         };
 
-        if (selected) borderColor = IsLightTheme ? Color.Parse("#17202B") : Colors.White;
-        else if (hovered) borderColor = GraphPalette.Accent;
+        if (selected && !missingNode) borderColor = IsLightTheme ? Color.Parse("#17202B") : Colors.White;
+        else if (hovered && !missingNode) borderColor = GraphPalette.Accent;
 
         if (selected)
         {
@@ -890,9 +891,9 @@ public sealed class DependencyGraphView : Control
 
         var optional = model.IsOptionalDependency || model.IsRecommendedDependency;
         var borderPen = new Pen(
-            GetBrush(optional ? GraphPalette.EdgeOptional : borderColor),
+            GetBrush(missingNode ? GraphPalette.Danger : optional ? GraphPalette.EdgeOptional : borderColor),
             selected ? 2.2 : 1.5,
-            optional ? DashStyle.Dash : null);
+            missingNode || optional ? DashStyle.Dash : null);
         context.DrawRectangle(null, borderPen, rect, 11, 11);
 
         if (model.Source == Core.Models.EdgeSource.Manual)

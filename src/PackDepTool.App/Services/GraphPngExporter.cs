@@ -146,8 +146,13 @@ public static class GraphPngExporter
             canvas.DrawRoundRect(new SKRect(rect.Left, rect.Top, rect.Left + 5 * (float)scale,
                 rect.Bottom), radius, radius, fillPaint);
 
-            strokePaint.Color = node.IsProblem ? statusColor : border;
-            strokePaint.StrokeWidth = (float)((node.IsProblem ? 2 : 1.3) * Math.Max(0.7, scale));
+            var missingNode = node.Model.Status == ModStatus.Missing;
+            strokePaint.Color = missingNode ? statusColor : node.IsProblem ? statusColor : border;
+            strokePaint.StrokeWidth = (float)(((missingNode || node.IsProblem) ? 2 : 1.3) *
+                                              Math.Max(0.7, scale));
+            strokePaint.PathEffect = missingNode
+                ? SKPathEffect.CreateDash([5f * (float)scale, 4f * (float)scale], 0)
+                : null;
             canvas.DrawRoundRect(rect, radius, radius, strokePaint);
 
             var iconSize = 28f * (float)scale;

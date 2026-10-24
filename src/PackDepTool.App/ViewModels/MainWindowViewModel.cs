@@ -165,6 +165,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private ViewOption _selectedViewOption = ViewOption.All[0];
     [ObservableProperty] private bool _hasDependencyRows;
     [ObservableProperty] private bool _hasMissingDependencies;
+    [ObservableProperty] private bool _isBasicInfoExpanded = true;
+    [ObservableProperty] private bool _isDescriptionExpanded = true;
+    [ObservableProperty] private bool _isDependenciesExpanded = true;
     [ObservableProperty] private bool _canDisableSelected;
     [ObservableProperty] private bool _canDeleteSelected;
     [ObservableProperty] private bool _canDownloadOptional;
@@ -212,6 +215,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => ShowMissing && HasMissingNodeItems;
+    public bool ShowLoaderFilters => _graph is { } graph &&
+        graph.Nodes.Where(node => !node.IsSynthetic)
+            .Select(node => node.Loader)
+            .Where(loader => loader != LoaderKind.Unknown)
+            .Distinct()
+            .Count() > 1;
+    public string BasicInfoToggleText => IsBasicInfoExpanded ? "收起" : "展开";
+    public string DescriptionToggleText => IsDescriptionExpanded ? "收起" : "展开";
+    public string DependenciesToggleText => IsDependenciesExpanded ? "收起" : "展开";
     public string MissingToggleText => IsMissingSectionExpanded ? "收起" : "展开";
     public string ProblemSummary =>
         $"缺失 {MissingCount} · 冲突 {ConflictCount} · 版本 {MismatchCount} · 错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
@@ -2853,6 +2865,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         MismatchCount = _graph.Nodes.Count(n => n.Status == ModStatus.VersionMismatch);
         ConflictCount = _graph.Nodes.Count(n => n.Status == ModStatus.Conflict);
         OnPropertyChanged(nameof(ProblemSummary));
+        OnPropertyChanged(nameof(ShowLoaderFilters));
         _suppressSelectionSync = true;
         AvailableModIds.Clear();
         foreach (var id in _graph.Nodes.Select(n => n.Id).OrderBy(id => id, StringComparer.Ordinal))
@@ -3323,6 +3336,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RefreshView();
     }
 
+    partial void OnIsBasicInfoExpandedChanged(bool value) =>
+        OnPropertyChanged(nameof(BasicInfoToggleText));
+
+    partial void OnIsDescriptionExpandedChanged(bool value) =>
+        OnPropertyChanged(nameof(DescriptionToggleText));
+
+    partial void OnIsDependenciesExpandedChanged(bool value) =>
+        OnPropertyChanged(nameof(DependenciesToggleText));
+
     partial void OnShowUninstalledOptionalChanged(bool value)
     {
         OnPropertyChanged(nameof(ShowOptionalSection));
@@ -3393,6 +3415,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private void ToggleMissingSection() => IsMissingSectionExpanded = !IsMissingSectionExpanded;
+
+    [RelayCommand]
+    private void ToggleBasicInfo() => IsBasicInfoExpanded = !IsBasicInfoExpanded;
+
+    [RelayCommand]
+    private void ToggleDescription() => IsDescriptionExpanded = !IsDescriptionExpanded;
+
+    [RelayCommand]
+    private void ToggleDependencies() => IsDependenciesExpanded = !IsDependenciesExpanded;
 
     partial void OnSelectedSortOptionChanged(ModSortOption value) => RefreshView();
 
