@@ -234,8 +234,13 @@
                         ToolTip.Tip="先点击「检查更新」，再筛选有可用更新的模组" />
               <Button Grid.Row="3" Grid.Column="1" Content="检查更新"
                       Command="{Binding CheckUpdatesCommand}"
+                      IsVisible="{Binding !IsCheckingUpdates}"
                       IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24"
                       ToolTip.Tip="只检查已知项目；批量哈希匹配项目，不会为每个模组单独搜索" />
+              <Button Grid.Row="3" Grid.Column="1" Content="取消"
+                      Command="{Binding CancelUpdateCheckCommand}"
+                      IsVisible="{Binding IsCheckingUpdates}" FontSize="9.5"
+                      Padding="7,1" MinHeight="24" ToolTip.Tip="停止检查，不再发送新的请求" />
             </Grid>
 
             <TextBlock Text="功能分类" Classes="section" Margin="0,6,0,2" />
@@ -471,7 +476,7 @@
                        Background="Transparent">
                 <ListBox.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <StackPanel />
+                    <VirtualizingStackPanel />
                   </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>

@@ -6,10 +6,16 @@ namespace PackDepTool.App.Services;
 /// <summary>Decodes and caches JAR icons for list/detail rendering.</summary>
 public static class ModIconCache
 {
+    private const int MaxEntries = 600;
     private static readonly Dictionary<string, Bitmap?> Cache = new(StringComparer.Ordinal);
+    private static readonly Queue<string> InsertionOrder = new();
 
     /// <summary>Drops decoded icons when a different pack is opened.</summary>
-    public static void Clear() => Cache.Clear();
+    public static void Clear()
+    {
+        Cache.Clear();
+        InsertionOrder.Clear();
+    }
 
     public static Bitmap? Get(ModNode node)
     {
@@ -31,6 +37,9 @@ public static class ModIconCache
         }
 
         Cache[key] = bitmap;
+        InsertionOrder.Enqueue(key);
+        while (Cache.Count > MaxEntries && InsertionOrder.Count > 0)
+            Cache.Remove(InsertionOrder.Dequeue());
         return bitmap;
     }
 }

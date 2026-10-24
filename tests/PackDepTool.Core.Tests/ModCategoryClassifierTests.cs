@@ -21,4 +21,17 @@ public sealed class ModCategoryClassifierTests
         new ModCategoryClassifier().Classify(node);
         Assert.Equal(expected, node.Category);
     }
+
+    [Fact]
+    public void ReclassifiesWhenDescriptionChanges()
+    {
+        var classifier = new ModCategoryClassifier();
+        var node = new ModNode { Id = "mystery", Name = "Mystery" };
+        classifier.Classify(node);
+        Assert.Equal(ModCategory.Other, node.Category);
+
+        node.Description = "A journey map and world generation mod";
+        classifier.Classify(node);
+        Assert.Equal(ModCategory.World, node.Category);
+    }
 }

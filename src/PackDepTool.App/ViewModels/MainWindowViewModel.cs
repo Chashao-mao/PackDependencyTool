@@ -40,8 +40,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private Dictionary<string, string> _translationOverrides = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, LayoutPoint> _positions = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CachedModUpdate>
+        _updateCheckCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan UpdateCheckTtl = TimeSpan.FromHours(6);
 
     private sealed record ModUpdateState(bool Available, string? LatestVersion, string? Error);
+    private sealed record CachedModUpdate(ModUpdateState State, DateTimeOffset CheckedAt);
 
     private string? _selectedNodeId;
     private string? _selectedEdgeId;
@@ -1289,6 +1293,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StringComparer.OrdinalIgnoreCase);
         var completed = 0;
         var unresolved = 0;
+        var cachedCount = 0;
         IProgress<(int Done, int Total, string Name)> progress =
             new Progress<(int Done, int Total, string Name)>(value =>
         {
@@ -1343,9 +1348,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
                             return;
                         }
 
-                        var versions = await _services.Downloader.GetVersionsAsync(
-                                project, _scanResult.Profile.McVersion, _scanResult.Profile.Loader, token)
-                            .ConfigureAwait(false);
                         var ranges = _graph.Edges
                             .Where(edge => string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase) &&
                                            edge.Type == EdgeType.Requires &&
@@ -1353,6 +1355,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
                             .Select(edge => edge.VersionRange!)
                             .Distinct(StringComparer.OrdinalIgnoreCase)
                             .ToList();
+                        var cacheKey = $"{project.Source}:{project.ProjectId}:{_scanResult.Profile.McVersion}:" +
+                                       $"{_scanResult.Profile.Loader}:{node.Version}:" +
+                                       string.Join('|', ranges.OrderBy(range => range, StringComparer.OrdinalIgnoreCase));
+                        if (_updateCheckCache.TryGetValue(cacheKey, out var cached) &&
+                            DateTimeOffset.UtcNow - cached.CheckedAt < UpdateCheckTtl)
+                        {
+                            states[node.Id] = cached.State;
+                            Interlocked.Increment(ref cachedCount);
+                            return;
+                        }
+
+                        var versions = await _services.Downloader.GetVersionsAsync(
+                                project, _scanResult.Profile.McVersion, _scanResult.Profile.Loader, token)
+                            .ConfigureAwait(false);
                         var latest = versions
                             .Where(version => version.IsCompatible &&
                                               ranges.All(range =>
@@ -1371,7 +1387,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         var differs = !string.Equals(latest.FileName, currentFile,
                                            StringComparison.OrdinalIgnoreCase) ||
                                       ModVersion.Compare(latest.VersionNumber, node.Version) > 0;
-                        states[node.Id] = new ModUpdateState(differs, latest.VersionNumber, null);
+                        var state = new ModUpdateState(differs, latest.VersionNumber, null);
+                        states[node.Id] = state;
+                        _updateCheckCache[cacheKey] = new CachedModUpdate(state, DateTimeOffset.UtcNow);
                     }
                     catch (OperationCanceledException)
                     {
@@ -1391,9 +1409,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasUpdateCheck = true;
             RefreshView();
             var updatable = _updateStates.Values.Count(state => state.Available);
+            var cachedText = cachedCount > 0 ? $"，{cachedCount} 个使用缓存" : string.Empty;
             StatusText = unresolved > 0
-                ? $"更新检查完成：{updatable} 个可更新，{unresolved} 个未识别项目（可先联网补全）"
-                : $"更新检查完成：{updatable} 个可更新";
+                ? $"更新检查完成：{updatable} 个可更新{cachedText}，{unresolved} 个未识别项目（可先联网补全）"
+                : $"更新检查完成：{updatable} 个可更新{cachedText}";
         }
         catch (OperationCanceledException)
         {
@@ -1415,6 +1434,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     // ------------------------------------------------------------------ local rules
+
+    [RelayCommand]
+    private void CancelUpdateCheck()
+    {
+        if (IsCheckingUpdates)
+            _operationCts?.Cancel();
+    }
 
     [RelayCommand]
     private async Task AddLocalRuleAsync()
@@ -2289,6 +2315,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ModIconCache.Clear();
             _iconsPrimed = false;
             _updateStates.Clear();
+            _updateCheckCache.Clear();
             HasUpdateCheck = false;
             OnlyUpdatable = false;
             PackPath = scan.RootPath;
