@@ -401,6 +401,17 @@
                 </Grid>
               </Grid>
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <TextBlock Text="排序" Classes="caption" FontSize="10.5" VerticalAlignment="Center"
+                           IsVisible="{Binding IsListView}" />
+                <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
+                          IsVisible="{Binding IsListView}" Width="108" Height="30" FontSize="10.5"
+                          ToolTip.Tip="选择模组清单排序方式">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ModSortOption">
+                      <TextBlock Text="{Binding Label}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
                 <TextBlock Text="视图" Classes="caption" FontSize="10.5" VerticalAlignment="Center" />
                 <ComboBox ItemsSource="{Binding ViewOptions}" SelectedItem="{Binding SelectedViewOption, Mode=TwoWay}"
                           Width="126" Height="30" FontSize="10.5">

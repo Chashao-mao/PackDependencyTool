@@ -176,6 +176,8 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     private readonly DownloadQueueService _queue;
     private string? _lastDownloadedPath;
     private int _queueRefreshVersion;
+    private readonly HashSet<Guid> _sessionQueueIds = [];
+    private bool _autoCloseRaised;
 
     private const int PageSize = 20;
     private CancellationTokenSource? _operationCts;
@@ -453,6 +455,18 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
             Queue.Remove(row);
 
         OnPropertyChanged(nameof(HasQueue));
+
+        // Close the download center once every item enqueued in this window
+        // has completed. Failed/cancelled items keep the window open so they
+        // can be retried.
+        if (!_autoCloseRaised && _sessionQueueIds.Count > 0 &&
+            _sessionQueueIds.All(id => snapshot.Any(item =>
+                item.Id == id && item.State == DownloadQueueState.Completed)) &&
+            !string.IsNullOrWhiteSpace(_lastDownloadedPath))
+        {
+            _autoCloseRaised = true;
+            Completed?.Invoke(new DownloadCenterResult { ModFilePath = _lastDownloadedPath });
+        }
     }
 
     private async Task LoadProjectIconsAsync(IReadOnlyList<DownloadProjectItem> items, CancellationToken token)
@@ -557,7 +571,8 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
             {
                 var request = await _downloader.CreateFileRequestAsync(
                     downloadVersion, Path.Combine(_context.PackRoot!, "mods"), CancellationToken.None);
-                _queue.Enqueue(request, SelectedProject.Name, SelectedVersion.Title);
+                var queued = _queue.Enqueue(request, SelectedProject.Name, SelectedVersion.Title);
+                _sessionQueueIds.Add(queued.Id);
                 StatusText = "已加入下载队列，可继续选择其他版本。";
             }
             catch (Exception ex) when (ex is HttpRequestException or IOException or

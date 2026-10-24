@@ -2771,6 +2771,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     string.Equals(edge.To, n.Id, StringComparison.OrdinalIgnoreCase)) ?? 0)
                 .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
+            ModSortMode.Category => matching
+                .OrderBy(n => ModCategoryText.Name(n.Model.Category), StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
+            ModSortMode.Loader => matching
+                .OrderBy(n => GraphPalette.LoaderText(n.Model.Loader), StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ToList(),
             _ => matching
                 .OrderBy(n => n.Model.Status is ModStatus.Ok or ModStatus.Unknown ? 1 : 0)
                 .ThenBy(n => n.Title, StringComparer.CurrentCultureIgnoreCase)

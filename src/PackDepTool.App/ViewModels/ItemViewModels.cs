@@ -392,6 +392,8 @@ public enum ModSortMode
     Name,
     Version,
     Dependencies,
+    Category,
+    Loader,
 }
 
 public sealed record ModSortOption(ModSortMode Value, string Label)
@@ -402,6 +404,8 @@ public sealed record ModSortOption(ModSortMode Value, string Label)
         new(ModSortMode.Name, "按名称"),
         new(ModSortMode.Version, "按版本"),
         new(ModSortMode.Dependencies, "按依赖数"),
+        new(ModSortMode.Category, "按分类"),
+        new(ModSortMode.Loader, "按加载器"),
     ];
 }
 
