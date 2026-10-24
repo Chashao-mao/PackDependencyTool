@@ -18,6 +18,7 @@ public interface IDialogService
     Task<string?> PickOpenFileAsync(string title, string[] extensions, string typeName);
 
     Task<DownloadCenterResult?> ShowDownloadCenterAsync(DownloadCenterContext context);
+    Task<EnrichmentPlanResult?> ShowEnrichmentPlanAsync(EnrichmentPlan plan);
     Task<GameInstallResult?> ShowGameSetupAsync();
     Task<GameInstallResult?> ShowLoaderSwitchAsync(LoaderSwitchContext context);
     Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(

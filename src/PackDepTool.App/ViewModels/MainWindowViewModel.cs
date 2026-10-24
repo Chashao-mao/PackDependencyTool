@@ -381,6 +381,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var curseForgeKey = await _services.Keys.GetCurseForgeKeyAsync();
+        var plan = new EnrichmentPlan
+        {
+            InstalledCount = _graph.Nodes.Count(node => !node.IsSynthetic),
+            MissingCount = _graph.Nodes.Count(node => node.Status == ModStatus.Missing),
+            HasCurseForgeKey = !string.IsNullOrWhiteSpace(curseForgeKey),
+        };
+        var selection = await _dialogs.ShowEnrichmentPlanAsync(plan);
+        if (selection is null || !selection.HasAnySelection)
+        {
+            StatusText = "已取消联网补全";
+            return;
+        }
+
         var cts = BeginOperation();
         IsBusy = true;
         IsProgressIndeterminate = true;
@@ -398,9 +412,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             var options = new EnrichmentOptions
             {
-                UseModrinth = true,
-                UseCurseForge = true,
-                AddDependencyEdges = true,
+                UseModrinth = selection.UseModrinth,
+                UseCurseForge = selection.UseCurseForge,
+                AddDependencyEdges = selection.AddDependencyEdges,
             };
 
             var stats = await _services.Enrichment.EnrichAsync(

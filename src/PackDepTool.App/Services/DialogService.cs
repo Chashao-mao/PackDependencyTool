@@ -113,6 +113,16 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<DownloadCenterResult?>(Owner);
     }
 
+    public async Task<EnrichmentPlanResult?> ShowEnrichmentPlanAsync(EnrichmentPlan plan)
+    {
+        if (Owner is null) return null;
+
+        var viewModel = new EnrichmentPlanViewModel(plan);
+        var dialog = new EnrichmentPlanWindow { DataContext = viewModel };
+        viewModel.Completed += result => dialog.Close(result);
+        return await dialog.ShowDialog<EnrichmentPlanResult?>(Owner);
+    }
+
     public async Task<GameInstallResult?> ShowGameSetupAsync()
     {
         if (Owner is null) return null;

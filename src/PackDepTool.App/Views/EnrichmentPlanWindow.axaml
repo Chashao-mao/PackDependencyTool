@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.EnrichmentPlanWindow"
+        x:DataType="vm:EnrichmentPlanViewModel"
+        Title="联网补全计划"
+        Width="640"
+        Height="560"
+        MinWidth="560"
+        MinHeight="500"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+      <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
+              HorizontalAlignment="Left" Margin="0,0,0,7" />
+      <TextBlock Text="联网补全计划" Classes="title" FontSize="18" />
+      <TextBlock Text="{Binding SummaryText}" Classes="caption" />
+      <TextBlock Text="勾选本次要执行的操作，确认后才会发起网络请求。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+            BorderThickness="1" CornerRadius="12" Padding="16">
+      <StackPanel Spacing="14">
+        <CheckBox IsChecked="{Binding UseModrinth, Mode=TwoWay}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="Modrinth 项目匹配" FontWeight="SemiBold" />
+            <TextBlock Text="按 SHA1 精确匹配，再用 slug / 名称严格搜索；不会猜测模糊结果。"
+                       Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </CheckBox>
+
+        <CheckBox IsChecked="{Binding UseCurseForge, Mode=TwoWay}"
+                  IsEnabled="{Binding HasCurseForgeKey}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="CurseForge 项目匹配" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding CurseForgeHint}" Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </CheckBox>
+
+        <CheckBox IsChecked="{Binding AddDependencyEdges, Mode=TwoWay}">
+          <StackPanel Spacing="2">
+            <TextBlock Text="补全依赖关系" FontWeight="SemiBold" />
+            <TextBlock Text="把在线项目声明的必需 / 可选 / 冲突关系合并到当前图；手动关系不会被覆盖。"
+                       Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </CheckBox>
+
+        <TextBlock Text="说明：只读取公开项目元数据；不会下载模组文件，也不会修改 JAR。"
+                   Classes="caption" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+      <TextBlock Text="取消后不会产生任何网络请求。" Classes="caption" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="取消" Command="{Binding CancelCommand}" />
+        <Button Content="开始补全" Classes="accent"
+                Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
