@@ -782,8 +782,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (result is not null)
         {
+            var downloadedPath = result.Items.FirstOrDefault(item => item.Success)?.FilePath;
             await ShowBatchResultAsync("下载可选依赖", result);
             await ScanAsync();
+            if (!string.IsNullOrWhiteSpace(downloadedPath) &&
+                _graph?.Nodes.Any(installed => !installed.IsSynthetic &&
+                                               string.Equals(installed.Id, node.Id,
+                                                   StringComparison.OrdinalIgnoreCase)) != true)
+                StatusText = $"已下载到 {downloadedPath}，但扫描未识别该模组。";
         }
     }
 

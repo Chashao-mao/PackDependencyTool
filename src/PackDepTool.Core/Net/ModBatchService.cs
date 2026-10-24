@@ -20,6 +20,7 @@ public sealed class BatchModItem
     public bool Success { get; init; }
     public bool Skipped { get; init; }
     public string Message { get; init; } = string.Empty;
+    public string? FilePath { get; init; }
 }
 
 public sealed class BatchModResult
@@ -122,6 +123,7 @@ public sealed class ModBatchService
                         Name = node.Name,
                         Success = true,
                         Message = $"已下载 {download.FileName}",
+                        FilePath = download.FilePath,
                     };
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -251,6 +253,7 @@ public sealed class ModBatchService
                             Name = node.Name,
                             Success = true,
                             Message = $"{node.DisplayVersion} → {latest.VersionNumber}",
+                            FilePath = newPath,
                         };
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
