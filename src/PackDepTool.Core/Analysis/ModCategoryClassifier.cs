@@ -110,6 +110,16 @@ public sealed class ModCategoryClassifier
         ]),
     ];
 
+    // Normalize terms once instead of doing it for every node/rule pair on
+    // every graph rebuild.
+    private static readonly Rule[] NormalizedRules = Rules
+        .Select(rule => new Rule(rule.Category,
+            rule.Terms.Select(Normalize)
+                .Where(term => term.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray()))
+        .ToArray();
+
     public void Classify(GraphDocument graph)
     {
         foreach (var node in graph.Nodes)
@@ -128,13 +138,12 @@ public sealed class ModCategoryClassifier
         var bestScore = 0;
         var bestTerm = string.Empty;
 
-        foreach (var rule in Rules)
+        foreach (var rule in NormalizedRules)
         {
             var score = 0;
             var matched = string.Empty;
-            foreach (var rawTerm in rule.Terms)
+            foreach (var term in rule.Terms)
             {
-                var term = Normalize(rawTerm);
                 if (term.Length == 0) continue;
 
                 var hit = 0;
@@ -148,7 +157,7 @@ public sealed class ModCategoryClassifier
                 if (hit > 0)
                 {
                     score += hit;
-                    if (matched.Length == 0) matched = rawTerm;
+                    if (matched.Length == 0) matched = term;
                 }
             }
 

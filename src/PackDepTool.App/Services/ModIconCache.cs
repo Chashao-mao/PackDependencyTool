@@ -8,6 +8,9 @@ public static class ModIconCache
 {
     private static readonly Dictionary<string, Bitmap?> Cache = new(StringComparer.Ordinal);
 
+    /// <summary>Drops decoded icons when a different pack is opened.</summary>
+    public static void Clear() => Cache.Clear();
+
     public static Bitmap? Get(ModNode node)
     {
         var key = $"{node.Id}|{node.Version}|{node.IconData?.Length ?? 0}|{node.IconUrl}";

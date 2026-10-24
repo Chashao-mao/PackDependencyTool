@@ -230,8 +230,12 @@
                         ToolTip.Tip="在列表和依赖图中显示未安装的必需依赖；缺失节点相关连线为红虚线" />
               <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
                         IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
-                        IsEnabled="{Binding !IsBusy}"
-                        ToolTip.Tip="只显示有可用更新的模组；首次勾选会联网检查，需要一点时间" />
+                        IsEnabled="{Binding HasUpdateCheck}"
+                        ToolTip.Tip="先点击「检查更新」，再筛选有可用更新的模组" />
+              <Button Grid.Row="3" Grid.Column="1" Content="检查更新"
+                      Command="{Binding CheckUpdatesCommand}"
+                      IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24"
+                      ToolTip.Tip="只检查已知项目；批量哈希匹配项目，不会为每个模组单独搜索" />
             </Grid>
 
             <TextBlock Text="功能分类" Classes="section" Margin="0,6,0,2" />

@@ -1242,11 +1242,47 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IsCheckingUpdates = true;
         IsProgressIndeterminate = false;
         ProgressValue = 0;
-        ProgressText = "检查可更新模组…";
+        ProgressText = "识别在线项目…";
+        StatusText = "正在匹配模组项目…";
+
+        // Resolve unknown Modrinth projects in one hash batch instead of doing
+        // a search request per mod. Unmatched mods are reported as unknown and
+        // are never turned into one-off search requests.
+        var unknownHashes = nodes
+            .Where(node => string.IsNullOrWhiteSpace(node.ProjectIds.Modrinth) &&
+                           string.IsNullOrWhiteSpace(node.ProjectIds.CurseForge) &&
+                           !string.IsNullOrWhiteSpace(node.Sha1))
+            .Select(node => node.Sha1!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (unknownHashes.Count > 0)
+        {
+            try
+            {
+                var matched = await _services.Modrinth.GetVersionsByHashesAsync(unknownHashes, cts.Token)
+                    .ConfigureAwait(true);
+                foreach (var node in nodes)
+                {
+                    if (string.IsNullOrWhiteSpace(node.ProjectIds.Modrinth) &&
+                        !string.IsNullOrWhiteSpace(node.Sha1) &&
+                        matched.TryGetValue(node.Sha1, out var matchedVersion))
+                    {
+                        node.ProjectIds.Modrinth = matchedVersion.ProjectId;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is ModrinthApiException or HttpRequestException)
+            {
+                // A failed batch must not turn into hundreds of fallback searches.
+                StatusText = $"项目批量匹配失败，继续使用已知项目：{ex.Message}";
+            }
+        }
+
         StatusText = $"正在检查 {nodes.Count} 个模组的更新…";
         var states = new System.Collections.Concurrent.ConcurrentDictionary<string, ModUpdateState>(
             StringComparer.OrdinalIgnoreCase);
         var completed = 0;
+        var unresolved = 0;
         IProgress<(int Done, int Total, string Name)> progress =
             new Progress<(int Done, int Total, string Name)>(value =>
         {
@@ -1261,7 +1297,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 nodes,
                 new ParallelOptions
                 {
-                    MaxDegreeOfParallelism = 3,
+                    MaxDegreeOfParallelism = 5,
                     CancellationToken = cts.Token,
                 },
                 async (node, token) =>
@@ -1270,10 +1306,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     progress.Report((done, nodes.Count, node.Name));
                     try
                     {
-                        var project = await _services.Resolver.ResolveAsync(node, token).ConfigureAwait(false);
+                        DownloadProject? project = null;
+                        if (!string.IsNullOrWhiteSpace(node.ProjectIds.Modrinth))
+                        {
+                            project = new DownloadProject
+                            {
+                                Source = DownloadSource.Modrinth,
+                                Type = DownloadProjectType.Mod,
+                                ProjectId = node.ProjectIds.Modrinth,
+                                Name = node.Name,
+                                Slug = node.Slug,
+                            };
+                        }
+                        else if (!string.IsNullOrWhiteSpace(node.ProjectIds.CurseForge))
+                        {
+                            project = new DownloadProject
+                            {
+                                Source = DownloadSource.CurseForge,
+                                Type = DownloadProjectType.Mod,
+                                ProjectId = node.ProjectIds.CurseForge,
+                                Name = node.Name,
+                                Slug = node.Slug,
+                            };
+                        }
+
                         if (project is null)
                         {
-                            states[node.Id] = new ModUpdateState(false, null, "未找到在线项目");
+                            Interlocked.Increment(ref unresolved);
+                            states[node.Id] = new ModUpdateState(false, null, "未识别项目，需先联网补全");
                             return;
                         }
 
@@ -1325,7 +1385,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasUpdateCheck = true;
             RefreshView();
             var updatable = _updateStates.Values.Count(state => state.Available);
-            StatusText = $"更新检查完成：{updatable} 个可更新";
+            StatusText = unresolved > 0
+                ? $"更新检查完成：{updatable} 个可更新，{unresolved} 个未识别项目（可先联网补全）"
+                : $"更新检查完成：{updatable} 个可更新";
         }
         catch (OperationCanceledException)
         {
@@ -2174,6 +2236,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             var scan = await _services.Scanner.ScanAsync(PackPath, progress, cts.Token);
             _scanResult = scan;
+            ModIconCache.Clear();
             _iconsPrimed = false;
             _updateStates.Clear();
             HasUpdateCheck = false;
@@ -3691,8 +3754,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnOnlyUpdatableChanged(bool value)
     {
-        if (value && !HasUpdateCheck && !IsCheckingUpdates && !IsBusy)
-            _ = CheckUpdatesAsync();
+        if (value && !HasUpdateCheck)
+            StatusText = "请先点击「检查更新」，再筛选可更新模组";
         RefreshView();
     }
 
