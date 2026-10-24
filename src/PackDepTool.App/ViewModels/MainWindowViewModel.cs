@@ -161,6 +161,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasDependencyRows;
     [ObservableProperty] private bool _hasMissingDependencies;
     [ObservableProperty] private bool _canDisableSelected;
+    [ObservableProperty] private bool _canDeleteSelected;
     [ObservableProperty] private bool _canDownloadOptional;
     [ObservableProperty] private bool _hasHistory;
     [ObservableProperty] private HistoryEntryItem? _selectedHistoryEntry;
@@ -1494,6 +1495,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanOpenModrinth = false;
         CanOpenMcmod = false;
         CanDisableSelected = false;
+        CanDeleteSelected = false;
         CanDownloadOptional = false;
         DetailTitle = "未选择";
         DetailSubtitle = "在图中点选节点或关系查看详情";
@@ -1533,6 +1535,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanOpenModrinth = false;
         CanOpenMcmod = false;
         CanDisableSelected = false;
+        CanDeleteSelected = false;
         CanDownloadOptional = false;
         DetailTitle = $"已选择 {nodeIds.Count} 个模组";
         DetailSubtitle = "框选结果 · 在左侧列表或图中选择单个节点查看详情";
@@ -1578,6 +1581,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanOpenModrinth = true;
         CanOpenMcmod = true;
         CanDisableSelected = HasLocalJar(node);
+        CanDeleteSelected = HasLocalJar(node);
         CanDownloadOptional = node.IsSynthetic && (node.IsOptionalDependency || node.IsRecommendedDependency);
 
         var displayName = !string.IsNullOrWhiteSpace(node.NameZh)
@@ -1760,6 +1764,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanOpenModrinth = false;
         CanOpenMcmod = false;
         CanDisableSelected = false;
+        CanDeleteSelected = false;
         CanDownloadOptional = false;
 
         var from = _graph?.FindNode(edge.From);
@@ -2003,6 +2008,38 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task DeleteSelectedModAsync()
+    {
+        if (_scanResult is null || _selectedNodeId is null || _graph is null) return;
+        var node = _graph.FindNode(_selectedNodeId);
+        var path = node is null ? null : _services.ModFiles.ResolveLocalFile(node, _scanResult.RootPath);
+        if (node is null || path is null || !path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = "当前模组没有可删除的本地 JAR。";
+            return;
+        }
+
+        if (!await _dialogs.ConfirmAsync(
+                "永久删除模组",
+                $"永久删除 {node.Name}（{node.Id}）？{Environment.NewLine}{Environment.NewLine}" +
+                "文件会直接从 mods 目录删除，无法恢复。",
+                "永久删除"))
+            return;
+
+        try
+        {
+            File.Delete(path);
+            StatusText = $"已永久删除 {Path.GetFileName(path)}，正在重新扫描…";
+            await ScanAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"删除失败：{ex.Message}";
+            await _dialogs.ShowMessageAsync("删除失败", ex.Message);
+        }
+    }
+
+    [RelayCommand]
     private async Task OpenDisabledModsAsync()
     {
         if (_scanResult is null)
@@ -2024,9 +2061,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (result.Action == DisabledModsAction.Delete)
         {
             if (!await _dialogs.ConfirmAsync(
-                    "删除已禁用模组",
-                    $"将 {result.Items.Count} 个文件移到 .packdep-trash，不会永久删除。继续？",
-                    "移到回收目录"))
+                    "永久删除已禁用模组",
+                    $"永久删除 {result.Items.Count} 个文件？{Environment.NewLine}{Environment.NewLine}" +
+                    "文件会直接从 mods 目录删除，无法恢复。",
+                    "永久删除"))
                 return;
 
             var deleted = 0;
@@ -2035,8 +2073,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 try
                 {
-                    _services.ModFiles.MoveFileToTrash(
-                        item.Model.FullPath, _scanResult.RootPath);
+                    File.Delete(item.Model.FullPath);
                     deleted++;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
@@ -2045,7 +2082,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 }
             }
 
-            StatusText = $"已移走 {deleted} 个禁用模组，正在重新扫描…";
+            StatusText = $"已永久删除 {deleted} 个禁用模组，正在重新扫描…";
             if (deleteFailures.Count > 0)
                 await _dialogs.ShowMessageAsync("部分模组未删除",
                     string.Join(Environment.NewLine, deleteFailures.Take(12)));

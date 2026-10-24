@@ -5,11 +5,11 @@
         x:Class="PackDepTool.App.Views.GameSetupDialog"
         x:DataType="vm:GameSetupViewModel"
         Title="下载游戏本体与加载器"
-        Width="780"
-        Height="640"
-        MinWidth="700"
-        MinHeight="580"
-        CanResize="False"
+        Width="840"
+        Height="720"
+        MinWidth="720"
+        MinHeight="620"
+        CanResize="True"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource PanelBackground}">
@@ -18,14 +18,14 @@
     <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,14">
       <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
               HorizontalAlignment="Left" Margin="0,0,0,7" />
-      <TextBlock Text="下载游戏本体与加载器" Classes="title" FontSize="18" />
-      <TextBlock Text="只下载 Minecraft 原版文件并安装加载器，不登录、不启动游戏。每个加载器版本会建一个独立实例目录，方便分别放模组对比依赖。"
+      <TextBlock Text="下载游戏本体与加载器" Classes="title" FontSize="19" />
+      <TextBlock Text="选择版本、加载器和实例名称；可复用已有游戏目录。此窗口只准备文件，不登录、不启动游戏。"
                  Classes="caption" TextWrapping="Wrap" />
     </StackPanel>
 
     <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
             BorderThickness="1" CornerRadius="12" Padding="16">
-      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="10">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="12">
       <Grid Grid.Row="0" ColumnDefinitions="110,*,Auto" ColumnSpacing="8">
         <TextBlock Text="实例保存目录" Classes="caption" VerticalAlignment="Center" />
         <TextBox Grid.Column="1" Text="{Binding TargetDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Height="32" />
@@ -120,7 +120,10 @@
       <TextBlock Text="本功能不包含账号登录、Java 下载或启动游戏；请用启动器启动已安装的环境。"
                  Classes="caption" VerticalAlignment="Center" TextWrapping="Wrap" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-        <Button Content="关闭" Command="{Binding CancelCommand}" />
+        <Button Content="取消安装" Command="{Binding CancelInstallCommand}"
+                IsVisible="{Binding IsInstalling}" />
+        <Button Content="关闭" Command="{Binding CancelCommand}"
+                IsEnabled="{Binding !IsInstalling}" />
         <Button Content="{Binding InstallButtonText}" Classes="accent"
                 Command="{Binding InstallCommand}" IsEnabled="{Binding !IsInstalling}" />
       </StackPanel>

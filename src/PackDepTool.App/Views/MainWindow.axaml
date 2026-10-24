@@ -818,6 +818,9 @@
                             IsVisible="{Binding CanDownloadOptional}" Margin="0,0,6,4" />
                     <Button Content="禁用模组" Command="{Binding DisableSelectedModCommand}"
                             IsVisible="{Binding CanDisableSelected}" Margin="0,0,6,4" />
+                    <Button Classes="danger" Content="永久删除"
+                            Command="{Binding DeleteSelectedModCommand}"
+                            IsVisible="{Binding CanDeleteSelected}" Margin="0,0,6,4" />
                     <Button Content="定位 JAR" Command="{Binding OpenSelectedFileCommand}"
                             IsVisible="{Binding CanOpenFile}" Margin="0,0,6,4" />
                   </WrapPanel>

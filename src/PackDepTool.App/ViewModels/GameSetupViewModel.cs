@@ -22,6 +22,7 @@ public sealed partial class GameSetupViewModel : ObservableObject
     private List<MinecraftVersionInfo> _allVersions = [];
     private int _loaderLoadId;
     private bool _suppressSave;
+    private CancellationTokenSource? _installCts;
 
     public GameSetupViewModel(
         MinecraftInstallService installer,
@@ -292,10 +293,18 @@ public sealed partial class GameSetupViewModel : ObservableObject
 
         try
         {
-            var result = await _installer.InstallAsync(request, progress, CancellationToken.None);
+            _installCts?.Cancel();
+            _installCts?.Dispose();
+            _installCts = new CancellationTokenSource();
+            var result = await _installer.InstallAsync(request, progress, _installCts.Token);
             StatusText = $"安装完成：{result.InstanceDirectory}";
             detail.Finish(true, $"安装完成：{result.InstanceDirectory}");
             Completed?.Invoke(result);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "已取消安装。";
+            detail.Finish(false, "已取消");
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or
                                        InvalidOperationException or TimeoutException or UnauthorizedAccessException)
@@ -308,7 +317,17 @@ public sealed partial class GameSetupViewModel : ObservableObject
             IsInstalling = false;
             IsBusy = false;
             ProgressText = string.Empty;
+            _installCts?.Dispose();
+            _installCts = null;
         }
+    }
+
+    [RelayCommand]
+    private void CancelInstall()
+    {
+        if (!IsInstalling) return;
+        StatusText = "正在取消安装…";
+        _installCts?.Cancel();
     }
 
     [RelayCommand]
