@@ -1,0 +1,102 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        xmlns:net="using:PackDepTool.Core.Net"
+        x:Class="PackDepTool.App.Views.LoaderSwitchDialog"
+        x:DataType="vm:LoaderSwitchViewModel"
+        Title="切换加载器"
+        Width="760"
+        Height="560"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="22">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,14">
+      <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
+              HorizontalAlignment="Left" Margin="0,0,0,7" />
+      <TextBlock Text="切换加载器" Classes="title" FontSize="18" />
+      <TextBlock Text="给已安装实例换 Fabric / Quilt / Forge / NeoForge 版本。保留 mods、config、手动关系与分析规则；也可直接扫描启动器目录。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+            BorderThickness="1" CornerRadius="12" Padding="16">
+      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" RowSpacing="10">
+      <Grid Grid.Row="0" ColumnDefinitions="110,*,Auto" ColumnSpacing="8">
+        <TextBlock Text="实例目录" Classes="caption" VerticalAlignment="Center" />
+        <TextBox Grid.Column="1" Text="{Binding InstanceDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Height="32" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+          <Button Content="浏览…" Command="{Binding BrowseInstanceCommand}" Height="32" />
+          <Button Content="扫描启动器目录" Command="{Binding ScanPclDirectoriesCommand}" Height="32" />
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Grid.Row="1" Text="{Binding CurrentInfo}" FontSize="11"
+                 Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+
+      <Grid Grid.Row="2" ColumnDefinitions="110,*" ColumnSpacing="8">
+        <TextBlock Text="目标加载器" Classes="caption" VerticalAlignment="Center" />
+        <ComboBox Grid.Column="1" ItemsSource="{Binding Loaders}"
+                  SelectedItem="{Binding SelectedLoader, Mode=TwoWay}" Height="32"
+                  PlaceholderText="选择目标加载器" HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:GameLoaderOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </Grid>
+
+      <Grid Grid.Row="3" ColumnDefinitions="110,*,150,Auto" ColumnSpacing="8">
+        <TextBlock Text="加载器版本" Classes="caption" VerticalAlignment="Center" />
+        <ComboBox Grid.Column="1" ItemsSource="{Binding LoaderVersions}"
+                  SelectedItem="{Binding SelectedLoaderVersion, Mode=TwoWay}" Height="32"
+                  MaxDropDownHeight="320" PlaceholderText="选择加载器版本"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="net:LoaderVersionInfo">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBox Grid.Column="2" Text="{Binding LoaderVersionText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Height="32"
+                 Watermark="手动版本" />
+        <Button Grid.Column="3" Content="刷新" Command="{Binding RefreshLoaderVersionsCommand}" Height="32" />
+      </Grid>
+
+      <Grid Grid.Row="4" ColumnDefinitions="110,*,Auto" ColumnSpacing="8" IsVisible="{Binding ShowJava}">
+        <TextBlock Text="Java 路径" Classes="caption" VerticalAlignment="Center" />
+        <TextBox Grid.Column="1" Text="{Binding JavaPath}" Height="32"
+                 Watermark="Forge / NeoForge 安装器需要 java.exe" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+          <Button Content="自动检测" Command="{Binding DetectJavaCommand}" Height="32" />
+          <Button Content="浏览…" Command="{Binding BrowseJavaCommand}" Height="32" />
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Grid.Row="5" Text="已安装的旧加载器版本文件不会删除；新加载器版本会追加到 versions/，mmc-pack.json 会指向新版本。"
+                 Classes="caption" TextWrapping="Wrap" />
+
+      <StackPanel Grid.Row="6" Spacing="6">
+        <ProgressBar IsVisible="{Binding IsBusy}" Value="{Binding ProgressValue}" Maximum="1" Height="5" />
+        <TextBlock Text="{Binding StatusText}" FontSize="10.5" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextSecondary}" />
+        <TextBlock Text="{Binding ProgressText}" Classes="caption" IsVisible="{Binding IsBusy}"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <TextBlock Text="切换后本工具会自动重扫；不兼容的模组会在问题报告中标出。"
+                 Classes="caption" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="关闭" Command="{Binding CancelCommand}" />
+        <Button Content="切换加载器" Classes="accent" Command="{Binding SwitchCommand}"
+                IsEnabled="{Binding !IsInstalling}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

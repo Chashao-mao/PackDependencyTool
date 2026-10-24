@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PackDepTool.App.Views.TextInputDialog"
+        Title="输入"
+        Width="480"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto" Margin="22" RowSpacing="10">
+    <TextBlock x:Name="TitleText" Classes="title" TextWrapping="Wrap" />
+    <TextBlock x:Name="MessageText" Grid.Row="1" Classes="caption" TextWrapping="Wrap" />
+    <StackPanel Grid.Row="2" Spacing="5">
+      <TextBlock x:Name="LabelText" Classes="section" />
+      <TextBox x:Name="ValueBox" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
+      <Button x:Name="CancelButton" Content="取消" />
+      <Button x:Name="OkButton" Content="保存" Classes="accent" />
+    </StackPanel>
+  </Grid>
+</Window>

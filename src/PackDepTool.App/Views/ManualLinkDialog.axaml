@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.ManualLinkDialog"
+        x:DataType="vm:ManualLinkDialogViewModel"
+        Title="手动关系"
+        Width="540"
+        Height="560"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="22">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+      <TextBlock Text="{Binding TitleText}" Classes="title" />
+      <TextBlock Text="手动关系优先级最高，会自动覆盖同一对模组之间的自动解析结果。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1">
+      <Grid ColumnDefinitions="96,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" RowSpacing="12">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="起点 modId" Classes="muted" VerticalAlignment="Center" />
+        <AutoCompleteBox Grid.Row="0" Grid.Column="1"
+                         Text="{Binding From, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ItemsSource="{Binding AvailableModIds}"
+                         FilterMode="Contains"
+                         MinimumPrefixLength="0"
+                         Watermark="依赖方 modId" />
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="终点 modId" Classes="muted" VerticalAlignment="Center" />
+        <AutoCompleteBox Grid.Row="1" Grid.Column="1"
+                         Text="{Binding To, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ItemsSource="{Binding AvailableModIds}"
+                         FilterMode="Contains"
+                         MinimumPrefixLength="0"
+                         Watermark="被依赖方 modId" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="关系类型" Classes="muted" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="2" Grid.Column="1"
+                  ItemsSource="{Binding TypeOptions}"
+                  SelectedItem="{Binding SelectedType}"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:EdgeTypeOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="版本范围" Classes="muted" VerticalAlignment="Center" />
+        <TextBox Grid.Row="3" Grid.Column="1"
+                 Text="{Binding VersionRange, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Watermark="例如 [1.20,1.21) 或 &gt;=1.0（可留空）" />
+
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="适用侧" Classes="muted" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="4" Grid.Column="1"
+                  ItemsSource="{Binding SideOptions}"
+                  SelectedItem="{Binding SelectedSide}"
+                  HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:SideOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="备注" Classes="muted" VerticalAlignment="Top" Margin="0,8,0,0" />
+        <TextBox Grid.Row="5" Grid.Column="1"
+                 Text="{Binding Note, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 MinHeight="88"
+                 Watermark="说明为什么需要这条关系（可选）" />
+
+        <TextBlock Grid.Row="6" Grid.Column="1"
+                   Text="{Binding ErrorMessage}"
+                   Foreground="{DynamicResource Danger}"
+                   FontSize="11.5"
+                   TextWrapping="Wrap" />
+      </Grid>
+    </ScrollViewer>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,18,0,0">
+      <TextBlock Text="依赖方 → 被依赖方" Classes="caption" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="取消" Command="{Binding CancelCommand}" Margin="0,0,8,0" />
+      <Button Grid.Column="2" Content="保存" Classes="accent" Command="{Binding SaveCommand}" />
+    </Grid>
+  </Grid>
+</Window>

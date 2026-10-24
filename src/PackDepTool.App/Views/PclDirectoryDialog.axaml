@@ -1,0 +1,55 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        xmlns:scan="using:PackDepTool.Core.Scanning"
+        x:Class="PackDepTool.App.Views.PclDirectoryDialog"
+        x:DataType="vm:PclDirectoryPickerViewModel"
+        Title="选择启动器游戏目录"
+        Width="760"
+        Height="540"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="22">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
+      <TextBlock Text="选择启动器游戏目录" Classes="title" FontSize="18" />
+      <TextBlock Text="扫描到以下启动器游戏目录。选中后新下载的游戏/加载器会直接装进去，复用已有 libraries/assets/versions，启动器也能直接读取。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ListBox Grid.Row="1" ItemsSource="{Binding Candidates}"
+             SelectedItem="{Binding Selected, Mode=TwoWay}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="scan:PclGameDirectoryCandidate">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,3">
+            <StackPanel Spacing="2">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" />
+                <Border Background="{DynamicResource PanelAlt}" CornerRadius="4" Padding="5,1"
+                        IsVisible="{Binding IsSelected}">
+                  <TextBlock Text="启动器当前" FontSize="9" Foreground="{DynamicResource AccentColor}" />
+                </Border>
+              </StackPanel>
+              <TextBlock Text="{Binding Path}" FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding Detail}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding Source}" FontSize="9.5"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="也可以直接点「浏览」手动选择带 versions 的 .minecraft 目录。"
+                 Classes="caption" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="取消" Command="{Binding CancelCommand}" />
+        <Button Content="使用此目录" Classes="accent" Command="{Binding UseCommand}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

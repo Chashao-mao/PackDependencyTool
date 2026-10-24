@@ -1,0 +1,82 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.LocalRuleDialog"
+        x:DataType="vm:LocalRuleDialogViewModel"
+        Title="本地规则"
+        Width="560"
+        Height="620"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="22">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,14">
+      <TextBlock Text="{Binding TitleText}" Classes="title" />
+      <TextBlock Text="本地规则只影响分析结果，不会修改整合包中的任何文件。优先级高的规则优先匹配。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+      <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="11">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="规则类型" Classes="muted" VerticalAlignment="Center" />
+        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding TypeOptions}"
+                  SelectedItem="{Binding SelectedType, Mode=TwoWay}" HorizontalAlignment="Stretch">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:LocalRuleTypeOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Hint}" Classes="caption"
+                   TextWrapping="Wrap" Margin="0,0,0,2" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding FromLabel}" Classes="muted" VerticalAlignment="Center" />
+        <AutoCompleteBox Grid.Row="2" Grid.Column="1"
+                         Text="{Binding From, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ItemsSource="{Binding AvailableModIds}"
+                         FilterMode="Contains" MinimumPrefixLength="0"
+                         Watermark="modId" />
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding ToLabel}" Classes="muted"
+                   VerticalAlignment="Center" IsVisible="{Binding ShowTo}" />
+        <AutoCompleteBox Grid.Row="3" Grid.Column="1"
+                         Text="{Binding To, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         ItemsSource="{Binding AvailableModIds}"
+                         FilterMode="Contains" MinimumPrefixLength="0"
+                         Watermark="modId"
+                         IsVisible="{Binding ShowTo}" />
+
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding ValueLabel}" Classes="muted"
+                   VerticalAlignment="Center" IsVisible="{Binding ShowValue}" />
+        <TextBox Grid.Row="4" Grid.Column="1"
+                 Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Watermark="{Binding ValueHint}"
+                 IsVisible="{Binding ShowValue}" />
+
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="优先级" Classes="muted" VerticalAlignment="Center" />
+        <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding PriorityText, Mode=TwoWay}" Watermark="0" />
+
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="备注" Classes="muted" VerticalAlignment="Top" Margin="0,8,0,0" />
+        <Grid Grid.Row="6" Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="8">
+          <TextBox Text="{Binding Note, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                   AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70"
+                   Watermark="说明为什么需要这条规则（可选）" />
+          <CheckBox Grid.Row="1" IsChecked="{Binding Enabled, Mode=TwoWay}" Content="启用这条规则" />
+        </Grid>
+      </Grid>
+    </ScrollViewer>
+
+    <Grid Grid.Row="2" RowDefinitions="Auto,Auto" Margin="0,14,0,0">
+      <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource Danger}"
+                 FontSize="11.5" TextWrapping="Wrap" />
+      <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,10,0,0">
+        <TextBlock Text="本地规则 · 仅影响分析" Classes="caption" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="取消" Command="{Binding CancelCommand}" Margin="0,0,8,0" />
+        <Button Grid.Column="2" Content="保存" Classes="accent" Command="{Binding SaveCommand}" />
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

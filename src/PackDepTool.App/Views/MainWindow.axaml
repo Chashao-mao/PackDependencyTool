@@ -1,0 +1,1036 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        xmlns:controls="using:PackDepTool.App.Controls"
+        x:Class="PackDepTool.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Pack Dependency Tool"
+        Icon="avares://PackDependencyTool/Assets/app.png"
+        Width="1440"
+        Height="900"
+        MinWidth="1080"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBackground}">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding PickFolderCommand}" />
+    <KeyBinding Gesture="F5" Command="{Binding RescanCommand}" />
+    <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportJsonCommand}" />
+    <KeyBinding Gesture="Ctrl+R" Command="{Binding RelayoutCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding OpenSettingsCommand}" />
+  </Window.KeyBindings>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- ============================ Header ============================ -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource HeaderBackground}"
+            BorderBrush="{DynamicResource CardBorder}"
+            BorderThickness="0,0,0,1"
+            Padding="14,9,14,8">
+      <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <Border Width="30" Height="30" CornerRadius="6" ClipToBounds="True">
+              <Image Source="avares://PackDependencyTool/Assets/app.png" />
+            </Border>
+            <StackPanel VerticalAlignment="Center" Spacing="1">
+              <TextBlock Text="Pack Dependency Tool" FontSize="14" FontWeight="SemiBold" />
+              <TextBlock Text="Minecraft 模组关系管理器" Classes="caption" />
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Content="选择整合包" Command="{Binding PickFolderCommand}" ToolTip.Tip="Ctrl+O" />
+            <Button Content="扫描" Classes="accent" Command="{Binding RescanCommand}" ToolTip.Tip="F5" />
+            <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
+            <Button Content="联网补全" Command="{Binding EnrichCommand}"
+                    ToolTip.Tip="通过 Modrinth / CurseForge 补全项目与依赖信息" />
+            <Button Content="获取内容 ▾" ToolTip.Tip="下载模组 / 整合包，或导入本地整合包">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="下载模组…" Command="{Binding DownloadModsCommand}" />
+                  <MenuItem Header="下载整合包…" Command="{Binding DownloadModpackCommand}" />
+                  <Separator />
+                  <MenuItem Header="导入本地整合包…" Command="{Binding ImportLocalModpackCommand}" />
+                  <Separator />
+                  <MenuItem Header="游戏本体 / 加载器…" Command="{Binding OpenGameSetupCommand}" />
+                  <MenuItem Header="切换加载器…" Command="{Binding OpenLoaderSwitchCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Button Content="导出 ▾">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="JSON 图数据" Command="{Binding ExportJsonCommand}" />
+                  <MenuItem Header="Graphviz DOT" Command="{Binding ExportDotCommand}" />
+                  <MenuItem Header="GraphML" Command="{Binding ExportGraphMlCommand}" />
+                  <MenuItem Header="CSV（节点 + 关系）" Command="{Binding ExportCsvCommand}" />
+                  <Separator />
+                  <MenuItem Header="Markdown 分析报告" Command="{Binding ExportReportCommand}" />
+                  <Separator />
+                  <MenuItem Header="整合包（.mrpack）" Command="{Binding ExportPclPackCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Button Content="更多 ▾">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="整合包工具箱…" Command="{Binding OpenPackToolsCommand}" />
+                  <MenuItem Header="导出模组清单…" Command="{Binding ExportModListCommand}" />
+                  <MenuItem Header="导出缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
+                  <MenuItem Header="导出模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
+                  <Separator />
+                  <MenuItem Header="一键补全依赖" Command="{Binding AutoCompleteDependenciesCommand}"
+                            IsEnabled="{Binding HasMissingDependencies}" />
+                  <MenuItem Header="管理已禁用模组…" Command="{Binding OpenDisabledModsCommand}" />
+                  <Separator />
+                  <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
+                  <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
+                  <Separator />
+                  <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
+                  <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
+                  <Separator />
+                  <MenuItem Header="检查更新" Command="{Binding CheckForUpdatesCommand}"
+                            IsEnabled="{Binding !IsCheckingUpdates}" />
+                  <MenuItem Header="打开更新页" Command="{Binding OpenUpdatePageCommand}" />
+                  <MenuItem Header="打开实例目录" Command="{Binding OpenPackFolderCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
+            <Button Content="面板 ▾" ToolTip.Tip="收起或显示左侧筛选/右侧详情">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
+                  <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+            <Button Content="重新布局" Command="{Binding RelayoutCommand}" ToolTip.Tip="Ctrl+R" />
+            <Button Content="设置" Classes="ghost" Command="{Binding OpenSettingsCommand}"
+                    ToolTip.Tip="Ctrl+Shift+S" />
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+          <Border Classes="chip" HorizontalAlignment="Left" MaxWidth="760">
+            <TextBlock Text="{Binding PackPathDisplay}" FontSize="11" TextTrimming="CharacterEllipsis" />
+          </Border>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
+            <Border Classes="accentChip" VerticalAlignment="Center">
+              <TextBlock Text="{Binding ProfileSummary}" FontSize="11" />
+            </Border>
+            <Border Classes="chip" VerticalAlignment="Center">
+              <TextBlock Text="{Binding CountSummary}" FontSize="11" />
+            </Border>
+            <Border Classes="chip" IsVisible="{Binding IsOffline}">
+              <TextBlock Text="离线模式" FontSize="11" Foreground="{DynamicResource Warning}" />
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- ============================ Main content ============================ -->
+    <Grid Grid.Row="1" x:Name="MainContentGrid" ColumnDefinitions="300,6,*,6,400" Margin="10,10,10,6">
+
+      <!-- Left: search + filters + issue/mod navigator -->
+      <Border Grid.Column="0" x:Name="LeftPanelBorder" Classes="card" Padding="12" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
+          <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="筛选与问题" Classes="section" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Content="«" Click="ToggleLeftPanel_Click"
+                      FontSize="11" Padding="6,1" MinHeight="22"
+                      ToolTip.Tip="收起左栏（可从顶部「面板」恢复）" />
+            </Grid>
+            <TextBox x:Name="SearchBox"
+                     Text="{Binding SearchText, Mode=TwoWay}"
+                     Watermark="搜索名称 / modId / slug（Ctrl+F）"
+                     ToolTip.Tip="空格分隔多个条件，多个条件同时满足；前缀 - 或 ! 表示排除。例如：sodium -bad" />
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+              <TextBlock Text="最近" Classes="caption" VerticalAlignment="Center" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding RecentPacks}"
+                        SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch" FontSize="11" Height="30"
+                        PlaceholderText="选择最近整合包">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Text="{Binding}" FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </Grid>
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="1" x:Name="FilterScrollViewer" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled" MaxHeight="350">
+          <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                  BorderThickness="1" CornerRadius="6" Padding="9,7">
+            <StackPanel Spacing="5">
+              <TextBlock Text="关系类型" Classes="section" />
+            <WrapPanel>
+              <CheckBox Content="必需" IsChecked="{Binding ShowRequires, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="不兼容" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="可选" IsChecked="{Binding ShowOptional, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="推荐" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
+            </WrapPanel>
+
+            <TextBlock Text="加载器" Classes="section" Margin="0,4,0,0" />
+            <WrapPanel>
+              <CheckBox Content="Fabric" IsChecked="{Binding ShowFabric, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="Quilt" IsChecked="{Binding ShowQuilt, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="Forge" IsChecked="{Binding ShowForge, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}" Margin="0,0,12,0" />
+              <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}" />
+            </WrapPanel>
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="2"
+                  Margin="0,2,0,0">
+              <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
+              <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
+                        IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
+              <CheckBox Grid.Row="1" Content="展开内嵌" FontSize="10.5"
+                        IsChecked="{Binding ShowEmbedded, Mode=TwoWay}"
+                        ToolTip.Tip="展开父模组下所有内嵌 JAR；依赖图始终不铺开内嵌节点" />
+              <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
+                        IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}"
+                        ToolTip.Tip="勾选后才显示底部未安装的可选/推荐依赖" />
+            </Grid>
+
+            <TextBlock Text="功能分类" Classes="section" Margin="0,6,0,2" />
+            <ItemsControl ItemsSource="{Binding CategoryChips}" Margin="0,0,0,3">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CategoryChipItem">
+                  <Button Classes="categoryChip" Classes.active="{Binding IsActive}"
+                          Content="{Binding Display}" Command="{Binding SelectCommand}"
+                          Margin="0,0,4,4" ToolTip.Tip="按功能分类筛选" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="4" Margin="0,3,0,0">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+                <ComboBox ItemsSource="{Binding StatusFilters}"
+                          SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}"
+                          FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:StatusFilterOption">
+                      <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="1" Content="重置" Command="{Binding ResetFiltersCommand}"
+                        FontSize="10" Padding="8,2" MinHeight="28"
+                        ToolTip.Tip="清除搜索、状态、加载器与关系筛选" />
+              </Grid>
+              <ComboBox Grid.Row="1" ItemsSource="{Binding SortOptions}"
+                        SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
+                        FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ModSortOption">
+                    <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+
+            </Grid>
+            </StackPanel>
+          </Border>
+          </ScrollViewer>
+
+          <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" Margin="0,2,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="1">
+                <TextBlock Text="问题速览" Classes="section" IsVisible="{Binding IsListView}" />
+                <TextBlock Text="模组列表" Classes="section" IsVisible="{Binding IsGraphView}" />
+                <TextBlock Text="{Binding ProblemSummary}" FontSize="9.5"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                           IsVisible="{Binding IsListView}" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="一键补全" FontSize="10.5" Padding="8,2" MinHeight="24"
+                      Command="{Binding AutoCompleteDependenciesCommand}"
+                      IsEnabled="{Binding HasMissingDependencies}"
+                      ToolTip.Tip="自动搜索并下载缺失的必需依赖（仅兼容版本）" />
+            </Grid>
+
+            <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="5,3"
+                    IsVisible="{Binding HasGraph}" Margin="0,2,0,3">
+              <StackPanel Spacing="3">
+                <Grid ColumnDefinitions="Auto,*">
+                  <Button Content="全选" Command="{Binding SelectAllVisibleCommand}"
+                          FontSize="10.5" Padding="5,1" MinHeight="22"
+                          ToolTip.Tip="勾选 / 取消当前列表的全部模组" />
+                  <TextBlock Grid.Column="1" Text="{Binding CheckedCount, StringFormat='已选 {0}'}"
+                             FontSize="10.5" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
+                             HorizontalAlignment="Right" />
+                </Grid>
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
+                  <Button Grid.Column="0" Content="下载" Command="{Binding BatchDownloadCommand}" IsEnabled="{Binding HasChecked}"
+                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
+                          ToolTip.Tip="批量下载选中的未安装模组" />
+                  <Button Grid.Column="1" Content="升级" Command="{Binding BatchUpgradeCommand}" IsEnabled="{Binding HasChecked}"
+                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
+                          ToolTip.Tip="批量升级选中的已安装模组" />
+                  <Button Grid.Column="2" Content="禁用" Command="{Binding BatchDisableCommand}" IsEnabled="{Binding HasChecked}"
+                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
+                          ToolTip.Tip="批量禁用选中模组（.jar.disabled）" />
+                  <Button Grid.Column="3" Classes="danger" Content="删除" Command="{Binding BatchDeleteCommand}" IsEnabled="{Binding HasChecked}"
+                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
+                          ToolTip.Tip="批量移到 .packdep-trash" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <ListBox Grid.Row="2" ItemsSource="{Binding Issues}"
+                     SelectedItem="{Binding SelectedIssue, Mode=TwoWay}"
+                     IsVisible="{Binding IsListView}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:IssueItemViewModel">
+                  <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Message}">
+                    <Border Width="3" CornerRadius="2" Background="{Binding SeverityBrush}" Margin="0,1,7,1" />
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Message}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
+                                 TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Location}" FontSize="10.5" Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ListBox Grid.Row="2" ItemsSource="{Binding NodeItems}"
+                     SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
+                     IsVisible="{Binding IsGraphView}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:NodeItemViewModel">
+                  <Grid ColumnDefinitions="Auto,34,*,Auto" ColumnSpacing="2" ToolTip.Tip="{Binding Tooltip}">
+                    <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                              VerticalAlignment="Center" MinWidth="0" Margin="0,0,2,0" />
+                    <Grid Grid.Column="1" Width="30" Height="30" VerticalAlignment="Center" Margin="0,0,7,0">
+                      <Border Width="26" Height="26" CornerRadius="5" Background="{DynamicResource PanelAlt}"
+                              ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <Grid>
+                          <TextBlock Text="{Binding Initial}" FontSize="11" FontWeight="SemiBold"
+                                     Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                          <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                        </Grid>
+                      </Border>
+                      <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" HorizontalAlignment="Right"
+                               VerticalAlignment="Bottom" Stroke="{DynamicResource PanelBackground}" StrokeThickness="1.5" />
+                    </Grid>
+                    <StackPanel Grid.Column="2" Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Subtitle}" FontSize="10.5"
+                                 Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Border Grid.Column="3" Classes="chip" Padding="6,1" VerticalAlignment="Center" Margin="6,0,0,0">
+                      <TextBlock Text="{Binding LoaderText}" FontSize="10.5" />
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="1" x:Name="LeftPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+
+      <!-- Center: structured mod list (default) or dependency graph -->
+      <Border Grid.Column="2" Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <Border Grid.Row="0" Background="{DynamicResource PanelBackground}"
+                  BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="12,6">
+            <Grid ColumnDefinitions="*,Auto">
+              <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" VerticalAlignment="Center"
+                    ToolTip.Tip="单击查看详情 · 双击定位 · 右键快捷连接">
+                <TextBlock Text="模组清单" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsListView}" />
+                <TextBlock Text="依赖图" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsGraphView}" />
+                <Border Grid.Column="1" Classes="chip" Padding="7,2">
+                  <TextBlock Text="{Binding CountSummary}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}" />
+                </Border>
+                <Grid Grid.Column="2">
+                  <TextBlock Text="单击详情 · 双击定位"
+                             Classes="caption" IsVisible="{Binding !IsRelationFocus}"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                             Margin="2,0,8,0" />
+                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRelationFocus}"
+                              VerticalAlignment="Center">
+                    <TextBlock Text="{Binding RelationFocusTitle}" FontSize="10.5"
+                               Foreground="{DynamicResource Accent}" TextTrimming="CharacterEllipsis"
+                               MaxWidth="260" VerticalAlignment="Center" />
+                    <Button Content="显示全部" Command="{Binding ClearRelationFocusCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="22" />
+                  </StackPanel>
+                </Grid>
+              </Grid>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <TextBlock Text="视图" Classes="caption" FontSize="10.5" VerticalAlignment="Center" />
+                <ComboBox ItemsSource="{Binding ViewOptions}" SelectedItem="{Binding SelectedViewOption, Mode=TwoWay}"
+                          Width="126" Height="30" FontSize="10.5">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ViewOption">
+                      <TextBlock Text="{Binding Label}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <CheckBox Content="简化连线" IsChecked="{Binding FocusEdgesOnly, Mode=TwoWay}"
+                          IsVisible="{Binding IsGraphView}" FontSize="10" VerticalAlignment="Center"
+                          ToolTip.Tip="折叠库/前置节点的密集入线，选中或悬停时展开相关连线" />
+                <TextBlock Text="连线" Classes="caption" FontSize="10.5" VerticalAlignment="Center"
+                           IsVisible="{Binding IsListView}" />
+                <ComboBox ItemsSource="{Binding ConnectionLineOptions}"
+                          SelectedItem="{Binding SelectedConnectionLineMode, Mode=TwoWay}"
+                          IsVisible="{Binding IsListView}" Width="140" Height="30" FontSize="10.5"
+                          ToolTip.Tip="依赖轨道显示哪些关系">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ConnectionLineOption">
+                      <TextBlock Text="{Binding Label}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button x:Name="RailManagerButton" Content="线" IsVisible="{Binding IsListView}"
+                        Click="RailManager_Click" FontSize="10.5" Padding="7,3" MinHeight="28"
+                        ToolTip.Tip="管理依赖线：隐藏 / 仅显示 / 恢复" />
+                <Button Content="工具" Command="{Binding OpenPackToolsCommand}"
+                        FontSize="10.5" Padding="9,3" MinHeight="28"
+                        ToolTip.Tip="整合包检查、模组清单导出与重复文件清理" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1">
+            <!-- Structured mod list -->
+            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto" Background="{DynamicResource GraphBackground}">
+              <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                      BorderThickness="0,0,0,1" Padding="12,6">
+                <Grid ColumnDefinitions="26,36,46,48,*,100,104,150,110">
+                  <TextBlock Text="选" Grid.Column="0" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="#" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="模组" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="5" Text="加载器" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="6" Text="版本" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="7" Text="依赖关系" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="8" Text="状态" Classes="section" VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+
+              <ListBox Grid.Row="1" x:Name="ModuleList" Classes="dense" ItemsSource="{Binding NodeItems}"
+                       SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
+                       DoubleTapped="ModuleList_DoubleTapped"
+                       Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:NodeItemViewModel">
+                    <StackPanel>
+                    <Grid ColumnDefinitions="26,36,46,48,*,100,104,150,110" ToolTip.Tip="{Binding Tooltip}">
+
+                      <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"
+                                MinWidth="0" Margin="0,0,2,0" />
+                      <TextBlock Grid.Column="1" Text="{Binding IndexText}" FontSize="10.5" Foreground="{DynamicResource TextMuted}"
+                                 VerticalAlignment="Center" />
+                      <Grid Grid.Column="3" Width="44" Height="44" VerticalAlignment="Center">
+                        <Border Width="36" Height="36" CornerRadius="7" Background="{DynamicResource PanelAlt}"
+                                ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Center">
+                          <Grid>
+                            <TextBlock Text="{Binding Initial}" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                            <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                          </Grid>
+                        </Border>
+                        <Ellipse Width="9" Height="9" Fill="{Binding StatusBrush}" HorizontalAlignment="Right"
+                                 VerticalAlignment="Bottom" Margin="0,0,1,1"
+                                 Stroke="{DynamicResource GraphBackground}" StrokeThickness="2" />
+                      </Grid>
+                      <StackPanel Grid.Column="4" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Subtitle}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Content="{Binding EmbeddedToggleText}" Command="{Binding ToggleEmbeddedCommand}"
+                                IsVisible="{Binding HasEmbeddedChildren}" FontSize="9.5" Padding="4,0"
+                                MinHeight="20" HorizontalAlignment="Left" Margin="0,1,0,0"
+                                ToolTip.Tip="展开 / 收起这个模组内嵌的 JAR" />
+                      </StackPanel>
+                      <Border Grid.Column="5" Classes="chip" Padding="6,1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding LoaderText}" FontSize="10.5" />
+                      </Border>
+                      <TextBlock Grid.Column="6" Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="7" Text="{Binding DependencySummary}" FontSize="10.5"
+                                 Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
+                                 TextTrimming="CharacterEllipsis" />
+                      <StackPanel Grid.Column="8" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusTextBrush}"
+                                   FontSize="11" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="可选已装" FontSize="9.5"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   IsVisible="{Binding IsInstalledOptionalDependency}" />
+                        <TextBlock Text="{Binding IssueBadgeText}" FontSize="10.5"
+                                   Foreground="{DynamicResource Warning}"
+                                   IsVisible="{Binding HasIssueBadge}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding EmbeddedChildren}"
+                                  IsVisible="{Binding IsEmbeddedExpanded}"
+                                  Margin="108,0,0,4">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NodeItemViewModel">
+                          <Button Classes="embeddedChild" Click="EmbeddedItem_Click"
+                                  ToolTip.Tip="{Binding Tooltip}">
+                            <Grid ColumnDefinitions="28,*,80,100" ColumnSpacing="7">
+                              <Grid Width="24" Height="24" VerticalAlignment="Center">
+                                <Border Width="22" Height="22" CornerRadius="4"
+                                        Background="{DynamicResource PanelAlt}" ClipToBounds="True">
+                                  <Grid>
+                                    <TextBlock Text="{Binding Initial}" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                                    <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                                  </Grid>
+                                </Border>
+                              </Grid>
+                              <StackPanel Grid.Column="1" Spacing="0">
+                                <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Subtitle}" FontSize="9.5"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           TextTrimming="CharacterEllipsis" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="2" Text="{Binding Version}" FontSize="10"
+                                         Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
+                                         TextTrimming="CharacterEllipsis" />
+                              <TextBlock Grid.Column="3" Text="{Binding StatusText}" FontSize="10"
+                                         Foreground="{Binding StatusTextBrush}" VerticalAlignment="Center"
+                                         TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <Canvas Grid.Row="1" x:Name="DependencyRailOverlay"
+                      IsHitTestVisible="False" ClipToBounds="True" />
+
+              <Border Grid.Row="2" IsVisible="{Binding ShowOptionalSection}"
+                      Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                      BorderThickness="1,0,0,0" Padding="10,5,10,6">
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="可选依赖（未安装）" Classes="section" />
+                    <TextBlock Grid.Column="1" Text="{Binding OptionalNodeItems.Count, StringFormat='可选 {0}'}"
+                               FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                  </Grid>
+                  <ListBox Grid.Row="1" ItemsSource="{Binding OptionalNodeItems}" MaxHeight="180"
+                           Background="Transparent">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:NodeItemViewModel">
+                        <Grid ColumnDefinitions="*,Auto,74" ColumnSpacing="8" Margin="0,1">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="{DynamicResource TextMuted}"
+                                       TextTrimming="CharacterEllipsis" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="1" Text="可选未安装" FontSize="10"
+                                     Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                          <Button Grid.Column="2" Content="下载" Click="OptionalDownload_Click"
+                                  FontSize="10" Padding="4,2" MinHeight="24"
+                                  ToolTip.Tip="直接下载这个可选依赖" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                </Grid>
+              </Border>
+            </Grid>
+
+            <!-- Graph canvas -->
+            <Grid IsVisible="{Binding IsGraphView}">
+              <controls:DependencyGraphView x:Name="GraphView"
+                                            Scene="{Binding Scene}"
+                                            Background="{DynamicResource GraphBackground}" />
+
+              <!-- Legend -->
+              <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Spacing="4">
+                <Button x:Name="LegendToggleButton" Content="图例 ▾" Click="ToggleLegend_Click"
+                        HorizontalAlignment="Right" FontSize="9.5" Padding="8,2" MinHeight="24"
+                        ToolTip.Tip="展开 / 收起图例" />
+                <Border x:Name="LegendPanel" Background="{DynamicResource PanelBackground}" Opacity="0.94"
+                        CornerRadius="9" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                        Padding="10,8" HorizontalAlignment="Right">
+                <StackPanel Spacing="5">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="20" Height="2" Background="#3B82F6" VerticalAlignment="Center" />
+                    <TextBlock Text="必需" FontSize="10.5" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="20" Height="2" Background="#F87171" VerticalAlignment="Center" />
+                    <TextBlock Text="不兼容" FontSize="10.5" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="20" Height="2" Background="#94A3B8" VerticalAlignment="Center" />
+                    <TextBlock Text="可选 / 推荐（虚线）" FontSize="10.5" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Width="20" Height="2" Background="#F5C542" VerticalAlignment="Center" />
+                    <TextBlock Text="手动关系" FontSize="10.5" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,3,0,0">
+                    <Ellipse Width="7" Height="7" Fill="#60A5FA" VerticalAlignment="Center" />
+                    <TextBlock Text="Fabric" FontSize="10.5" />
+                    <Ellipse Width="7" Height="7" Fill="#E06C3C" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    <TextBlock Text="Forge" FontSize="10.5" />
+                  </StackPanel>
+                  <TextBlock Text="滚轮缩放 · 拖拽平移 · Shift+拖拽框选" FontSize="10.5" Classes="caption" Margin="0,3,0,0" />
+                  <TextBlock Text="简化连线：点击/悬停节点显示相关边" FontSize="9.5"
+                             Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" MaxWidth="190" />
+                </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12"
+                          Orientation="Horizontal" Spacing="6">
+                <Button Classes="icon" Content="−" Click="ZoomOut_Click" ToolTip.Tip="缩小" />
+                <Button Classes="icon" Content="+" Click="ZoomIn_Click" ToolTip.Tip="放大" />
+                <Button Classes="icon" Content="⤢" Click="Fit_Click" ToolTip.Tip="适应窗口" />
+              </StackPanel>
+            </Grid>
+
+            <!-- Shared empty state -->
+            <Border IsVisible="{Binding !HasGraph}" Background="{DynamicResource OverlayScrim}" CornerRadius="12">
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" MaxWidth="380" Margin="24">
+                <Image Source="avares://PackDependencyTool/Assets/app.png" Width="56" Height="56" Opacity="0.9" />
+                <TextBlock Text="还没有依赖数据" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           IsVisible="{Binding !IsPackLoaded}" />
+                <TextBlock Text="当前筛选没有匹配的模组" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           IsVisible="{Binding IsPackLoaded}" />
+                <TextBlock Text="选择一个整合包文件夹（包含 mods/*.jar），或直接把文件夹拖进窗口。"
+                           Classes="caption" TextWrapping="Wrap" TextAlignment="Center"
+                           IsVisible="{Binding !IsPackLoaded}" />
+                <TextBlock Text="试试放宽状态/加载器/关系筛选，或清空搜索内容。"
+                           Classes="caption" TextWrapping="Wrap" TextAlignment="Center"
+                           IsVisible="{Binding IsPackLoaded}" />
+                <Button Classes="accent" Content="选择整合包" Command="{Binding PickFolderCommand}"
+                        HorizontalAlignment="Center" Margin="0,4,0,0" IsVisible="{Binding !IsPackLoaded}" />
+                <Button Content="重置筛选" Command="{Binding ResetFiltersCommand}"
+                        HorizontalAlignment="Center" Margin="0,4,0,0" IsVisible="{Binding IsPackLoaded}" />
+              </StackPanel>
+            </Border>
+
+            <!-- Busy overlay -->
+            <Border IsVisible="{Binding IsBusy}" Background="{DynamicResource OverlayScrim}" CornerRadius="12">
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Width="300">
+                <TextBlock Text="正在处理…" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                <ProgressBar IsIndeterminate="True" />
+                <TextBlock Text="{Binding ProgressText}" Classes="caption"
+                           HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="3" x:Name="RightPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+
+      <!-- Right: details / report / manual links -->
+      <Border Grid.Column="4" x:Name="RightPanelBorder" Classes="card" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <Border Grid.Row="0" Background="{DynamicResource PanelBackground}"
+                  BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="10,5">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="详情面板" Classes="section" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Content="»" Click="ToggleRightPanel_Click"
+                      FontSize="11" Padding="6,1" MinHeight="22"
+                      ToolTip.Tip="收起右栏（可从顶部「面板」恢复）" />
+            </Grid>
+          </Border>
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollBarVisibility="Disabled">
+          <TabControl>
+          <TabItem Header="详情">
+            <Grid RowDefinitions="*,Auto" Margin="10,8,10,8" RowSpacing="8">
+              <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="9">
+                  <!-- Mod header -->
+                  <Border Classes="detailCard">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                      <Border Width="64" Height="64" CornerRadius="10" Background="{DynamicResource PanelBackground}"
+                              ClipToBounds="True" VerticalAlignment="Top"
+                              IsVisible="{Binding IsNodeSelected}">
+                        <Grid>
+                          <TextBlock Text="{Binding DetailInitial}" FontSize="22" FontWeight="SemiBold"
+                                     Foreground="{Binding DetailAvatarBrush}" HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" IsVisible="{Binding !HasDetailIcon}" />
+                          <Image Source="{Binding DetailIcon}" Stretch="UniformToFill" IsVisible="{Binding HasDetailIcon}" />
+                        </Grid>
+                      </Border>
+                      <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DetailTitle}" FontSize="16" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding DetailSubtitle}" FontSize="10.5" Classes="caption"
+                                   TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,2,0,0">
+                          <Border Classes="chip" Padding="6,1" Margin="0,0,5,0">
+                            <TextBlock Text="模组详情" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                          </Border>
+                        </WrapPanel>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+
+                  <!-- Basic information -->
+                  <Border Classes="detailCard">
+                    <StackPanel Spacing="7">
+                      <TextBlock Text="基本信息" Classes="section" />
+                      <ItemsControl ItemsSource="{Binding DetailRows}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:DetailRowViewModel">
+                            <Grid ColumnDefinitions="76,*" Margin="0,0,0,5">
+                              <TextBlock Text="{Binding Label}" Classes="caption" VerticalAlignment="Top" />
+                              <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11.5"
+                                         TextWrapping="Wrap" />
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+
+                  <!-- Description -->
+                  <Border Classes="detailCard" IsVisible="{Binding HasDetailDescription}">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="简介" Classes="section" />
+                      <TextBlock Text="{Binding DetailDescription}" TextWrapping="Wrap" FontSize="11.5"
+                                 Foreground="{DynamicResource TextSecondary}" />
+                    </StackPanel>
+                  </Border>
+
+                  <!-- Dependency relations -->
+                  <Border IsVisible="{Binding HasDependencyRows}" BorderBrush="{DynamicResource CardBorder}"
+                          BorderThickness="0,1,0,0" Padding="0,8,0,0">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="依赖关系" FontSize="10.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource TextSecondary}" />
+                      <ItemsControl ItemsSource="{Binding SelectedDependencyGroups}" Margin="0,4,0,0">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:DependencyGroupViewModel">
+                            <StackPanel Spacing="4" Margin="0,0,0,7">
+                              <TextBlock Text="{Binding Title}" Foreground="{Binding Brush}"
+                                         FontSize="10" FontWeight="SemiBold" />
+                              <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="vm:DependencyRowViewModel">
+                                    <Border Classes="depRow" ToolTip.Tip="{Binding TargetId}"
+                                            BorderBrush="{Binding TypeBrush}" BorderThickness="2,0,0,0"
+                                            CornerRadius="0" Background="Transparent">
+                                      <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="6">
+                                        <TextBlock Text="{Binding DirectionText}" FontSize="13"
+                                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Spacing="3">
+                                          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                                            <Border BorderBrush="{Binding TypeBrush}" BorderThickness="1"
+                                                    CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+                                              <TextBlock Text="{Binding TypeText}" FontSize="10" FontWeight="SemiBold"
+                                                         Foreground="{Binding TypeBrush}" />
+                                            </Border>
+                                            <TextBlock Grid.Column="1" Text="{Binding TargetName}" FontSize="11.5"
+                                                       FontWeight="SemiBold" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" />
+                                          </Grid>
+                                          <TextBlock Text="{Binding RangeText}" FontSize="10"
+                                                     Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding ResultText}" FontSize="10"
+                                                   Foreground="{Binding ResultBrush}" VerticalAlignment="Center"
+                                                   TextWrapping="Wrap" MaxWidth="78" />
+                                        <Button Grid.Column="3" Classes="icon" Content="⌖" FontSize="13"
+                                                Padding="4,0" MinHeight="24"
+                                                IsVisible="{Binding CanLocate}"
+                                                Click="DependencyLocate_Click"
+                                                ToolTip.Tip="定位到模组列表" />
+                                      </Grid>
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <Button Content="{Binding ToggleText}" Command="{Binding ToggleCommand}"
+                                      IsVisible="{Binding HasMore}" FontSize="9.5"
+                                      HorizontalAlignment="Stretch" Padding="4,2" MinHeight="22"
+                                      Background="Transparent" BorderThickness="0"
+                                      Foreground="{DynamicResource TextMuted}" />
+                            </StackPanel>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </ScrollViewer>
+
+              <!-- Actions fixed at bottom -->
+              <Border Grid.Row="1" Background="{DynamicResource PanelBackground}"
+                      BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                      CornerRadius="8" Padding="8">
+                <StackPanel Spacing="4">
+                  <WrapPanel>
+                    <Button Content="添加关系" Command="{Binding AddManualLinkCommand}"
+                            IsVisible="{Binding CanAddRelation}" Margin="0,0,6,4" />
+                    <Button Content="编辑手动关系" Command="{Binding EditManualLinkCommand}"
+                            IsVisible="{Binding CanEditManual}" Margin="0,0,6,4" />
+                    <Button Classes="danger" Content="删除手动关系" Command="{Binding DeleteManualLinkCommand}"
+                            IsVisible="{Binding CanDeleteManual}" Margin="0,0,6,4" />
+                  </WrapPanel>
+                  <WrapPanel>
+                    <Button Content="复制 modId" Command="{Binding CopySelectedIdCommand}"
+                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
+                    <Button Content="在依赖图中查看" Command="{Binding ShowInGraphCommand}"
+                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
+                    <Button Content="只看相关关系" Command="{Binding FocusSelectedRelationsCommand}"
+                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
+                    <Button Content="设置中文名" Command="{Binding EditChineseNameCommand}"
+                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
+                    <Button Content="下载此模组" Command="{Binding DownloadSelectedModCommand}"
+                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
+                    <Button Classes="accent" Content="下载可选依赖" Command="{Binding DownloadOptionalDependencyCommand}"
+                            IsVisible="{Binding CanDownloadOptional}" Margin="0,0,6,4" />
+                    <Button Content="禁用模组" Command="{Binding DisableSelectedModCommand}"
+                            IsVisible="{Binding CanDisableSelected}" Margin="0,0,6,4" />
+                    <Button Content="定位 JAR" Command="{Binding OpenSelectedFileCommand}"
+                            IsVisible="{Binding CanOpenFile}" Margin="0,0,6,4" />
+                  </WrapPanel>
+                  <WrapPanel>
+                    <Button Content="CurseForge" Command="{Binding OpenCurseForgeCommand}"
+                            IsVisible="{Binding CanOpenCurseForge}" Margin="0,0,6,0" />
+                    <Button Content="Modrinth" Command="{Binding OpenModrinthCommand}"
+                            IsVisible="{Binding CanOpenModrinth}" Margin="0,0,6,0" />
+                    <Button Content="百科" Command="{Binding OpenMcmodCommand}"
+                            IsVisible="{Binding CanOpenMcmod}" Margin="0,0,6,0" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="报告">
+            <Grid RowDefinitions="Auto,*,Auto" Margin="14,10,14,12">
+              <StackPanel Spacing="8">
+                <WrapPanel>
+                  <Border Classes="chip" Margin="0,0,6,6">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource Danger}"
+                               Text="{Binding MissingCount, StringFormat='缺失 {0}'}" />
+                  </Border>
+                  <Border Classes="chip" Margin="0,0,6,6">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource Warning}"
+                               Text="{Binding MismatchCount, StringFormat='版本 {0}'}" />
+                  </Border>
+                  <Border Classes="chip" Margin="0,0,6,6">
+                    <TextBlock FontSize="11" Foreground="{DynamicResource Danger}"
+                               Text="{Binding ConflictCount, StringFormat='冲突 {0}'}" />
+                  </Border>
+                  <Border Classes="chip" Margin="0,0,6,6">
+                    <TextBlock FontSize="11" Text="{Binding ErrorCount, StringFormat='错误 {0}'}" />
+                  </Border>
+                  <Border Classes="chip" Margin="0,0,6,6">
+                    <TextBlock FontSize="11" Text="{Binding WarningCount, StringFormat='警告 {0}'}" />
+                  </Border>
+                  <CheckBox Content="包含可选依赖" FontSize="10.5"
+                            IsChecked="{Binding ShowOptionalInReport, Mode=TwoWay}"
+                            VerticalAlignment="Center" Margin="0,0,6,6" />
+                </WrapPanel>
+                <TextBlock Text="{Binding IssueSummary}" Classes="caption" />
+              </StackPanel>
+
+              <ListBox Grid.Row="1" ItemsSource="{Binding ReportIssues}"
+                       SelectedItem="{Binding SelectedIssue, Mode=TwoWay}" Margin="0,10,0,10">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:IssueItemViewModel">
+                    <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Message}">
+                      <Border Width="3" CornerRadius="2" Background="{Binding SeverityBrush}" Margin="0,1,8,1" />
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Message}" FontSize="10.5"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Location}" FontSize="10.5" Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <Button Grid.Row="2" Content="导出 Markdown 报告"
+                      Command="{Binding ExportReportCommand}" HorizontalAlignment="Stretch" />
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="手动关系">
+            <Grid RowDefinitions="*,Auto" Margin="14,10,14,12">
+              <ListBox ItemsSource="{Binding ManualLinks}"
+                       SelectedItem="{Binding SelectedManualLink, Mode=TwoWay}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ManualLinkItemViewModel">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding PairText}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Detail}" FontSize="10.5" Classes="caption"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <StackPanel Grid.Row="1" Spacing="6" Margin="0,10,0,0">
+                <WrapPanel>
+                  <Button Content="新增" Command="{Binding AddManualLinkCommand}" Margin="0,0,6,6" />
+                  <Button Content="编辑" Command="{Binding EditManualLinkCommand}" Margin="0,0,6,6" />
+                  <Button Classes="danger" Content="删除" Command="{Binding DeleteManualLinkCommand}" Margin="0,0,6,6" />
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="导入" Command="{Binding ImportManualLinksCommand}" Margin="0,0,6,0" />
+                  <Button Content="导出" Command="{Binding ExportManualLinksCommand}" />
+                </WrapPanel>
+              </StackPanel>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="规则">
+            <Grid RowDefinitions="Auto,*,Auto" Margin="14,10,14,12">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{Binding RulesSummary}" FontWeight="SemiBold" FontSize="12.5" />
+                <TextBlock Text="按优先级从高到低匹配。关闭开关即可临时停用；规则只影响分析，不修改 JAR。"
+                           Classes="caption" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <ListBox Grid.Row="1" ItemsSource="{Binding LocalRules}"
+                       SelectedItem="{Binding SelectedLocalRule, Mode=TwoWay}" Margin="0,10,0,10">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LocalRuleItemViewModel">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                      <CheckBox IsChecked="{Binding IsEnabled, Mode=TwoWay}" VerticalAlignment="Top"
+                                ToolTip.Tip="启用 / 停用这条规则" />
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <WrapPanel>
+                          <TextBlock Text="{Binding TypeText}" FontSize="11.5" FontWeight="SemiBold" />
+                          <Border Classes="chip" Padding="6,1" Margin="6,0,0,0">
+                            <TextBlock Text="{Binding PriorityText, StringFormat='优先级 {0}'}" FontSize="10.5" />
+                          </Border>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Expression}" FontSize="10.5"
+                                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Note}" FontSize="10.5"
+                                   Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <StackPanel Grid.Row="2" Spacing="6">
+                <WrapPanel>
+                  <Button Content="新增" Command="{Binding AddLocalRuleCommand}" Margin="0,0,6,6" />
+                  <Button Content="编辑" Command="{Binding EditLocalRuleCommand}" Margin="0,0,6,6" />
+                  <Button Classes="danger" Content="删除" Command="{Binding DeleteLocalRuleCommand}" Margin="0,0,6,6" />
+                </WrapPanel>
+                <WrapPanel>
+                  <Button Content="导入规则" Command="{Binding ImportLocalRulesCommand}" Margin="0,0,6,0" />
+                  <Button Content="导出规则" Command="{Binding ExportLocalRulesCommand}" />
+                </WrapPanel>
+              </StackPanel>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="历史">
+            <Grid RowDefinitions="Auto,*,Auto,Auto,*" Margin="14,10,14,12" RowSpacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="模组历史" FontWeight="SemiBold" FontSize="12.5" />
+                  <TextBlock Text="每次扫描后记录新增、移除、版本变化与禁用/启用。"
+                             Classes="caption" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="清空" Command="{Binding ClearHistoryCommand}"
+                        FontSize="10.5" Padding="8,2" MinHeight="24" VerticalAlignment="Top" />
+              </Grid>
+
+              <ListBox Grid.Row="1" ItemsSource="{Binding HistoryEntries}"
+                       SelectedItem="{Binding SelectedHistoryEntry, Mode=TwoWay}"
+                       MaxHeight="190">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HistoryEntryItem">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                      <TextBlock Text="{Binding TimeText}" FontSize="10.5"
+                                 Foreground="{DynamicResource TextMuted}" Width="72" />
+                      <StackPanel Grid.Column="1" Spacing="1">
+                        <TextBlock Text="{Binding Summary}" FontSize="11" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding CountText}" FontSize="10.5"
+                                   Foreground="{DynamicResource TextSecondary}" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <TextBlock Grid.Row="2" Text="本次变更" Classes="section" />
+              <ListBox Grid.Row="4" ItemsSource="{Binding HistoryChanges}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:HistoryChangeItem">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                      <TextBlock Text="{Binding KindText}" FontSize="10.5" Foreground="{Binding Brush}"
+                                 Width="34" />
+                      <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="10.5"
+                                 Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+
+              <TextBlock Grid.Row="3" Text="选择一条历史查看细节" Classes="caption" />
+            </Grid>
+          </TabItem>
+          </TabControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ============================ Status bar ============================ -->
+    <Border Grid.Row="2"
+            Background="{DynamicResource PanelBackground}"
+            BorderBrush="{DynamicResource CardBorder}"
+            BorderThickness="0,1,0,0"
+            Padding="16,7">
+      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Ellipse Width="7" Height="7" Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding StatusText}" FontSize="11.5" TextTrimming="CharacterEllipsis" MaxWidth="640" />
+        </StackPanel>
+
+        <ProgressBar Grid.Column="1" IsIndeterminate="{Binding IsProgressIndeterminate}"
+                     Value="{Binding ProgressValue}" Maximum="1" IsVisible="{Binding IsBusy}"
+                     VerticalAlignment="Center" Margin="8,0" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding ProgressText}" Classes="caption" IsVisible="{Binding IsBusy}" />
+          <TextBlock Text="{Binding NetworkStatusText}" Classes="caption" />
+          <TextBlock Text="{Binding VersionLabel}" Classes="caption" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

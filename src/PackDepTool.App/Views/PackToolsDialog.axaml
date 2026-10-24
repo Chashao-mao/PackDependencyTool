@@ -1,0 +1,179 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.PackToolsDialog"
+        x:DataType="vm:PackToolsViewModel"
+        Title="整合包工具箱"
+        Width="920"
+        Height="680"
+        MinWidth="780"
+        MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="{DynamicResource AppBackground}">
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+      <StackPanel Spacing="3">
+        <TextBlock Text="整合包工具箱" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding Header}" Classes="caption" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="chip" VerticalAlignment="Center">
+        <TextBlock Text="{Binding Summary}" FontSize="11" />
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="10" Margin="0,0,0,14">
+      <Border Classes="card" Padding="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="JAR / 模组" Classes="caption" />
+          <TextBlock Text="{Binding JarCountText, StringFormat='{}{0} JAR'}" FontSize="18" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ModCountText, StringFormat='{}{0} 个模组'}" Classes="caption" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Classes="card" Padding="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="加载器" Classes="caption" />
+          <TextBlock Text="{Binding LoaderText}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding SideText}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Classes="card" Padding="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="分析问题" Classes="caption" />
+          <TextBlock Text="{Binding Report.MissingCount}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource Danger}" />
+          <TextBlock Text="{Binding ProblemText}" Classes="caption" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="3" Classes="card" Padding="12">
+        <StackPanel Spacing="2">
+          <TextBlock Text="重复 / 禁用" Classes="caption" />
+          <TextBlock Text="{Binding Report.DuplicateJarCount}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource Warning}" />
+          <TextBlock Text="{Binding DuplicateText}" Classes="caption" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding DisabledText}" Classes="caption" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="12">
+        <Border Classes="card" Padding="12" IsVisible="{Binding HasDuplicateMods}">
+          <StackPanel Spacing="7">
+            <TextBlock Text="重复 modId" Classes="section" />
+            <TextBlock Text="同一个 modId 存在多个 JAR；通常需要只保留一个版本。"
+                       Classes="caption" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding DuplicateMods}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DuplicateModEntry">
+                  <Border Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="8,6" Margin="0,0,0,6">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ModId}" Classes="caption" />
+                        <TextBlock Text="{Binding FilesText}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
+                                   TextWrapping="Wrap" />
+                      </StackPanel>
+                      <Border Grid.Column="1" Classes="chip" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding CountText}" FontSize="10" />
+                      </Border>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="12" IsVisible="{Binding HasDuplicateHashes}">
+          <StackPanel Spacing="7">
+            <TextBlock Text="完全相同的 JAR（可安全清理副本）" Classes="section" />
+            <TextBlock Text="以下文件 SHA1 完全相同；清理时每组保留第一个，其余移到 .packdep-trash。"
+                       Classes="caption" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding DuplicateHashes}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DuplicateHashEntry">
+                  <Border Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="8,6" Margin="0,0,0,6">
+                    <StackPanel Spacing="2">
+                      <WrapPanel>
+                        <TextBlock Text="{Binding HashText}" FontFamily="Consolas" FontSize="11" FontWeight="SemiBold" />
+
+                      </WrapPanel>
+                      <TextBlock Text="{Binding FilesText}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
+                                 TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="12" IsVisible="{Binding HasCategories}">
+          <StackPanel Spacing="7">
+            <TextBlock Text="功能分类" Classes="section" />
+            <ItemsControl ItemsSource="{Binding CategoryStats}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:CategoryStatEntry">
+                  <Border Classes="chip" Margin="0,0,6,6">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                      <TextBlock Text="{Binding CountText}" FontSize="10.5" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource Accent}" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="12" IsVisible="{Binding HasMissing}">
+          <StackPanel Spacing="7">
+            <TextBlock Text="缺失依赖" Classes="section" />
+            <TextBlock Text="以下依赖在当前整合包里没有找到；可用「一键补全」或按清单手动补齐。"
+                       Classes="caption" TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding MissingMods}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MissingModEntry">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,2">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Id}" Classes="caption" />
+                    </StackPanel>
+                    <Border Grid.Column="1" Classes="chip" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Loader}" FontSize="10" />
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <StackPanel Grid.Row="3" Spacing="8" Margin="0,14,0,0">
+      <WrapPanel>
+        <Button Classes="accent" Content="导出模组清单（Markdown）" Command="{Binding ExportModListCommand}" Margin="0,0,6,6" />
+        <Button Content="导出 CSV" Command="{Binding ExportCsvCommand}" Margin="0,0,6,6" />
+        <Button Content="缺失依赖清单" Command="{Binding ExportMissingCommand}" Margin="0,0,6,6" />
+        <Button Content="检查报告" Command="{Binding ExportAuditCommand}" Margin="0,0,6,6" />
+      </WrapPanel>
+      <Grid ColumnDefinitions="*,Auto">
+        <WrapPanel>
+          <Button Content="打开 mods" Command="{Binding OpenModsCommand}" Margin="0,0,6,0" />
+          <Button Content="打开 config" Command="{Binding OpenConfigCommand}" Margin="0,0,6,0" />
+          <Button Content="打开 resourcepacks" Command="{Binding OpenResourcePacksCommand}" Margin="0,0,6,0" />
+          <Button Classes="danger" Content="清理相同 JAR 副本" Command="{Binding CleanDuplicateFilesCommand}"
+                  IsVisible="{Binding CanCleanDuplicates}" />
+        </WrapPanel>
+        <Button Grid.Column="1" Content="关闭" Command="{Binding CloseCommand}" />
+      </Grid>
+    </StackPanel>
+  </Grid>
+</Window>

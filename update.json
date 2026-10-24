@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.0",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.0/PackDependencyTool.exe",
+  "sha256": "90a3e9eeac9aed1463e98c7304110125400963bcc00037ce7cb921f41124899c",
+  "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
+  "notes": "首个公开版本",
+  "publishedAt": "2026-10-23T00:00:00Z"
+}

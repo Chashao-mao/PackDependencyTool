@@ -1,0 +1,184 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.DownloadCenterDialog"
+        x:DataType="vm:DownloadCenterViewModel"
+        Title="下载中心"
+        Width="1000"
+        Height="720"
+        MinWidth="820"
+        MinHeight="600"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
+      <TextBlock Text="下载中心" Classes="title" FontSize="18" />
+      <TextBlock Text="从 Modrinth / CurseForge 下载模组或整合包；整合包会先下载再导入并自动扫描。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+      <Grid Grid.Row="0" ColumnDefinitions="110,130,150,*,Auto" ColumnSpacing="8">
+        <ComboBox ItemsSource="{Binding TypeOptions}" SelectedItem="{Binding SelectedType, Mode=TwoWay}"
+                  Width="110" Height="34">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DownloadTypeOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
+                  SelectedItem="{Binding SelectedSource, Mode=TwoWay}" Width="130" Height="34">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DownloadSourceOption">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <ComboBox Grid.Column="2" ItemsSource="{Binding Categories}"
+                  SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Width="150" Height="34">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DownloadCategoryItem">
+              <TextBlock Text="{Binding Label}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <TextBox Grid.Column="3" x:Name="SearchBox" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Watermark="搜索名称 / slug / 关键词" Height="34" />
+        <Button Grid.Column="4" Content="搜索" Classes="accent" Command="{Binding SearchCommand}" Height="34" />
+      </Grid>
+
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+        <Button Content="上一页" Command="{Binding PreviousPageCommand}"
+                IsEnabled="{Binding HasPreviousPage}" />
+        <TextBlock Text="{Binding PageText}" VerticalAlignment="Center" FontSize="11" />
+        <Button Content="下一页" Command="{Binding NextPageCommand}"
+                IsEnabled="{Binding HasNextPage}" />
+      </StackPanel>
+
+      <Grid Grid.Row="2" ColumnDefinitions="360,12,*">
+        <Border Grid.Column="0" Classes="card" Padding="8">
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Text="搜索结果" Classes="section" Margin="4,2,0,6" />
+            <ListBox Grid.Row="1" ItemsSource="{Binding Projects}"
+                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DownloadProjectItem">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Border Width="34" Height="34" CornerRadius="7" Background="{DynamicResource PanelAlt}"
+                            ClipToBounds="True" VerticalAlignment="Center">
+                      <Grid>
+                        <TextBlock Text="{Binding Initial}" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                        <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                      </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding Meta}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                        <Border Classes="chip" Padding="5,0" IsVisible="{Binding IsInstalled}">
+                          <TextBlock Text="已安装" FontSize="9" Foreground="{DynamicResource Success}" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Description}" FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+          <Border Grid.Row="0" Classes="card" Padding="12" IsVisible="{Binding HasSelectedProject}">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <Border Width="44" Height="44" CornerRadius="8" Background="{DynamicResource PanelAlt}"
+                      ClipToBounds="True" VerticalAlignment="Center">
+                <Grid>
+                  <TextBlock Text="{Binding SelectedProject.Initial}" FontSize="18" FontWeight="SemiBold"
+                             Foreground="{Binding SelectedProject.AvatarBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             IsVisible="{Binding !SelectedProject.HasIcon}" />
+                  <Image Source="{Binding SelectedProject.Icon}" Stretch="UniformToFill"
+                         IsVisible="{Binding SelectedProject.HasIcon}" />
+                </Grid>
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="3">
+                <TextBlock Text="{Binding SelectedProject.Name}" FontSize="14" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedProject.Meta}" Classes="caption" />
+                <TextBlock Text="{Binding SelectedProject.Description}" FontSize="10.5"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" MaxHeight="48"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1" RowDefinitions="Auto,*">
+            <TextBlock Text="可用版本" Classes="section" Margin="2,0,0,5" IsVisible="{Binding HasSelectedProject}" />
+            <ListBox Grid.Row="1" ItemsSource="{Binding Versions}"
+                     SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DownloadVersionItem">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Meta}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                      <TextBlock Text="{Binding FileName}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding CompatibilityText}" FontSize="9.5"
+                                 Foreground="{Binding CompatibilityBrush}" HorizontalAlignment="Right" />
+                      <TextBlock Text="{Binding SizeText}" FontSize="9" Foreground="{DynamicResource TextMuted}"
+                                 HorizontalAlignment="Right" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+
+          <StackPanel Grid.Row="2" Spacing="7">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding IsModpack}">
+              <TextBlock Text="导入目录" Classes="caption" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding DestinationFolder}" IsReadOnly="True" Height="32" />
+              <Button Grid.Column="2" Content="选择…" Command="{Binding BrowseDestinationCommand}" Height="32" />
+            </Grid>
+
+            <TextBlock Text="{Binding TargetText}" Classes="caption" TextWrapping="Wrap" />
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBlock Text="{Binding StatusText}" FontSize="10.5"
+                         Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
+                         TextWrapping="Wrap" MaxHeight="40" />
+              <Button Grid.Column="1" Content="{Binding DownloadButtonText}" Classes="accent"
+                      Command="{Binding DownloadCommand}" Height="36" MinWidth="150" />
+            </Grid>
+
+            <ProgressBar IsVisible="{Binding IsBusy}" IsIndeterminate="False"
+                         Value="{Binding ProgressValue}" Maximum="1" Height="5" />
+            <TextBlock Text="{Binding ProgressText}" Classes="caption" IsVisible="{Binding IsBusy}"
+                       TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="下载源：Modrinth / CurseForge 官方 API；CurseForge 需要本地 API Key。"
+                 Classes="caption" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="关闭" Command="{Binding CancelCommand}" />
+    </Grid>
+  </Grid>
+</Window>

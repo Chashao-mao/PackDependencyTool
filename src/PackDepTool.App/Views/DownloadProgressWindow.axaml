@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.DownloadProgressWindow"
+        x:DataType="vm:DownloadProgressViewModel"
+        Title="下载进度"
+        Width="760"
+        Height="560"
+        MinWidth="680"
+        MinHeight="460"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBackground}">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="3">
+      <TextBlock Text="{Binding Title}" Classes="title" FontSize="17" />
+      <TextBlock Text="{Binding Subtitle}" Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Spacing="5" Margin="0,14,0,0">
+      <ProgressBar Value="{Binding ProgressValue}" Maximum="1" Height="7"
+                   IsIndeterminate="{Binding IsIndeterminate}" />
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding Phase}" FontSize="12" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Accent}" />
+        <TextBlock Grid.Column="1" Text="{Binding ElapsedText}" Classes="caption" />
+      </Grid>
+    </StackPanel>
+
+    <Border Grid.Row="2" Classes="card" Padding="12" Margin="0,10,0,0">
+      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+        <StackPanel Spacing="2">
+          <TextBlock Text="速度" Classes="caption" />
+          <TextBlock Text="{Binding SpeedText}" FontSize="13" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="2">
+          <TextBlock Text="已下载" Classes="caption" />
+          <TextBlock Text="{Binding BytesText}" FontSize="13" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Column="2" Spacing="2">
+          <TextBlock Text="剩余" Classes="caption" />
+          <TextBlock Text="{Binding EtaText}" FontSize="13" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Column="3" Spacing="2">
+          <TextBlock Text="状态" Classes="caption" />
+          <TextBlock Text="{Binding Status}" FontSize="11" TextTrimming="CharacterEllipsis"
+                     Foreground="{DynamicResource TextSecondary}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="3" RowDefinitions="Auto,*" Margin="0,12,0,0">
+      <TextBlock Text="{Binding CurrentFile}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
+                 TextTrimming="CharacterEllipsis" Margin="2,0,0,5" />
+      <Border Grid.Row="1" Classes="card" Padding="8">
+        <ListBox ItemsSource="{Binding Logs}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProgressLogItem">
+              <Grid ColumnDefinitions="58,*" ColumnSpacing="8">
+                <TextBlock Text="{Binding Time}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                <TextBlock Grid.Column="1" Text="{Binding Text}" FontSize="10.5"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="官方源失败或超时会自动尝试 BMCLAPI 镜像源；镜像同样失败才会报错。"
+                 Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="关闭窗口" Command="{Binding CancelCommand}" />
+    </Grid>
+  </Grid>
+</Window>

@@ -1,0 +1,54 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - run: dotnet test tests/PackDepTool.Core.Tests/PackDepTool.Core.Tests.csproj -c Release
+      - run: >
+          dotnet publish src/PackDepTool.App/PackDepTool.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=None -p:DebugSymbols=false
+          -o dist
+      - name: Verify signing secret exists
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.SIGNING_PFX_BASE64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX_BASE64)) {
+            throw "SIGNING_PFX_BASE64 is required; unsigned releases are rejected by the updater."
+          }
+
+      - name: Sign exe
+        shell: pwsh
+        env:
+          SIGNING_PFX_BASE64: ${{ secrets.SIGNING_PFX_BASE64 }}
+          SIGNING_PFX_PASSWORD: ${{ secrets.SIGNING_PFX_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "signing.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGNING_PFX_BASE64))
+          $password = ConvertTo-SecureString $env:SIGNING_PFX_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+          $signature = Set-AuthenticodeSignature -FilePath "dist\PackDependencyTool.exe" -Certificate $cert -HashAlgorithm SHA256
+          if ($signature.Status -notin @('Valid', 'UnknownError')) {
+            throw "Authenticode signing failed: $($signature.StatusMessage)"
+          }
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/PackDependencyTool.exe
+          generate_release_notes: true
