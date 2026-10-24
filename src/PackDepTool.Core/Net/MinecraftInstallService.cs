@@ -850,52 +850,30 @@ public sealed class MinecraftInstallService
         if (File.Exists(destination) && expectedSize > 0)
         {
             var length = new FileInfo(destination).Length;
-            if (length == expectedSize) return;
+            if (length == expectedSize && string.IsNullOrWhiteSpace(sha1)) return;
         }
 
-        var candidates = new List<string> { url };
-        if (!string.IsNullOrWhiteSpace(mirrorUrl) &&
-            !string.Equals(mirrorUrl, url, StringComparison.OrdinalIgnoreCase))
-            candidates.Add(mirrorUrl!);
-
-        Exception? lastError = null;
-        for (var index = 0; index < candidates.Count; index++)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var candidate = candidates[index];
-            try
-            {
-                if (index > 0)
-                {
-                    progress?.Report(new DownloadProgress(
-                        "切换镜像源", 0, 0,
-                        $"{Path.GetFileName(destination)} ← BMCLAPI"));
-                }
-
-                using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                attempt.CancelAfter(TimeSpan.FromSeconds(60));
-                var download = await _downloader.DownloadUrlAsync(
-                        candidate, destination, sha1, null, expectedSize, progress, attempt.Token)
-                    .ConfigureAwait(false);
-                result.FilesDownloaded++;
-                result.BytesDownloaded += download.Bytes;
-                return;
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                lastError = new TimeoutException($"下载超时：{Path.GetFileName(destination)}");
-                result.Warnings.Add($"{Path.GetFileName(destination)} 官方源超时，尝试镜像源。");
-            }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested &&
-                                       ex is HttpRequestException or IOException or InvalidDataException or
-                                           InvalidOperationException)
-            {
-                lastError = ex;
-            }
+            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            attempt.CancelAfter(TimeSpan.FromMinutes(5));
+            var download = await _downloader.DownloadUrlAsync(
+                    url, destination, sha1, null, expectedSize, progress, attempt.Token, mirrorUrl)
+                .ConfigureAwait(false);
+            result.FilesDownloaded++;
+            result.BytesDownloaded += download.Bytes;
         }
-
-        throw new InvalidOperationException(
-            $"下载失败（官方源/镜像源均不可用）：{Path.GetFileName(destination)}", lastError);
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"下载超时：{Path.GetFileName(destination)}");
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested &&
+                                   ex is HttpRequestException or IOException or InvalidDataException or
+                                       InvalidOperationException)
+        {
+            throw new InvalidOperationException(
+                $"下载失败（官方源/镜像源均不可用）：{Path.GetFileName(destination)}", ex);
+        }
     }
 
     private static string? MirrorUrlFor(string url)

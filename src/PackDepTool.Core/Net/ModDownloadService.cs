@@ -7,13 +7,12 @@ namespace PackDepTool.Core.Net;
 /// <summary>Search/downloads mods and modpacks from the official Modrinth / CurseForge APIs.</summary>
 public sealed class ModDownloadService
 {
-    private const long MaxDownloadBytes = 512L * 1024 * 1024;
-
     private readonly HttpClient _http;
     private readonly ModrinthClient _modrinth;
     private readonly CurseForgeClient _curseForge;
     private readonly string _userAgent;
     private readonly ApiCacheStore? _cache;
+    private readonly ResumableDownloader _resumable;
     private static readonly TimeSpan SearchCacheTtl = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan VersionCacheTtl = TimeSpan.FromHours(24);
 
@@ -29,6 +28,7 @@ public sealed class ModDownloadService
         _curseForge = curseForge;
         _userAgent = userAgent;
         _cache = cache;
+        _resumable = new ResumableDownloader(http, userAgent);
     }
 
     public async Task<List<DownloadProject>> SearchAsync(
@@ -333,103 +333,26 @@ public sealed class ModDownloadService
         string? expectedSha512,
         long expectedSize,
         IProgress<DownloadProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? mirrorUrl = null)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-            throw new InvalidOperationException("下载地址不是有效的 HTTPS 链接。");
-
-        var fullPath = Path.GetFullPath(destinationPath);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (string.IsNullOrWhiteSpace(directory))
-            throw new InvalidOperationException("无效的下载目标路径。");
-
-        Directory.CreateDirectory(directory);
-        var temp = fullPath + "." + Guid.NewGuid().ToString("N")[..8] + ".part";
-
-        try
+        var result = await _resumable.DownloadAsync(new DownloadFileRequest
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.TryAddWithoutValidation("User-Agent", _userAgent);
-            request.Headers.TryAddWithoutValidation("Accept", "*/*");
+            Url = url,
+            MirrorUrls = string.IsNullOrWhiteSpace(mirrorUrl) ? [] : [mirrorUrl],
+            DestinationPath = destinationPath,
+            ExpectedSha1 = expectedSha1,
+            ExpectedSha512 = expectedSha512,
+            ExpectedSize = expectedSize,
+        }, progress, cancellationToken).ConfigureAwait(false);
 
-            using var response = await _http.SendAsync(
-                    request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-                .ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var totalBytes = response.Content.Headers.ContentLength ?? expectedSize;
-            if (totalBytes > MaxDownloadBytes)
-                throw new InvalidOperationException("下载文件超过 512 MB 限制。");
-
-            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-
-            using var sha1 = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
-            using var sha512 = IncrementalHash.CreateHash(HashAlgorithmName.SHA512);
-
-            var buffer = new byte[128 * 1024];
-            long bytes = 0;
-            var lastReport = 0L;
-
-            await using (var target = new FileStream(
-                             temp, FileMode.CreateNew, FileAccess.Write, FileShare.None, 128 * 1024,
-                             FileOptions.Asynchronous | FileOptions.SequentialScan))
-            {
-                int read;
-                while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
-                {
-                    await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-                    sha1.AppendData(buffer, 0, read);
-                    sha512.AppendData(buffer, 0, read);
-                    bytes += read;
-
-                    if (bytes > MaxDownloadBytes)
-                        throw new InvalidOperationException("下载文件超过 512 MB 限制。");
-
-                    if (bytes - lastReport >= 256 * 1024)
-                    {
-                        lastReport = bytes;
-                        progress?.Report(new DownloadProgress(
-                            "下载文件", 0, 0, Path.GetFileName(fullPath), bytes, totalBytes));
-                    }
-                }
-
-                await target.FlushAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            var sha1Hex = Convert.ToHexStringLower(sha1.GetHashAndReset());
-            var sha512Hex = Convert.ToHexStringLower(sha512.GetHashAndReset());
-
-            if (!string.IsNullOrWhiteSpace(expectedSha1) &&
-                !string.Equals(sha1Hex, expectedSha1.Trim(), StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException($"SHA-1 校验失败：期望 {expectedSha1}，实际 {sha1Hex}");
-
-            if (!string.IsNullOrWhiteSpace(expectedSha512) &&
-                !string.Equals(sha512Hex, expectedSha512.Trim(), StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException($"SHA-512 校验失败：期望 {expectedSha512}，实际 {sha512Hex}");
-
-            File.Move(temp, fullPath, overwrite: true);
-            progress?.Report(new DownloadProgress(
-                "下载完成", 1, 1, Path.GetFileName(fullPath), bytes, totalBytes));
-
-            return new DownloadResult
-            {
-                FilePath = fullPath,
-                FileName = Path.GetFileName(fullPath),
-                Sha1 = sha1Hex,
-                Bytes = bytes,
-            };
-        }
-        finally
+        return new DownloadResult
         {
-            try
-            {
-                if (File.Exists(temp)) File.Delete(temp);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // Best effort cleanup.
-            }
-        }
+            FilePath = result.FilePath,
+            FileName = Path.GetFileName(result.FilePath),
+            Sha1 = result.Sha1,
+            Bytes = result.Bytes,
+        };
     }
 
     private static ModrinthFileInfo? SelectFile(ICollection<ModrinthFileInfo> files, DownloadProjectType type)
