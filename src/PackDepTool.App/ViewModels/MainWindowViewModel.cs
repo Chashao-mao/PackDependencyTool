@@ -2021,6 +2021,38 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var result = await _dialogs.ShowDisabledModsAsync(files);
         if (result is null || result.Items.Count == 0) return;
 
+        if (result.Action == DisabledModsAction.Delete)
+        {
+            if (!await _dialogs.ConfirmAsync(
+                    "删除已禁用模组",
+                    $"将 {result.Items.Count} 个文件移到 .packdep-trash，不会永久删除。继续？",
+                    "移到回收目录"))
+                return;
+
+            var deleted = 0;
+            var deleteFailures = new List<string>();
+            foreach (var item in result.Items)
+            {
+                try
+                {
+                    _services.ModFiles.MoveFileToTrash(
+                        item.Model.FullPath, _scanResult.RootPath);
+                    deleted++;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                    deleteFailures.Add($"{item.DisplayName}：{ex.Message}");
+                }
+            }
+
+            StatusText = $"已移走 {deleted} 个禁用模组，正在重新扫描…";
+            if (deleteFailures.Count > 0)
+                await _dialogs.ShowMessageAsync("部分模组未删除",
+                    string.Join(Environment.NewLine, deleteFailures.Take(12)));
+            await ScanAsync();
+            return;
+        }
+
         var enabled = 0;
         var failures = new List<string>();
         foreach (var item in result.Items)
@@ -2055,13 +2087,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             .ToList();
         if (missing.Count == 0)
         {
-            await _dialogs.ShowMessageAsync("一键补全依赖", "当前没有缺失的必需依赖。");
+            await _dialogs.ShowMessageAsync("下载缺失依赖", "当前没有缺失的必需依赖。");
             return;
         }
 
         var preview = string.Join(Environment.NewLine, missing.Take(12).Select(node => $"· {node.Name} ({node.Id})"));
         if (!await _dialogs.ConfirmAsync(
-                "一键补全依赖",
+                "下载缺失依赖",
                 $"将尝试从 Modrinth / CurseForge 下载以下 {missing.Count} 个缺失依赖：" +
                 $"{Environment.NewLine}{Environment.NewLine}{preview}" +
                 (missing.Count > 12 ? $"{Environment.NewLine}…" : "") +
@@ -2076,7 +2108,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StatusText = "正在解析缺失依赖…";
 
         var detail = new DownloadProgressViewModel(
-            "一键补全缺失依赖",
+            "下载缺失依赖",
             $"{missing.Count} 个依赖 · {_scanResult.Profile.McVersion} · {_scanResult.Profile.DisplayLoader}");
         DownloadProgressWindow.ShowFor(detail);
         AutoCompleteResult? result = null;
@@ -2106,7 +2138,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             detail.Finish(false, ex.Message);
-            StatusText = $"一键补全失败：{ex.Message}";
+            StatusText = $"下载缺失依赖失败：{ex.Message}";
         }
         finally
         {
@@ -2126,7 +2158,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                            result.Items.Where(item => !item.Success)
                                .Take(10)
                                .Select(item => $"· {item.Name} ({item.ModId})：{item.Error}"));
-        await _dialogs.ShowMessageAsync("一键补全依赖完成", message);
+        await _dialogs.ShowMessageAsync("下载缺失依赖完成", message);
         await ScanAsync();
     }
 

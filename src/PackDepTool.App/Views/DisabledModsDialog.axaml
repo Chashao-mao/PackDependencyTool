@@ -18,7 +18,7 @@
       <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
               HorizontalAlignment="Left" Margin="0,0,0,7" />
       <TextBlock Text="管理已禁用模组" Classes="title" FontSize="18" />
-      <TextBlock Text="将 .jar 重命名为 .jar.disabled 即可禁用。选中后启用，或一键全部启用。"
+      <TextBlock Text="选择模组后启用或删除；删除会移到 .packdep-trash，不永久删除。"
                  Classes="caption" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -27,20 +27,12 @@
       <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:DisabledModItem">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,3">
-              <StackPanel Spacing="2">
-                <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding FileName}" FontSize="9.5" Foreground="{DynamicResource TextMuted}"
-                           TextTrimming="CharacterEllipsis" />
-              </StackPanel>
-              <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                <TextBlock Text="{Binding SizeText}" FontSize="9.5" Foreground="{DynamicResource TextSecondary}"
-                           HorizontalAlignment="Right" />
-                <TextBlock Text="{Binding ModifiedText}" FontSize="9" Foreground="{DynamicResource TextMuted}"
-                           HorizontalAlignment="Right" />
-              </StackPanel>
-            </Grid>
+            <StackPanel Spacing="2" Margin="2,3">
+              <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
+                         TextTrimming="CharacterEllipsis" />
+              <TextBlock Text="{Binding FileName}" FontSize="9.5" Foreground="{DynamicResource TextMuted}"
+                         TextTrimming="CharacterEllipsis" />
+            </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
@@ -50,6 +42,7 @@
       <TextBlock Text="启用后会重新扫描并写入模组历史。" Classes="caption" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
         <Button Content="关闭" Command="{Binding CancelCommand}" />
+        <Button Content="删除选中" Command="{Binding DeleteSelectedCommand}" />
         <Button Content="启用选中" Command="{Binding EnableSelectedCommand}" />
         <Button Content="全部启用" Classes="accent" Command="{Binding EnableAllCommand}" />
       </StackPanel>

@@ -45,8 +45,15 @@
             <Button Content="选择整合包" Command="{Binding PickFolderCommand}" ToolTip.Tip="Ctrl+O" />
             <Button Content="扫描" Classes="accent" Command="{Binding RescanCommand}" ToolTip.Tip="F5" />
             <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
-            <Button Content="联网补全" Command="{Binding EnrichCommand}"
-                    ToolTip.Tip="通过 Modrinth / CurseForge 补全项目与依赖信息" />
+            <Button Content="补全 ▾" ToolTip.Tip="联网补全项目资料，或下载缺失依赖">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="补全在线资料…" Command="{Binding EnrichCommand}" />
+                  <MenuItem Header="下载缺失依赖…" Command="{Binding AutoCompleteDependenciesCommand}"
+                            IsEnabled="{Binding HasMissingDependencies}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
             <Button Content="获取内容 ▾" ToolTip.Tip="下载模组 / 整合包，或导入本地整合包">
               <Button.Flyout>
                 <MenuFlyout>
@@ -82,8 +89,6 @@
                   <MenuItem Header="导出缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
                   <MenuItem Header="导出模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
                   <Separator />
-                  <MenuItem Header="一键补全依赖" Command="{Binding AutoCompleteDependenciesCommand}"
-                            IsEnabled="{Binding HasMissingDependencies}" />
                   <MenuItem Header="管理已禁用模组…" Command="{Binding OpenDisabledModsCommand}" />
                   <Separator />
                   <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
@@ -255,10 +260,6 @@
                            Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                            IsVisible="{Binding IsListView}" />
               </StackPanel>
-              <Button Grid.Column="1" Content="一键补全" FontSize="10.5" Padding="8,2" MinHeight="24"
-                      Command="{Binding AutoCompleteDependenciesCommand}"
-                      IsEnabled="{Binding HasMissingDependencies}"
-                      ToolTip.Tip="自动搜索并下载缺失的必需依赖（仅兼容版本）" />
             </Grid>
 
             <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="5,3"
@@ -430,6 +431,11 @@
                        SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
                        DoubleTapped="ModuleList_DoubleTapped"
                        Background="Transparent">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel />
+                  </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:NodeItemViewModel">
                     <StackPanel>
