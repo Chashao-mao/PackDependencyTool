@@ -503,6 +503,36 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task ExportGraphPngAsync()
+    {
+        if (_graph is null || Scene.Nodes.Count == 0)
+        {
+            await _dialogs.ShowMessageAsync("导出关系图 PNG", "当前关系图没有可导出的节点。");
+            return;
+        }
+
+        var path = await _dialogs.PickSaveFileAsync(
+            "导出关系图 PNG", ExportFileName("relationship-graph", "png"), "png", "PNG 图片");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            StatusText = $"正在渲染关系图 PNG（{Scene.Nodes.Count} 个节点）…";
+            var title = string.IsNullOrWhiteSpace(PackName) ? "Minecraft 模组关系图" : $"{PackName} · 模组关系图";
+            var light = string.Equals(_services.Settings.Theme, "Light", StringComparison.OrdinalIgnoreCase);
+            await Task.Run(() => GraphPngExporter.Export(Scene, path, title, light));
+            StatusText = $"关系图 PNG 已导出：{Path.GetFileName(path)}";
+            await _dialogs.ShowMessageAsync("导出完成",
+                $"关系图已写入：{Environment.NewLine}{path}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"关系图导出失败：{ex.Message}";
+            await _dialogs.ShowMessageAsync("导出失败", ex.Message);
+        }
+    }
+
     [RelayCommand] private Task ExportJsonAsync() => ExportAsync(ExportFormat.Json);
     [RelayCommand] private Task ExportDotAsync() => ExportAsync(ExportFormat.Dot);
     [RelayCommand] private Task ExportGraphMlAsync() => ExportAsync(ExportFormat.GraphMl);

@@ -74,6 +74,7 @@
                   <MenuItem Header="Graphviz DOT" Command="{Binding ExportDotCommand}" />
                   <MenuItem Header="GraphML" Command="{Binding ExportGraphMlCommand}" />
                   <MenuItem Header="CSV（节点 + 关系）" Command="{Binding ExportCsvCommand}" />
+                  <MenuItem Header="关系图 PNG…" Command="{Binding ExportGraphPngCommand}" />
                   <Separator />
                   <MenuItem Header="Markdown 分析报告" Command="{Binding ExportReportCommand}" />
                   <Separator />
@@ -192,6 +193,19 @@
               <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}" Margin="0,0,12,0" />
               <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}" />
             </WrapPanel>
+
+            <Grid ColumnDefinitions="44,*" ColumnSpacing="6" Margin="0,2,0,0">
+              <TextBlock Text="侧" Classes="caption" VerticalAlignment="Center" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding SideFilters}"
+                        SelectedItem="{Binding SelectedSideFilter, Mode=TwoWay}"
+                        FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SideFilterOption">
+                    <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </Grid>
 
             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="2"
                   Margin="0,2,0,0">
@@ -477,7 +491,11 @@
                       <TextBlock Grid.Column="7" Text="{Binding DependencySummary}" FontSize="10.5"
                                  Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
                                  TextTrimming="CharacterEllipsis" />
-                      <StackPanel Grid.Column="8" Spacing="1" VerticalAlignment="Center">
+                      <Border Grid.Column="8" Classes="chip" Padding="5,1" HorizontalAlignment="Left"
+                              VerticalAlignment="Center">
+                        <TextBlock Text="{Binding SideText}" FontSize="9.5" Foreground="{Binding SideBrush}" />
+                      </Border>
+                      <StackPanel Grid.Column="9" Spacing="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusTextBrush}"
                                    FontSize="11" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="可选已装" FontSize="9.5"
@@ -496,7 +514,7 @@
                         <DataTemplate x:DataType="vm:NodeItemViewModel">
                           <Button Classes="embeddedChild" Click="EmbeddedItem_Click"
                                   ToolTip.Tip="{Binding Tooltip}">
-                            <Grid ColumnDefinitions="28,*,80,100" ColumnSpacing="7">
+                            <Grid ColumnDefinitions="28,*,80,66,100" ColumnSpacing="7">
                               <Grid Width="24" Height="24" VerticalAlignment="Center">
                                 <Border Width="22" Height="22" CornerRadius="4"
                                         Background="{DynamicResource PanelAlt}" ClipToBounds="True">
@@ -518,7 +536,11 @@
                               <TextBlock Grid.Column="2" Text="{Binding Version}" FontSize="10"
                                          Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
                                          TextTrimming="CharacterEllipsis" />
-                              <TextBlock Grid.Column="3" Text="{Binding StatusText}" FontSize="10"
+                              <Border Grid.Column="3" Classes="chip" Padding="4,1"
+                                      HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SideText}" FontSize="9" Foreground="{Binding SideBrush}" />
+                              </Border>
+                              <TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="10"
                                          Foreground="{Binding StatusTextBrush}" VerticalAlignment="Center"
                                          TextTrimming="CharacterEllipsis" />
                             </Grid>
