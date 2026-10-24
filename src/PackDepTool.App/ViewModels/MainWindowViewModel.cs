@@ -39,6 +39,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private string? _selectedNodeId;
     private string? _selectedEdgeId;
+    private string? _pendingReplaceNodeId;
     private string? _pendingFocusNodeId;
     private bool _suppressSelectionSync;
     private bool _suppressRecent;
@@ -163,6 +164,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _canDisableSelected;
     [ObservableProperty] private bool _canDeleteSelected;
     [ObservableProperty] private bool _canDownloadOptional;
+    [ObservableProperty] private string _downloadSelectedLabel = "下载此模组";
     [ObservableProperty] private bool _hasHistory;
     [ObservableProperty] private HistoryEntryItem? _selectedHistoryEntry;
 
@@ -708,7 +710,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (_selectedNodeId is null || _graph is null) return;
         var node = _graph.FindNode(_selectedNodeId);
         if (node is null) return;
-        await OpenDownloadCenterAsync(DownloadProjectType.Mod, node.Id);
+
+        _pendingReplaceNodeId = HasLocalJar(node) ? node.Id : null;
+        try
+        {
+            await OpenDownloadCenterAsync(DownloadProjectType.Mod, node.Id);
+        }
+        finally
+        {
+            _pendingReplaceNodeId = null;
+        }
     }
 
     private IReadOnlySet<string> BuildInstalledProjectIds()
@@ -773,7 +784,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         else if (!string.IsNullOrWhiteSpace(result.ModFilePath))
         {
-            StatusText = $"已下载模组 {Path.GetFileName(result.ModFilePath)}，正在重新扫描…";
+            if (_pendingReplaceNodeId is not null && _graph is not null && _scanResult is not null)
+            {
+                var oldNode = _graph.FindNode(_pendingReplaceNodeId);
+                var oldPath = oldNode is null ? null : _services.ModFiles.ResolveLocalFile(oldNode, _scanResult.RootPath);
+                if (oldPath is not null &&
+                    !string.Equals(Path.GetFullPath(oldPath), Path.GetFullPath(result.ModFilePath),
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        _services.ModFiles.Disable(oldNode!, _scanResult.RootPath);
+                        StatusText = $"已下载新版本并禁用旧版本，正在重新扫描…";
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+                    {
+                        StatusText = $"新版本已下载，但旧版本禁用失败：{ex.Message}";
+                    }
+                }
+                else
+                {
+                    StatusText = $"已下载模组 {Path.GetFileName(result.ModFilePath)}，正在重新扫描…";
+                }
+            }
+            else
+            {
+                StatusText = $"已下载模组 {Path.GetFileName(result.ModFilePath)}，正在重新扫描…";
+            }
+
             await ScanAsync();
         }
     }
@@ -1497,6 +1535,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanDisableSelected = false;
         CanDeleteSelected = false;
         CanDownloadOptional = false;
+        DownloadSelectedLabel = "下载此模组";
         DetailTitle = "未选择";
         DetailSubtitle = "在图中点选节点或关系查看详情";
         DetailRows.Clear();
@@ -1582,6 +1621,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanOpenMcmod = true;
         CanDisableSelected = HasLocalJar(node);
         CanDeleteSelected = HasLocalJar(node);
+        DownloadSelectedLabel = HasLocalJar(node) ? "更换版本" : "下载此模组";
         CanDownloadOptional = node.IsSynthetic && (node.IsOptionalDependency || node.IsRecommendedDependency);
 
         var displayName = !string.IsNullOrWhiteSpace(node.NameZh)

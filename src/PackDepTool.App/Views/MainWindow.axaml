@@ -794,45 +794,54 @@
               <Border Grid.Row="1" Background="{DynamicResource PanelBackground}"
                       BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
                       CornerRadius="8" Padding="8">
-                <StackPanel Spacing="4">
-                  <WrapPanel>
-                    <Button Content="添加关系" Command="{Binding AddManualLinkCommand}"
-                            IsVisible="{Binding CanAddRelation}" Margin="0,0,6,4" />
-                    <Button Content="编辑手动关系" Command="{Binding EditManualLinkCommand}"
-                            IsVisible="{Binding CanEditManual}" Margin="0,0,6,4" />
-                    <Button Classes="danger" Content="删除手动关系" Command="{Binding DeleteManualLinkCommand}"
-                            IsVisible="{Binding CanDeleteManual}" Margin="0,0,6,4" />
-                  </WrapPanel>
-                  <WrapPanel>
-                    <Button Content="复制 modId" Command="{Binding CopySelectedIdCommand}"
-                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
-                    <Button Content="在依赖图中查看" Command="{Binding ShowInGraphCommand}"
-                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
-                    <Button Content="只看相关关系" Command="{Binding FocusSelectedRelationsCommand}"
-                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
-                    <Button Content="设置中文名" Command="{Binding EditChineseNameCommand}"
-                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
-                    <Button Content="下载此模组" Command="{Binding DownloadSelectedModCommand}"
-                            IsVisible="{Binding IsNodeSelected}" Margin="0,0,6,4" />
-                    <Button Classes="accent" Content="下载可选依赖" Command="{Binding DownloadOptionalDependencyCommand}"
-                            IsVisible="{Binding CanDownloadOptional}" Margin="0,0,6,4" />
-                    <Button Content="禁用模组" Command="{Binding DisableSelectedModCommand}"
-                            IsVisible="{Binding CanDisableSelected}" Margin="0,0,6,4" />
-                    <Button Classes="danger" Content="永久删除"
-                            Command="{Binding DeleteSelectedModCommand}"
-                            IsVisible="{Binding CanDeleteSelected}" Margin="0,0,6,4" />
-                    <Button Content="定位 JAR" Command="{Binding OpenSelectedFileCommand}"
-                            IsVisible="{Binding CanOpenFile}" Margin="0,0,6,4" />
-                  </WrapPanel>
-                  <WrapPanel>
-                    <Button Content="CurseForge" Command="{Binding OpenCurseForgeCommand}"
-                            IsVisible="{Binding CanOpenCurseForge}" Margin="0,0,6,0" />
-                    <Button Content="Modrinth" Command="{Binding OpenModrinthCommand}"
-                            IsVisible="{Binding CanOpenModrinth}" Margin="0,0,6,0" />
-                    <Button Content="百科" Command="{Binding OpenMcmodCommand}"
-                            IsVisible="{Binding CanOpenMcmod}" Margin="0,0,6,0" />
-                  </WrapPanel>
-                </StackPanel>
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="*,*,*"
+                      RowSpacing="4" ColumnSpacing="6">
+                  <Button Grid.Row="0" Grid.Column="0" Content="添加关系" Command="{Binding AddManualLinkCommand}"
+                          IsVisible="{Binding CanAddRelation}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="0" Grid.Column="1" Content="编辑手动关系" Command="{Binding EditManualLinkCommand}"
+                          IsVisible="{Binding CanEditManual}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="0" Grid.Column="2" Classes="danger" Content="删除手动关系"
+                          Command="{Binding DeleteManualLinkCommand}"
+                          IsVisible="{Binding CanDeleteManual}" HorizontalAlignment="Stretch" />
+
+                  <Button Grid.Row="1" Grid.Column="0" Content="复制 modId" Command="{Binding CopySelectedIdCommand}"
+                          IsVisible="{Binding IsNodeSelected}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="1" Grid.Column="1" Content="在依赖图中查看"
+                          Command="{Binding ShowInGraphCommand}"
+                          IsVisible="{Binding IsNodeSelected}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="1" Grid.Column="2" Content="只看相关关系"
+                          Command="{Binding FocusSelectedRelationsCommand}"
+                          IsVisible="{Binding IsNodeSelected}" HorizontalAlignment="Stretch" />
+
+                  <Button Grid.Row="2" Grid.Column="0" Content="设置中文名"
+                          Command="{Binding EditChineseNameCommand}"
+                          IsVisible="{Binding IsNodeSelected}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="2" Grid.Column="1" Content="{Binding DownloadSelectedLabel}"
+                          Command="{Binding DownloadSelectedModCommand}"
+                          IsVisible="{Binding IsNodeSelected}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="2" Grid.Column="2" Content="禁用模组"
+                          Command="{Binding DisableSelectedModCommand}"
+                          IsVisible="{Binding CanDisableSelected}" HorizontalAlignment="Stretch" />
+
+                  <Button Grid.Row="3" Grid.Column="0" Classes="danger" Content="永久删除"
+                          Command="{Binding DeleteSelectedModCommand}"
+                          IsVisible="{Binding CanDeleteSelected}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="3" Grid.Column="1" Content="定位 JAR" Command="{Binding OpenSelectedFileCommand}"
+                          IsVisible="{Binding CanOpenFile}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="3" Grid.Column="2" Classes="accent" Content="下载可选依赖"
+                          Command="{Binding DownloadOptionalDependencyCommand}"
+                          IsVisible="{Binding CanDownloadOptional}" HorizontalAlignment="Stretch" />
+
+                  <Button Grid.Row="4" Grid.Column="0" Content="CurseForge"
+                          Command="{Binding OpenCurseForgeCommand}"
+                          IsVisible="{Binding CanOpenCurseForge}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="4" Grid.Column="1" Content="Modrinth"
+                          Command="{Binding OpenModrinthCommand}"
+                          IsVisible="{Binding CanOpenModrinth}" HorizontalAlignment="Stretch" />
+                  <Button Grid.Row="4" Grid.Column="2" Content="百科"
+                          Command="{Binding OpenMcmodCommand}"
+                          IsVisible="{Binding CanOpenMcmod}" HorizontalAlignment="Stretch" />
+                </Grid>
               </Border>
             </Grid>
           </TabItem>
