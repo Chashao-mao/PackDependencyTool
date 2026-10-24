@@ -41,10 +41,11 @@
         </ComboBox>
 
         <ComboBox Grid.Column="2" ItemsSource="{Binding Categories}"
-                  SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Width="150" Height="34">
+                  SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Width="150" Height="34"
+                  MaxDropDownHeight="320" ClipToBounds="True">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="vm:DownloadCategoryItem">
-              <TextBlock Text="{Binding Label}" />
+              <TextBlock Text="{Binding Label}" MaxWidth="138" TextTrimming="CharacterEllipsis" />
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
@@ -57,7 +58,8 @@
       <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
         <Button Content="上一页" Command="{Binding PreviousPageCommand}"
                 IsEnabled="{Binding HasPreviousPage}" />
-        <TextBlock Text="{Binding PageText}" VerticalAlignment="Center" FontSize="11" />
+        <TextBlock Text="{Binding PageText}" Width="56" TextAlignment="Center"
+                   VerticalAlignment="Center" FontSize="11" />
         <Button Content="下一页" Command="{Binding NextPageCommand}"
                 IsEnabled="{Binding HasNextPage}" />
       </StackPanel>

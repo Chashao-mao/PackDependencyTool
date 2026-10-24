@@ -254,8 +254,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     public async Task InitializeAsync()
     {
         await LoadCategoriesAsync();
-        if (!string.IsNullOrWhiteSpace(SearchQuery))
-            await SearchAsync();
+        await SearchAsync();
     }
 
     partial void OnSelectedTypeChanged(DownloadTypeOption value)
@@ -348,12 +347,6 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     private async Task LoadPageAsync(int page)
     {
         if (IsBusy) return;
-        if (string.IsNullOrWhiteSpace(SearchQuery))
-        {
-            StatusText = "请输入搜索关键词。";
-            return;
-        }
-
         _operationCts?.Cancel();
         _operationCts?.Dispose();
         _operationCts = new CancellationTokenSource();
@@ -363,8 +356,10 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
         IsBusy = true;
         IsLoadingPage = true;
         ProgressValue = 0;
-        ProgressText = "搜索中…";
-        StatusText = $"正在搜索 {SelectedSource.Label}…";
+        ProgressText = string.IsNullOrWhiteSpace(SearchQuery) ? "浏览中…" : "搜索中…";
+        StatusText = string.IsNullOrWhiteSpace(SearchQuery)
+            ? $"正在浏览 {SelectedSource.Label}…"
+            : $"正在搜索 {SelectedSource.Label}…";
         Projects.Clear();
         Versions.Clear();
         SelectedProject = null;

@@ -53,9 +53,6 @@ public sealed class ModDownloadService
     {
         var safeOffset = Math.Max(0, offset);
         var safeLimit = Math.Clamp(limit, 1, 50);
-        if (string.IsNullOrWhiteSpace(query))
-            return new DownloadSearchPage { Offset = safeOffset, Limit = safeLimit };
-
         var categoryKey = category is null
             ? "all"
             : $"{category.Name}:{category.ModrinthSlug}:{category.CurseForgeId}";
