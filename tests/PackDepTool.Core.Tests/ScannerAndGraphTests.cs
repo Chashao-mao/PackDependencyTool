@@ -280,6 +280,59 @@ public sealed class ScannerAndGraphTests
         Assert.DoesNotContain(issues, i => i.Kind == IssueKind.VersionMismatch);
     }
 
+    [Fact]
+    public void OptionalVersionMismatchDoesNotMarkTargetAsBroken()
+    {
+        var graph = new GraphDocument
+        {
+            Nodes =
+            [
+                new ModNode { Id = "a", Name = "A", Version = "1.0", Status = ModStatus.Ok },
+                new ModNode { Id = "b", Name = "B", Version = "1.0", Status = ModStatus.Ok },
+            ],
+            Edges =
+            [
+                new DependencyEdge
+                {
+                    Id = "1", From = "a", To = "b", Type = EdgeType.Optional, VersionRange = "[2.0,)",
+                },
+            ],
+        };
+
+        var issues = new GraphAnalyzer().Analyze(graph, new PackProfile());
+        Assert.Equal(ModStatus.Ok, graph.FindNode("b")!.Status);
+        Assert.Contains(issues, issue => issue.Kind == IssueKind.VersionMismatch &&
+                                         issue.Severity == IssueSeverity.Info);
+    }
+
+    [Fact]
+    public void InactiveConflictDeclarationDoesNotSetConflictStatus()
+    {
+        var scan = new ScanResult
+        {
+            RootPath = "C:/pack",
+            ModsDirectory = "C:/pack/mods",
+            Profile = new PackProfile { McVersion = "1.21.1", Loader = LoaderKind.NeoForge },
+        };
+        scan.Jars.Add(Jar("mods/a.jar", new ParsedMod
+        {
+            ModId = "a", Name = "A", Version = "1.0", Loader = LoaderKind.NeoForge,
+            Dependencies = [new ParsedDependency
+            {
+                ModId = "b", Type = EdgeType.Incompatible, VersionRange = "[2.0,)",
+            }],
+        }));
+        scan.Jars.Add(Jar("mods/b.jar", new ParsedMod
+        {
+            ModId = "b", Name = "B", Version = "1.0", Loader = LoaderKind.NeoForge,
+        }));
+
+        var result = new DependencyGraphBuilder().Build(scan);
+        Assert.Equal(ModStatus.Ok, result.Graph.FindNode("a")!.Status);
+        Assert.Equal(ModStatus.Ok, result.Graph.FindNode("b")!.Status);
+        Assert.DoesNotContain(result.Issues, issue => issue.Kind == IssueKind.Incompatible);
+    }
+
     private static JarScanResult Jar(string path, ParsedMod mod) => new()
     {
         FilePath = path,

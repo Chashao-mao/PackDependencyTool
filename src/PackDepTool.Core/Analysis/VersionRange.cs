@@ -209,7 +209,12 @@ public static class VersionRange
         if (ver.Length > req.Length && ver.StartsWith(req, StringComparison.OrdinalIgnoreCase))
         {
             var separator = ver[req.Length];
-            if (separator is '-' or '+' or '_' or '.') return true;
+            // A dotted/underscored suffix can be a version continuation. A
+            // numeric dash suffix is a Forge build; an alphabetic dash suffix
+            // is a pre-release and must not satisfy an exact requirement.
+            if (separator is '.' or '_' or '+') return true;
+            if (separator == '-' && ver.Length > req.Length + 1 && char.IsDigit(ver[req.Length + 1]))
+                return true;
         }
 
         return false;

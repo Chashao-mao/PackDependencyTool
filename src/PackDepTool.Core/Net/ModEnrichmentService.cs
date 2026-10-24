@@ -76,8 +76,11 @@ public sealed class ModEnrichmentService
             .Where(e => e.ManualOverride)
             .Select(e => $"{e.From}\u0000{e.To}")
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Local jar metadata is authoritative for a loaded pair. Online data may
+        // fill gaps, but must not add a contradictory second relation (for
+        // example optional locally plus required online) for the same pair.
         var edgeKeys = graph.Edges
-            .Select(e => $"{e.From}\u0000{e.To}\u0000{e.Type}")
+            .Select(e => $"{e.From}\u0000{e.To}")
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         if (options.UseModrinth && _modrinth is not null)
@@ -436,7 +439,9 @@ public sealed class ModEnrichmentService
 
         var index = mod.LatestFilesIndexes.FirstOrDefault(i =>
             (string.IsNullOrWhiteSpace(i.GameVersion) ||
-             string.Equals(i.GameVersion, profile.McVersion, StringComparison.OrdinalIgnoreCase)) &&
+             string.Equals(i.GameVersion, profile.McVersion, StringComparison.OrdinalIgnoreCase) ||
+             profile.McVersion.StartsWith(i.GameVersion + ".", StringComparison.OrdinalIgnoreCase) ||
+             i.GameVersion.StartsWith(profile.McVersion + ".", StringComparison.OrdinalIgnoreCase)) &&
             (loaderId is null || string.IsNullOrWhiteSpace(i.ModLoader) || i.ModLoader == loaderId));
 
         if (index is not null)
@@ -459,12 +464,20 @@ public sealed class ModEnrichmentService
 
     private static ModNode? FindInstalledNode(GraphDocument graph, CurseForgeModInfo project)
     {
-        return graph.Nodes.FirstOrDefault(n =>
+        var strict = graph.Nodes.FirstOrDefault(n =>
             !n.IsSynthetic &&
             (string.Equals(n.ProjectIds.CurseForge, project.Id.ToString(), StringComparison.OrdinalIgnoreCase) ||
              string.Equals(n.Id, project.Slug, StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(n.Slug, project.Slug, StringComparison.OrdinalIgnoreCase) ||
-             Normalize(n.Name) == Normalize(project.Name)));
+             string.Equals(n.Slug, project.Slug, StringComparison.OrdinalIgnoreCase)));
+        if (strict is not null) return strict;
+
+        // Display names are not unique. Use them only when exactly one installed
+        // mod has that normalized name; otherwise report no match instead of
+        // attaching an online dependency to the wrong project.
+        var byName = graph.Nodes
+            .Where(n => !n.IsSynthetic && Normalize(n.Name) == Normalize(project.Name))
+            .ToList();
+        return byName.Count == 1 ? byName[0] : null;
     }
 
     private static ModNode CreateSyntheticNode(
@@ -536,7 +549,7 @@ public sealed class ModEnrichmentService
         DependencyEdge edge)
     {
         if (manualPairs.Contains($"{edge.From}\u0000{edge.To}")) return false;
-        if (!edgeKeys.Add($"{edge.From}\u0000{edge.To}\u0000{edge.Type}")) return false;
+        if (!edgeKeys.Add($"{edge.From}\u0000{edge.To}")) return false;
         if (graph.Edges.Any(e => e.Id == edge.Id)) return false;
         graph.Edges.Add(edge);
         return true;

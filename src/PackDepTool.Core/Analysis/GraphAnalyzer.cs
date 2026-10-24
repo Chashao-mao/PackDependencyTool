@@ -104,7 +104,9 @@ public sealed class GraphAnalyzer
                 EdgeId = edge.Id,
             });
 
-            if (to.Status == ModStatus.Ok)
+            // Optional/recommended mismatches are informational; they should
+            // not make the target mod look broken in the main list.
+            if (edge.Type == EdgeType.Requires && to.Status == ModStatus.Ok)
             {
                 to.Status = ModStatus.VersionMismatch;
                 to.StatusReason = $"需要 {edge.VersionRange}，已安装 {to.Version}";
@@ -176,6 +178,9 @@ public sealed class GraphAnalyzer
             if (node.McVersions.Count > 0)
             {
                 var matches = node.McVersions.Any(mc => MatchesPack(profile.McVersion, mc));
+                if (!matches && !string.IsNullOrWhiteSpace(node.McVersionRange) &&
+                    VersionRange.SatisfiesMinecraft(node.McVersionRange, profile.McVersion) == true)
+                    matches = true;
                 if (!matches)
                 {
                     issues.Add(new AnalysisIssue

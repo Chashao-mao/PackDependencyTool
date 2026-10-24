@@ -348,8 +348,9 @@ public sealed class DependencyGraphBuilder
             if (ruleSet.IsConflictIgnored(fromNode.Id, toNode.Id)) continue;
 
             // A version-scoped declaration only applies when the installed
-            // target version currently falls inside that range.
-            if (VersionRange.Satisfies(edge.VersionRange, toNode.Version) == false) continue;
+            // target version is known and currently falls inside that range.
+            // An unparsable/unknown version stays a metadata warning only.
+            if (VersionRange.Satisfies(edge.VersionRange, toNode.Version) != true) continue;
 
             Escalate(fromNode, ModStatus.Conflict, $"与 {toNode.Name} 声明不兼容");
             Escalate(toNode, ModStatus.Conflict, $"与 {fromNode.Name} 声明不兼容");

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
 using PackDepTool.Core.Persistence;
 
@@ -91,14 +92,24 @@ public sealed class DependencyAutoCompleter
                     var versions = await _downloader.GetVersionsAsync(
                             project, profile.McVersion, profile.Loader, token)
                         .ConfigureAwait(false);
-                    var version = versions.FirstOrDefault(candidateVersion => candidateVersion.IsCompatible);
+                    var requiredRanges = graph.Edges
+                        .Where(edge => string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase) &&
+                                       edge.Type == EdgeType.Requires &&
+                                       !string.IsNullOrWhiteSpace(edge.VersionRange))
+                        .Select(edge => edge.VersionRange!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    var version = versions.FirstOrDefault(candidateVersion =>
+                        candidateVersion.IsCompatible &&
+                        requiredRanges.All(range =>
+                            VersionRange.Satisfies(range, candidateVersion.VersionNumber) != false));
                     if (version is null)
                     {
                         itemsByIndex[candidate.Index] = new AutoCompleteItemResult
                         {
                             ModId = node.Id,
                             Name = node.Name,
-                            Error = "没有与当前 MC / 加载器兼容的版本",
+                            Error = "没有满足当前 MC / 加载器 / 依赖版本范围的版本",
                         };
                         return;
                     }

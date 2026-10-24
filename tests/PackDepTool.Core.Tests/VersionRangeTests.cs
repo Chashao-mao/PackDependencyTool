@@ -78,4 +78,21 @@ public sealed class VersionRangeTests
         Assert.True(ModVersion.Compare("1.20", "1.20.0") < 0);
         Assert.Equal(0, ModVersion.Compare("1.0.0", "1.0.0"));
     }
+
+    [Fact]
+    public void PrereleaseSortsBelowRelease()
+    {
+        Assert.True(ModVersion.Compare("1.0.0", "1.0.0-beta") > 0);
+        Assert.True(ModVersion.Compare("1.0.0-beta", "1.0.0") < 0);
+        Assert.True(ModVersion.Compare("1.0.0-beta.2", "1.0.0-beta.1") > 0);
+    }
+
+    [Theory]
+    [InlineData("[0,0.8.12-beta.1)", "0.6.0", true)]
+    [InlineData("[0,0.8.12-beta.1)", "0.8.12", false)]
+    [InlineData("[0,0.8.12-beta.1)", "0.8.12-beta.1", false)]
+    [InlineData("1.0.0", "1.0.0-beta", false)]
+    [InlineData("1.20.1", "1.20.1-47.2.0", true)]
+    public void PrereleaseRangesAreStrict(string range, string version, bool expected) =>
+        Assert.Equal(expected, VersionRange.Satisfies(range, version));
 }

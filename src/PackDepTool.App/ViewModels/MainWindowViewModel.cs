@@ -199,8 +199,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (edge.Type != EdgeType.Incompatible || _graph is null) return true;
         var target = _graph.FindNode(edge.To);
-        return target is null || target.IsSynthetic ||
-               VersionRange.Satisfies(edge.VersionRange, target.Version) != false;
+        return target is not null && !target.IsSynthetic &&
+               VersionRange.Satisfies(edge.VersionRange, target.Version) == true;
     }
     public string? RelationFocusId => _relationFocusId;
 
@@ -1755,8 +1755,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             var (result, brush, order) = DescribeDependency(edge, dependencyTarget, outgoing);
             var inactiveConflict = edge.Type == EdgeType.Incompatible &&
-                                   dependencyTarget is not null && !dependencyTarget.IsSynthetic &&
-                                   VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version) == false;
+                                   (dependencyTarget is null || dependencyTarget.IsSynthetic ||
+                                    VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version) != true);
             rows.Add((
                 (outgoing ? 0 : 1000) + order,
                 new DependencyRowViewModel(

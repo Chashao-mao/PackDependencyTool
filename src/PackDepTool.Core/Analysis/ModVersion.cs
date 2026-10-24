@@ -23,14 +23,14 @@ public static class ModVersion
                 continue;
             }
 
+            // A missing numeric part is lower ("1.0" < "1.0.0"). A missing
+            // part compared with a trailing non-numeric token is a release
+            // versus a pre-release, so the release sorts higher.
+            if (i >= a.Count) return tb.IsNumeric ? -1 : 1;
+            if (i >= b.Count) return ta.IsNumeric ? 1 : -1;
+
             if (ta.IsNumeric != tb.IsNumeric)
-            {
-                // Missing trailing part counts as release ("1.0" == "1.0.0"); a trailing
-                // non-numeric part is a pre-release/build tag, order it lexically after.
-                if (i >= a.Count) return tb.IsNumeric ? -1 : -1;
-                if (i >= b.Count) return ta.IsNumeric ? 1 : 1;
                 return ta.IsNumeric ? -1 : 1;
-            }
 
             var text = string.Compare(ta.Text, tb.Text, StringComparison.OrdinalIgnoreCase);
             if (text != 0) return Math.Sign(text);
