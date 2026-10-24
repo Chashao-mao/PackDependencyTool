@@ -192,11 +192,22 @@ public sealed class DependencyRowViewModel
         CanLocate = canLocate;
         (GroupTitle, GroupBrush, GroupOrder) = edge.Type switch
         {
-            EdgeType.Incompatible => ("冲突于", new SolidColorBrush(GraphPalette.Danger), 0),
-            EdgeType.Requires when direction == "→" => ("依赖于", new SolidColorBrush(GraphPalette.EdgeRequires), 1),
-            EdgeType.Requires => ("被依赖", new SolidColorBrush(GraphPalette.EdgeRequires), 2),
-            EdgeType.Optional or EdgeType.Recommends => ("可选 / 推荐", new SolidColorBrush(GraphPalette.EdgeOptional), 4),
-            EdgeType.Embedded => ("内嵌", new SolidColorBrush(GraphPalette.EdgeEmbedded), 3),
+            EdgeType.Incompatible when direction == "→" =>
+                ("冲突于", new SolidColorBrush(GraphPalette.Danger), 0),
+            EdgeType.Incompatible =>
+                ("被声明冲突", new SolidColorBrush(GraphPalette.Danger), 0),
+            EdgeType.Requires when direction == "→" =>
+                ("依赖于", new SolidColorBrush(GraphPalette.EdgeRequires), 1),
+            EdgeType.Requires =>
+                ("被依赖", new SolidColorBrush(GraphPalette.EdgeRequires), 2),
+            EdgeType.Optional or EdgeType.Recommends when direction == "→" =>
+                ("可选 / 推荐", new SolidColorBrush(GraphPalette.EdgeOptional), 4),
+            EdgeType.Optional or EdgeType.Recommends =>
+                ("反向可选 / 推荐", new SolidColorBrush(GraphPalette.EdgeOptional), 4),
+            EdgeType.Embedded when direction == "→" =>
+                ("内嵌", new SolidColorBrush(GraphPalette.EdgeEmbedded), 3),
+            EdgeType.Embedded =>
+                ("被内嵌", new SolidColorBrush(GraphPalette.EdgeEmbedded), 3),
             EdgeType.Manual => ("手动关系", new SolidColorBrush(GraphPalette.EdgeManual), 5),
             _ => ("其他关系", new SolidColorBrush(GraphPalette.TextMuted), 6),
         };

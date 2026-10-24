@@ -1788,7 +1788,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         };
 
         if (edge.Type == EdgeType.Incompatible)
-            return ("声明冲突", new SolidColorBrush(GraphPalette.Danger), order);
+        {
+            var inRange = string.IsNullOrWhiteSpace(edge.VersionRange) ||
+                          (dependencyTarget is not null && !dependencyTarget.IsSynthetic &&
+                           VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version) != false);
+            return inRange
+                ? (outgoing ? "声明冲突" : "对方声明冲突",
+                    new SolidColorBrush(GraphPalette.Danger), order)
+                : ("声明冲突（当前版本不在范围）", new SolidColorBrush(GraphPalette.TextMuted), order);
+        }
 
         if (dependencyTarget is null || dependencyTarget.IsSynthetic)
         {
