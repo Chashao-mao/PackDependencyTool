@@ -90,6 +90,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasGraph;
     [ObservableProperty] private bool _hasOptionalNodeItems;
     [ObservableProperty] private bool _hasMissingNodeItems;
+    [ObservableProperty] private bool _isMissingSectionExpanded;
     [ObservableProperty] private bool _showUninstalledOptional;
     [ObservableProperty] private bool _showOptionalInReport;
     [ObservableProperty] private ConnectionLineOption _selectedConnectionLineMode = ConnectionLineOptions[0];
@@ -202,6 +203,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => HasMissingNodeItems;
+    public string MissingToggleText => IsMissingSectionExpanded ? "收起" : "展开";
     public string ProblemSummary =>
         $"缺失 {MissingCount} · 冲突 {ConflictCount} · 版本 {MismatchCount} · 错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
 
@@ -2716,6 +2718,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         HasMissingNodeItems = MissingNodeItems.Count > 0;
         HasOptionalNodeItems = OptionalNodeItems.Count > 0;
         OnPropertyChanged(nameof(ShowMissingSection));
+        OnPropertyChanged(nameof(MissingToggleText));
         OnPropertyChanged(nameof(ShowOptionalSection));
         var visibleIds = NodeItems.Select(item => item.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _checkedNodeIds.RemoveWhere(id => !visibleIds.Contains(id));
@@ -3353,6 +3356,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedStatusFilterChanged(StatusFilterOption value) => RefreshView();
     partial void OnSelectedSideFilterChanged(SideFilterOption value) => RefreshView();
+    partial void OnIsMissingSectionExpandedChanged(bool value) =>
+        OnPropertyChanged(nameof(MissingToggleText));
+
+    [RelayCommand]
+    private void ToggleMissingSection() => IsMissingSectionExpanded = !IsMissingSectionExpanded;
 
     partial void OnSelectedSortOptionChanged(ModSortOption value) => RefreshView();
 

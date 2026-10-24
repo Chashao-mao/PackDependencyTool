@@ -561,13 +561,17 @@
                       Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="1,0,0,0" Padding="10,5,10,6">
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="未安装的必需依赖" Classes="section" />
-                    <TextBlock Grid.Column="1" Text="{Binding MissingNodeItems.Count, StringFormat='缺失 {0}'}"
-                               FontSize="10" Foreground="{DynamicResource Danger}" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                    <TextBlock Text="未安装的必需依赖" Classes="section" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                      <TextBlock Text="{Binding MissingNodeItems.Count, StringFormat='缺失 {0}'}"
+                                 FontSize="10" Foreground="{DynamicResource Danger}" VerticalAlignment="Center" />
+                      <Button Content="{Binding MissingToggleText}" Command="{Binding ToggleMissingSectionCommand}"
+                              FontSize="9" Padding="6,1" MinHeight="22" />
+                    </StackPanel>
                   </Grid>
                   <ListBox Grid.Row="1" ItemsSource="{Binding MissingNodeItems}" MaxHeight="140"
-                           Background="Transparent">
+                           Background="Transparent" IsVisible="{Binding IsMissingSectionExpanded}">
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="vm:NodeItemViewModel">
                         <Grid ColumnDefinitions="*,Auto,74" ColumnSpacing="8" Margin="0,1">
