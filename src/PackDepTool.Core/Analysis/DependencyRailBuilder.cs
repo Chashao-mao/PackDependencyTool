@@ -36,7 +36,8 @@ public static class DependencyRailBuilder
     public static IReadOnlyList<DependencyRailGroup> Build(
         IReadOnlyList<string> orderedIds,
         IEnumerable<DependencyEdge> edges,
-        RailRelationMode mode)
+        RailRelationMode mode,
+        Func<DependencyEdge, bool>? includeConflict = null)
     {
         if (orderedIds.Count < 2) return [];
 
@@ -48,6 +49,8 @@ public static class DependencyRailBuilder
         foreach (var edge in edges)
         {
             if (!Include(edge.Type, mode)) continue;
+            if (edge.Type == EdgeType.Incompatible && includeConflict is not null &&
+                !includeConflict(edge)) continue;
 
             var embedded = edge.Type == EdgeType.Embedded;
             var parentId = embedded ? edge.From : edge.To;

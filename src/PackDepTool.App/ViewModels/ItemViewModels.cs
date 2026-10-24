@@ -173,7 +173,8 @@ public sealed class DependencyRowViewModel
         ModNode? other,
         string resultText,
         IBrush resultBrush,
-        bool canLocate = false)
+        bool canLocate = false,
+        bool inactiveConflict = false)
     {
         DirectionText = direction;
         var optionalState = edge.Type == EdgeType.Optional
@@ -181,7 +182,9 @@ public sealed class DependencyRowViewModel
             : string.Empty;
         TypeText = GraphPalette.EdgeText(edge.Type) + optionalState +
                    (edge.ManualOverride ? " · 手动" : string.Empty);
-        TypeBrush = new SolidColorBrush(GraphPalette.EdgeColor(edge.Type, edge.ManualOverride));
+        TypeBrush = new SolidColorBrush(inactiveConflict
+            ? GraphPalette.TextMuted
+            : GraphPalette.EdgeColor(edge.Type, edge.ManualOverride));
         TargetId = other?.Id ?? edge.To;
         TargetName = other is null ? TargetId : (string.IsNullOrWhiteSpace(other.Name) ? other.Id : other.Name);
         RangeText = string.IsNullOrWhiteSpace(edge.VersionRange) ? "任意版本" : edge.VersionRange;
@@ -192,6 +195,8 @@ public sealed class DependencyRowViewModel
         CanLocate = canLocate;
         (GroupTitle, GroupBrush, GroupOrder) = edge.Type switch
         {
+            EdgeType.Incompatible when inactiveConflict =>
+                ("未生效的冲突声明", new SolidColorBrush(GraphPalette.TextMuted), 6),
             EdgeType.Incompatible when direction == "→" =>
                 ("冲突于", new SolidColorBrush(GraphPalette.Danger), 0),
             EdgeType.Incompatible =>

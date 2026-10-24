@@ -354,7 +354,8 @@ public partial class MainWindow : Window
                 _railGroups = DependencyRailBuilder.Build(
                     orderedIds,
                     scene.Edges.Select(edge => edge.Model),
-                    ToRailRelationMode(mode));
+                    ToRailRelationMode(mode),
+                    edge => viewModel.IsActiveConflict(edge));
                 _railCacheKey = cacheKey;
             }
 

@@ -347,6 +347,10 @@ public sealed class DependencyGraphBuilder
             if (fromNode.IsSynthetic || toNode.IsSynthetic) continue;
             if (ruleSet.IsConflictIgnored(fromNode.Id, toNode.Id)) continue;
 
+            // A version-scoped declaration only applies when the installed
+            // target version currently falls inside that range.
+            if (VersionRange.Satisfies(edge.VersionRange, toNode.Version) == false) continue;
+
             Escalate(fromNode, ModStatus.Conflict, $"与 {toNode.Name} 声明不兼容");
             Escalate(toNode, ModStatus.Conflict, $"与 {fromNode.Name} 声明不兼容");
         }

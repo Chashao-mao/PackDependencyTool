@@ -194,6 +194,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool IsListView => !string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsActiveConflict(DependencyEdge edge)
+    {
+        if (edge.Type != EdgeType.Incompatible || _graph is null) return true;
+        var target = _graph.FindNode(edge.To);
+        return target is null || target.IsSynthetic ||
+               VersionRange.Satisfies(edge.VersionRange, target.Version) != false;
+    }
     public string? RelationFocusId => _relationFocusId;
 
     public string DataDirectory => _services.Paths.DataDirectory;
@@ -1746,6 +1754,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var dependencyTarget = outgoing ? other : node;
 
             var (result, brush, order) = DescribeDependency(edge, dependencyTarget, outgoing);
+            var inactiveConflict = edge.Type == EdgeType.Incompatible &&
+                                   dependencyTarget is not null && !dependencyTarget.IsSynthetic &&
+                                   VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version) == false;
             rows.Add((
                 (outgoing ? 0 : 1000) + order,
                 new DependencyRowViewModel(
@@ -1754,7 +1765,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     other,
                     result,
                     brush,
-                    canLocate: other is not null && !other.IsSynthetic)));
+                    canLocate: other is not null && !other.IsSynthetic,
+                    inactiveConflict: inactiveConflict)));
         }
 
         foreach (var row in rows.OrderBy(r => r.Order).ThenBy(r => r.Row.TargetName, StringComparer.CurrentCultureIgnoreCase))
