@@ -795,13 +795,8 @@
                               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
                                 <TextBlock Text="{Binding Title}" Foreground="{Binding Brush}"
                                            FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                                  <TextBlock Text="{Binding CountText}" FontSize="9.5"
-                                             Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
-                                  <Button Content="{Binding ToggleText}" Command="{Binding ToggleCommand}"
-                                          IsVisible="{Binding HasMore}" FontSize="9"
-                                          Padding="5,1" MinHeight="22" />
-                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding CountText}" FontSize="9.5"
+                                           Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
                               </Grid>
                               <ItemsControl ItemsSource="{Binding Rows}">
                                 <ItemsControl.ItemTemplate>
@@ -839,11 +834,6 @@
                                   </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                               </ItemsControl>
-                              <Button Content="{Binding ToggleText}" Command="{Binding ToggleCommand}"
-                                      IsVisible="{Binding HasMore}" FontSize="9.5"
-                                      HorizontalAlignment="Stretch" Padding="4,2" MinHeight="22"
-                                      Background="Transparent" BorderThickness="0"
-                                      Foreground="{DynamicResource TextMuted}" />
                             </StackPanel>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>

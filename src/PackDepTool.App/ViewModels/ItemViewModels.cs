@@ -218,41 +218,20 @@ public sealed class DependencyRowViewModel
     public int GroupOrder { get; }
 }
 
-public sealed partial class DependencyGroupViewModel : ObservableObject
+public sealed class DependencyGroupViewModel
 {
-    private const int CollapsedLimit = 5;
-    private readonly IReadOnlyList<DependencyRowViewModel> _allRows;
-
     public DependencyGroupViewModel(string title, IBrush brush, IReadOnlyList<DependencyRowViewModel> rows)
     {
         Title = title;
         Brush = brush;
-        _allRows = rows;
-        Rows = new ObservableCollection<DependencyRowViewModel>(rows.Take(CollapsedLimit));
-        OnPropertyChanged(nameof(HasMore));
-        OnPropertyChanged(nameof(ToggleText));
+        Rows = new ObservableCollection<DependencyRowViewModel>(rows);
     }
 
     public string Title { get; }
     public IBrush Brush { get; }
     public ObservableCollection<DependencyRowViewModel> Rows { get; }
-    public bool HasMore => _allRows.Count > CollapsedLimit;
-    public string CountText => _allRows.Count.ToString();
-    public string ToggleText => IsExpanded ? "收起" : $"展开全部 ({_allRows.Count})";
-    [ObservableProperty] private bool _isExpanded;
-
-    partial void OnIsExpandedChanged(bool value)
-    {
-        Rows.Clear();
-        foreach (var row in value ? _allRows : _allRows.Take(CollapsedLimit))
-            Rows.Add(row);
-        OnPropertyChanged(nameof(ToggleText));
-    }
-
-    [RelayCommand]
-    private void Toggle() => IsExpanded = !IsExpanded;
+    public string CountText => Rows.Count.ToString();
 }
-
 
 public sealed class DetailRowViewModel
 {
