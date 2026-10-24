@@ -1,9 +1,9 @@
 {
-  "version": "1.0.2",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.2",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.2/PackDependencyTool.exe",
-  "sha256": "8815a650187f23289f888330ce8b53006ff574b35ebf412956f6a0cf09089258",
+  "version": "1.0.3",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.3",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.3/PackDependencyTool.exe",
+  "sha256": "fc95f36d1569b9a9d81ae7c4ea07093dd8e024db6945d68cbbc18016f35f07d1",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "依赖关系判定修复、未生效冲突区分、批量版本范围约束、下载续传/队列、分源设置与性能优化。",
-  "publishedAt": "2026-10-24T06:04:05.294608+00:00"
+  "notes": "模组列表虚拟化与跨窗口依赖线、图标缓存与分类缓存、更新检查缓存/取消、独立模组被内嵌隐藏修复、新程序图标。",
+  "publishedAt": "2026-10-24T08:35:03.373266+00:00"
 }
