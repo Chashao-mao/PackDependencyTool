@@ -774,9 +774,13 @@ public sealed class DependencyGraphView : Control
         var manual = edge.Model.ManualOverride || edge.Model.Type == Core.Models.EdgeType.Manual;
         var color = selected
             ? (IsLightTheme ? Color.Parse("#17202B") : Colors.White)
-            : GraphPalette.EdgeColor(edge.Model.Type, manual);
+            : edge.IsInactiveConflict
+                ? GraphPalette.TextMuted
+                : GraphPalette.EdgeColor(edge.Model.Type, manual);
 
-        var thickness = edge.Model.Type == Core.Models.EdgeType.Incompatible ? 2.2 : 1.5;
+        var thickness = edge.IsInactiveConflict
+            ? 1.2
+            : edge.Model.Type == Core.Models.EdgeType.Incompatible ? 2.2 : 1.5;
         if (manual) thickness = 2.2;
         if (selected) thickness = 3;
         if (hovered) thickness += 0.6;

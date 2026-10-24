@@ -99,8 +99,10 @@ public static class GraphPngExporter
             var toX = X(forward ? toPosition.X - halfWidth + 4 : toPosition.X + halfWidth - 4);
             var fromY = Y(fromPosition.Y);
             var toY = Y(toPosition.Y);
-            var color = ToColor(GraphPalette.EdgeColor(edge.Model.Type,
-                edge.Model.ManualOverride || edge.Model.Type == EdgeType.Manual));
+            var color = ToColor(edge.IsInactiveConflict
+                ? GraphPalette.TextMuted
+                : GraphPalette.EdgeColor(edge.Model.Type,
+                    edge.Model.ManualOverride || edge.Model.Type == EdgeType.Manual));
             edgePaint.Color = color;
             edgePaint.StrokeWidth = (float)((edge.Model.Type == EdgeType.Incompatible ? 2.2 : 1.4) *
                                             Math.Max(0.7, scale));

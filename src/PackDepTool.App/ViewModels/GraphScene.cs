@@ -1,3 +1,4 @@
+using PackDepTool.Core.Analysis;
 using Avalonia;
 using Avalonia.Media;
 using PackDepTool.Core.Models;
@@ -137,12 +138,16 @@ public sealed class GraphEdgeVm
         From = from;
         To = to;
         ParallelIndex = parallelIndex;
+        IsInactiveConflict = model.Type == Core.Models.EdgeType.Incompatible &&
+            (to.Model.Version.Equals("unknown", StringComparison.OrdinalIgnoreCase) ||
+             VersionRange.Satisfies(model.VersionRange, to.Model.Version) != true);
     }
 
     public DependencyEdge Model { get; }
     public GraphNodeVm From { get; }
     public GraphNodeVm To { get; }
     public int ParallelIndex { get; }
+    public bool IsInactiveConflict { get; }
     public bool IsSearchMatch { get; set; } = true;
     public bool IsHighlighted { get; set; }
     public string Id => Model.Id;

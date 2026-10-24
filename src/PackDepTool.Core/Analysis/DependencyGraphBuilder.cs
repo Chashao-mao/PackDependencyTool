@@ -20,7 +20,8 @@ public sealed class GraphBuildResult
 
 /// <summary>
 /// Turns parsed jar metadata plus persisted manual links into the stable graph document.
-/// Manual links win: any auto edge between the same pair of mods is suppressed.
+/// Manual links win for their directed pair: auto edges for the same
+/// (from, to) pair are suppressed. Reverse-direction edges remain separate.
 /// </summary>
 public sealed class DependencyGraphBuilder
 {
