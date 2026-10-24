@@ -207,7 +207,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string DataDirectory => _services.Paths.DataDirectory;
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
     public string NetworkStatusText => IsOffline ? "离线模式" : "联网可用";
-    public string VersionLabel => "v1.0.1";
+    public string VersionLabel => "v1.0.2";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => HasMissingNodeItems;
