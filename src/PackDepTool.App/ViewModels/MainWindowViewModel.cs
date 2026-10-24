@@ -391,11 +391,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         var curseForgeKey = await _services.Keys.GetCurseForgeKeyAsync();
+        var curseForgeMirror = !string.IsNullOrWhiteSpace(_services.Settings.CurseForgeApiBaseUrl);
         var plan = new EnrichmentPlan
         {
             InstalledCount = _graph.Nodes.Count(node => !node.IsSynthetic),
             MissingCount = _graph.Nodes.Count(node => node.Status == ModStatus.Missing),
-            HasCurseForgeKey = !string.IsNullOrWhiteSpace(curseForgeKey),
+            HasCurseForgeAccess = !string.IsNullOrWhiteSpace(curseForgeKey) || curseForgeMirror,
+            UsesCurseForgeMirror = curseForgeMirror,
         };
         var selection = await _dialogs.ShowEnrichmentPlanAsync(plan);
         if (selection is null || !selection.HasAnySelection)

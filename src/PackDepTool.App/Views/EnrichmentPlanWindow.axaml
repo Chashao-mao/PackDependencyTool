@@ -34,7 +34,7 @@
         </CheckBox>
 
         <CheckBox IsChecked="{Binding UseCurseForge, Mode=TwoWay}"
-                  IsEnabled="{Binding HasCurseForgeKey}">
+                  IsEnabled="{Binding HasCurseForgeAccess}">
           <StackPanel Spacing="2">
             <TextBlock Text="CurseForge 项目匹配" FontWeight="SemiBold" />
             <TextBlock Text="{Binding CurseForgeHint}" Classes="caption" TextWrapping="Wrap" />

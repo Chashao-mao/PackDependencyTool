@@ -7,7 +7,8 @@ public sealed class EnrichmentPlan
 {
     public int InstalledCount { get; init; }
     public int MissingCount { get; init; }
-    public bool HasCurseForgeKey { get; init; }
+    public bool HasCurseForgeAccess { get; init; }
+    public bool UsesCurseForgeMirror { get; init; }
 }
 
 public sealed class EnrichmentPlanResult
@@ -24,20 +25,24 @@ public sealed partial class EnrichmentPlanViewModel : ObservableObject
     {
         InstalledCount = plan.InstalledCount;
         MissingCount = plan.MissingCount;
-        HasCurseForgeKey = plan.HasCurseForgeKey;
+        HasCurseForgeAccess = plan.HasCurseForgeAccess;
+        UsesCurseForgeMirror = plan.UsesCurseForgeMirror;
         UseModrinth = plan.InstalledCount > 0;
-        UseCurseForge = plan.HasCurseForgeKey && plan.InstalledCount > 0;
+        UseCurseForge = plan.HasCurseForgeAccess && plan.InstalledCount > 0;
         AddDependencyEdges = true;
     }
 
     public int InstalledCount { get; }
     public int MissingCount { get; }
-    public bool HasCurseForgeKey { get; }
+    public bool HasCurseForgeAccess { get; }
+    public bool UsesCurseForgeMirror { get; }
     public string SummaryText =>
         $"已安装 {InstalledCount} 个模组，当前缺失 {MissingCount} 个依赖。";
-    public string CurseForgeHint => HasCurseForgeKey
-        ? "使用当前已配置的 API Key。"
-        : "未配置 API Key，本次不能使用 CurseForge。";
+    public string CurseForgeHint => !HasCurseForgeAccess
+        ? "未配置 API Key 或 CurseForge 镜像，本次不能使用 CurseForge。"
+        : UsesCurseForgeMirror
+            ? "使用自定义 CurseForge 镜像；不会发送本地 API Key。"
+            : "使用当前已配置的 API Key。";
 
     [ObservableProperty] private bool _useModrinth;
     [ObservableProperty] private bool _useCurseForge;
