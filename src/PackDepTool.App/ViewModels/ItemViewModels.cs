@@ -29,7 +29,9 @@ public sealed partial class NodeItemViewModel : ObservableObject
         Version = model.DisplayVersion;
         StatusText = model.IsSynthetic && model.Status == ModStatus.Unknown
             ? "可选未安装"
-            : GraphPalette.StatusText(model.Status);
+            : model.IsSynthetic && model.Status == ModStatus.Missing
+                ? "缺失依赖"
+                : GraphPalette.StatusText(model.Status);
         StatusTextBrush = model.Status is ModStatus.Ok or ModStatus.Unknown
             ? new SolidColorBrush(GraphPalette.TextSecondary)
             : StatusBrush;

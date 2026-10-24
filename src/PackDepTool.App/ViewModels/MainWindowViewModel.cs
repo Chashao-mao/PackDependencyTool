@@ -1677,7 +1677,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(node.StatusReason)) status += $"（{node.StatusReason}）";
         DetailRows.Add(new DetailRowViewModel("状态", status));
         if (node.IsSynthetic)
-            DetailRows.Add(new DetailRowViewModel("说明", "JAR 未安装，因此版本/加载器/Minecraft 无法从本地元数据确定；它只作为另一个模组的可选依赖占位，不是缺失的必需依赖。"));
+            DetailRows.Add(new DetailRowViewModel("说明", node.IsOptionalDependency
+                ? "JAR 未安装；它只作为另一个模组的可选依赖占位，不是缺失的必需依赖。"
+                : node.IsRecommendedDependency
+                    ? "JAR 未安装；它只作为另一个模组的推荐依赖占位，不是缺失的必需依赖。"
+                    : "JAR 未安装；它被其他模组声明为必需依赖，因此标记为缺失。"));
         DetailRows.Add(new DetailRowViewModel("modId", node.Id));
         if (!string.IsNullOrWhiteSpace(node.NameZh))
             DetailRows.Add(new DetailRowViewModel("英文名", node.Name));
