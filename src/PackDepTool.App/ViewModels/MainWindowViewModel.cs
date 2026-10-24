@@ -1182,6 +1182,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
         await _dialogs.ShowMessageAsync("整合包导出完成", message);
     }
 
+    public async Task IgnoreMissingDependencyAsync(NodeItemViewModel item)
+    {
+        if (_graph is null || _scanResult is null) return;
+        var missing = item.Model;
+        if (!missing.IsSynthetic || missing.Status != ModStatus.Missing) return;
+
+        var existing = _localRules.FirstOrDefault(rule =>
+            rule.Type == LocalRuleType.IgnoreMissing &&
+            string.Equals(rule.To, missing.Id, StringComparison.OrdinalIgnoreCase) &&
+            (string.IsNullOrWhiteSpace(rule.From) || rule.From == "*"));
+        if (existing is not null)
+        {
+            StatusText = $"{missing.Id} 已被本地规则忽略";
+            return;
+        }
+
+        var rule = new LocalRule
+        {
+            Type = LocalRuleType.IgnoreMissing,
+            From = "*",
+            To = missing.Id,
+            Note = "从缺失依赖列表忽略",
+            Enabled = true,
+        };
+        await SaveLocalRuleAsync(rule);
+        StatusText = $"已本地忽略缺失依赖：{missing.Id}";
+    }
+
     // ------------------------------------------------------------------ local rules
 
     [RelayCommand]
@@ -2545,6 +2573,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         bool NodePassesFilter(ModNode node) =>
             loaderVisible(node.Loader) &&
             (ShowMissing || node.Status != ModStatus.Missing) &&
+            (!node.IsSynthetic || node.IsOptionalDependency || node.IsRecommendedDependency ||
+             node.Status == ModStatus.Missing) &&
             !node.IsEmbedded &&
             (!node.IsOptionalDependency || ShowUninstalledOptional) &&
             (!node.IsRecommendedDependency || ShowUninstalledOptional) &&
@@ -2713,7 +2743,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             : [];
         var missing = ShowMissing
             ? uninstalled
-                .Where(node => !node.Model.IsOptionalDependency && !node.Model.IsRecommendedDependency)
+                .Where(node => node.Model.Status == ModStatus.Missing &&
+                               !node.Model.IsOptionalDependency &&
+                               !node.Model.IsRecommendedDependency)
                 .OrderBy(node => node.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList()
             : [];

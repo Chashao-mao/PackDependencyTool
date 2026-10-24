@@ -465,6 +465,12 @@ public partial class MainWindow : Window
         _ => GraphPalette.EdgeOptional,
     });
 
+    private async void IgnoreMissing_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is null || sender is not Button { DataContext: NodeItemViewModel item }) return;
+        await _viewModel.IgnoreMissingDependencyAsync(item);
+    }
+
     private async void OptionalDownload_Click(object? sender, RoutedEventArgs e)
     {
         if (_viewModel is null || sender is not Button { DataContext: NodeItemViewModel item }) return;
