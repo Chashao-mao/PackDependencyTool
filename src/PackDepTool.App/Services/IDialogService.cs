@@ -21,7 +21,8 @@ public interface IDialogService
     Task<EnrichmentPlanResult?> ShowEnrichmentPlanAsync(EnrichmentPlan plan);
     Task<GameInstallResult?> ShowGameSetupAsync();
     Task<GameInstallResult?> ShowLoaderSwitchAsync(LoaderSwitchContext context);
-    Task<InstanceManagerResult?> ShowInstanceManagerAsync(string? versionsDirectory);
+    Task<InstanceManagerResult?> ShowInstanceManagerAsync(
+        IReadOnlyList<string> versionsDirectories, string? lastVersionsDirectory);
     Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates);
 

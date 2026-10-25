@@ -44,12 +44,16 @@ public sealed class AppSettings
     public bool GameInstallUseTargetAsInstance { get; set; }
 
     public string? LoaderSwitchInstanceDirectory { get; set; }
+
+    // Instance manager: launcher-style versions directory list.
     public string? VersionsDirectory { get; set; }
+    public List<string> VersionsDirectories { get; set; } = [];
 
     public AppSettings Clone()
     {
         var clone = (AppSettings)MemberwiseClone();
         clone.RecentPacks = [.. RecentPacks];
+        clone.VersionsDirectories = [.. VersionsDirectories];
         return clone;
     }
 
@@ -86,6 +90,7 @@ public sealed class AppSettings
         GameInstallUseTargetAsInstance = other.GameInstallUseTargetAsInstance;
         LoaderSwitchInstanceDirectory = other.LoaderSwitchInstanceDirectory;
         VersionsDirectory = other.VersionsDirectory;
+        VersionsDirectories = [.. other.VersionsDirectories];
     }
 }
 

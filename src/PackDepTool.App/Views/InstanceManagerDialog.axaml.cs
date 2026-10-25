@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using PackDepTool.App.ViewModels;
 
 namespace PackDepTool.App.Views;
@@ -33,4 +34,11 @@ public partial class InstanceManagerDialog : Window
     }
 
     private void OnCompleted(InstanceManagerResult? result) => Close(result);
+
+    private void OnInstanceDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (_viewModel?.Selected is null) return;
+        _viewModel.OpenCommand.Execute(null);
+        e.Handled = true;
+    }
 }

@@ -2600,20 +2600,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenInstancesAsync()
     {
-        var result = await _dialogs.ShowInstanceManagerAsync(_services.Settings.VersionsDirectory);
+        var folders = _services.Settings.VersionsDirectories.Count > 0
+            ? _services.Settings.VersionsDirectories.ToList()
+            : string.IsNullOrWhiteSpace(_services.Settings.VersionsDirectory)
+                ? []
+                : [_services.Settings.VersionsDirectory!];
+        var result = await _dialogs.ShowInstanceManagerAsync(folders, _services.Settings.VersionsDirectory);
         if (result is null) return;
 
+        _services.Settings.VersionsDirectories = result.VersionsDirectories.ToList();
         if (!string.IsNullOrWhiteSpace(result.VersionsDirectory))
-        {
             _services.Settings.VersionsDirectory = result.VersionsDirectory;
-            try
-            {
-                _services.SettingsStore.Save(_services.Settings);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
-            }
+        try
+        {
+            _services.SettingsStore.Save(_services.Settings);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
         }
 
         if (!string.IsNullOrWhiteSpace(result.InstancePath))
