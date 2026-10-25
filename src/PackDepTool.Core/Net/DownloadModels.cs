@@ -62,6 +62,8 @@ public sealed class DownloadVersion
     public DateTimeOffset? PublishedAt { get; init; }
     public bool IsCompatible { get; init; } = true;
     public List<string> Dependencies { get; init; } = [];
+    public List<string> RequiredDependencies { get; init; } = [];
+    public List<string> OptionalDependencies { get; init; } = [];
 
     public string Meta => string.Join(" · ", new[]
     {

@@ -76,13 +76,15 @@ public sealed partial class DownloadProjectItem : ObservableObject
 
 public sealed class DownloadVersionItem
 {
-    public DownloadVersionItem(DownloadVersion model)
+    public DownloadVersionItem(
+        DownloadVersion model,
+        IReadOnlyDictionary<string, string>? dependencyNames = null)
     {
         Model = model;
         CompatibilityText = model.IsCompatible ? "兼容" : "不兼容 · 可强下";
         CompatibilityBrush = new SolidColorBrush(model.IsCompatible ? GraphPalette.Success : GraphPalette.EdgeIncompatible);
-        var dependencyCount = model.Dependencies.Count;
-        DependenciesText = dependencyCount > 0 ? $"{dependencyCount} 个前置" : string.Empty;
+        RequiredDependenciesText = FormatDependencies("必需前置", model.RequiredDependencies, dependencyNames);
+        OptionalDependenciesText = FormatDependencies("可选前置", model.OptionalDependencies, dependencyNames);
     }
 
     public DownloadVersion Model { get; }
@@ -91,10 +93,28 @@ public sealed class DownloadVersionItem
     public string FileName => Model.FileName;
     public string CompatibilityText { get; }
     public IBrush CompatibilityBrush { get; }
-    public string DependenciesText { get; }
+    public string RequiredDependenciesText { get; }
+    public string OptionalDependenciesText { get; }
+    public bool HasRequiredDependencies => Model.RequiredDependencies.Count > 0;
+    public bool HasOptionalDependencies => Model.OptionalDependencies.Count > 0;
     public string SizeText => Model.FileSize > 0
         ? $"{Model.FileSize / 1024d / 1024d:0.#} MB"
         : string.Empty;
+
+    private static string FormatDependencies(
+        string label,
+        IReadOnlyList<string> ids,
+        IReadOnlyDictionary<string, string>? names)
+    {
+        if (ids.Count == 0) return string.Empty;
+        var resolved = ids
+            .Select(id => names is not null && names.TryGetValue(id, out var name) ? name : id)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (resolved.Count == 0) return string.Empty;
+        return $"{label}：{string.Join("、", resolved)}";
+    }
 }
 
 public sealed partial class DownloadQueueRow : ObservableObject
@@ -534,8 +554,28 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
 
             if (loadId != _versionLoadVersion || !ReferenceEquals(SelectedProject, item)) return;
 
+            var dependencyIds = versions
+                .SelectMany(version => version.RequiredDependencies.Concat(version.OptionalDependencies))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            IReadOnlyDictionary<string, string>? dependencyNames = null;
+            if (dependencyIds.Count > 0)
+            {
+                try
+                {
+                    dependencyNames = await _downloader.GetDependencyNamesAsync(
+                        item.Model.Source, dependencyIds, CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or
+                                               ArgumentException)
+                {
+                    // Version list remains usable with project IDs.
+                }
+            }
+
+            if (loadId != _versionLoadVersion || !ReferenceEquals(SelectedProject, item)) return;
             foreach (var version in versions)
-                Versions.Add(new DownloadVersionItem(version));
+                Versions.Add(new DownloadVersionItem(version, dependencyNames));
 
             HasVersions = Versions.Count > 0;
             var compatible = Versions.FirstOrDefault(version => version.Model.IsCompatible);

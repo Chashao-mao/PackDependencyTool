@@ -206,7 +206,7 @@ public sealed class ModDownloadService
         LoaderKind loader,
         CancellationToken cancellationToken = default)
     {
-        var versionCacheKey = $"versions:{project.Source}:{project.ProjectId}:{mcVersion}:{loader}";
+        var versionCacheKey = $"versions:v2:{project.Source}:{project.ProjectId}:{mcVersion}:{loader}";
         if (_cache is not null)
         {
             var cached = await _cache.GetAsync<List<DownloadVersion>>(
@@ -247,6 +247,20 @@ public sealed class ModDownloadService
                         .Select(dependency => dependency.ProjectId!)
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList(),
+                    RequiredDependencies = version.Dependencies
+                        .Where(dependency => dependency.Type == EdgeType.Requires &&
+                                             !string.IsNullOrWhiteSpace(dependency.ProjectId) &&
+                                             !PlatformModIds.IsPlatform(dependency.ProjectId))
+                        .Select(dependency => dependency.ProjectId!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
+                    OptionalDependencies = version.Dependencies
+                        .Where(dependency => dependency.Type == EdgeType.Optional &&
+                                             !string.IsNullOrWhiteSpace(dependency.ProjectId) &&
+                                             !PlatformModIds.IsPlatform(dependency.ProjectId))
+                        .Select(dependency => dependency.ProjectId!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
                 });
             }
 
@@ -279,12 +293,61 @@ public sealed class ModDownloadService
                 GameVersions = file.GameVersions,
                 IsCompatible = true,
                 Dependencies = file.Dependencies.Select(dependency => dependency.ModId.ToString()).ToList(),
+                RequiredDependencies = file.Dependencies
+                    .Where(dependency => dependency.ToEdgeType() == EdgeType.Requires)
+                    .Select(dependency => dependency.ModId.ToString())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                OptionalDependencies = file.Dependencies
+                    .Where(dependency => dependency.ToEdgeType() == EdgeType.Optional)
+                    .Select(dependency => dependency.ModId.ToString())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
             });
         }
 
         var sortedTargets = Sort(targets);
         await CacheVersionsAsync(versionCacheKey, sortedTargets, cancellationToken).ConfigureAwait(false);
         return sortedTargets;
+    }
+
+    /// <summary>Resolve display names for dependency project IDs when possible.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> GetDependencyNamesAsync(
+        DownloadSource source,
+        IReadOnlyCollection<string> ids,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var clean = ids.Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (clean.Count == 0) return result;
+
+        try
+        {
+            if (source == DownloadSource.Modrinth)
+            {
+                var projects = await _modrinth.GetProjectsAsync(clean, cancellationToken).ConfigureAwait(false);
+                foreach (var project in projects)
+                    result[project.Id] = string.IsNullOrWhiteSpace(project.Title) ? project.Id : project.Title;
+            }
+            else if (source == DownloadSource.CurseForge)
+            {
+                var numeric = clean.Select(id => long.TryParse(id, out var value) ? value : 0)
+                    .Where(value => value > 0).Distinct().ToList();
+                var mods = await _curseForge.GetModsAsync(numeric, cancellationToken).ConfigureAwait(false);
+                foreach (var mod in mods)
+                    result[mod.Id.ToString()] = string.IsNullOrWhiteSpace(mod.Name)
+                        ? mod.Id.ToString()
+                        : mod.Name;
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or ModrinthApiException or
+                                       CurseForgeApiException or MissingApiKeyException)
+        {
+            // Dependency names are best-effort; IDs remain usable.
+        }
+
+        return result;
     }
 
     private async Task CacheVersionsAsync(

@@ -142,6 +142,12 @@
                       <TextBlock Text="{Binding Meta}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
                       <TextBlock Text="{Binding FileName}" FontSize="9.5"
                                  Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding RequiredDependenciesText}" FontSize="9.5"
+                                 Foreground="{DynamicResource Warning}" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasRequiredDependencies}" />
+                      <TextBlock Text="{Binding OptionalDependenciesText}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasOptionalDependencies}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                       <TextBlock Text="{Binding CompatibilityText}" FontSize="9.5" FontWeight="SemiBold"
