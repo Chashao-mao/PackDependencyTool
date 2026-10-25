@@ -31,6 +31,25 @@ public sealed class InstanceCatalogServiceTests
         Assert.Equal(LoaderKind.NeoForge, item.Loader);
         Assert.Equal(1, item.ModCount);
         Assert.Equal(1, item.DisabledModCount);
+        Assert.Equal(instance, item.EffectiveRoot);
+    }
+
+    [Fact]
+    public async Task UsesGameRootModsWhenInstanceHasNone()
+    {
+        using var temp = new TempDir();
+        var versions = Path.Combine(temp.Path, "versions");
+        var instance = Path.Combine(versions, "1.20.1-forge");
+        Directory.CreateDirectory(instance);
+        Directory.CreateDirectory(Path.Combine(temp.Path, "mods"));
+        await File.WriteAllBytesAsync(Path.Combine(temp.Path, "mods", "forge-mod.jar"), [1]);
+
+        var result = await new InstanceCatalogService().ScanAsync(Path.Combine(temp.Path, "versions"));
+        var item = Assert.Single(result.Instances);
+
+        Assert.Equal(1, item.ModCount);
+        Assert.Equal(temp.Path, item.EffectiveRoot);
+        Assert.True(item.HasSeparateGameDirectory);
     }
 
     [Fact]

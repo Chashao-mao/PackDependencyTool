@@ -102,19 +102,25 @@ public sealed class InstanceCatalogService
                 {
                     var name = Path.GetFileName(directory);
                     var json = ReadJson(directory, name);
-                    var modCount = CountFiles(Path.Combine(directory, "mods"), "*.jar");
-                    var disabledCount = CountFiles(Path.Combine(directory, "mods"), "*.jar.disabled");
                     var id = json?.Id ?? name;
                     var inherits = json?.InheritsFrom;
                     var detected = DetectLoader(id, inherits, json?.Libraries);
+                    var gameDirectory = Directory.GetParent(result.VersionsDirectory)?.FullName ?? directory;
+                    var localMods = CountFiles(Path.Combine(directory, "mods"), "*.jar");
+                    var localDisabled = CountFiles(Path.Combine(directory, "mods"), "*.jar.disabled");
+                    var gameMods = CountFiles(Path.Combine(gameDirectory, "mods"), "*.jar");
+                    var gameDisabled = CountFiles(Path.Combine(gameDirectory, "mods"), "*.jar.disabled");
+                    var useLocalMods = localMods > 0 || localDisabled > 0 || gameMods == 0;
                     result.Instances.Add(new MinecraftInstanceInfo
                     {
                         Name = name,
                         Path = directory,
+                        GameDirectory = gameDirectory,
+                        EffectiveRoot = useLocalMods ? directory : gameDirectory,
                         MinecraftVersion = DetectMinecraftVersion(inherits ?? id),
                         Loader = detected,
-                        ModCount = modCount,
-                        DisabledModCount = disabledCount,
+                        ModCount = useLocalMods ? localMods : gameMods,
+                        DisabledModCount = useLocalMods ? localDisabled : gameDisabled,
                         ModifiedAt = new DateTimeOffset(Directory.GetLastWriteTimeUtc(directory), TimeSpan.Zero),
                         HasJson = json is not null,
                     });
