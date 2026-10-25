@@ -2,7 +2,7 @@
   "version": "1.0.4",
   "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.4",
   "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.4/PackDependencyTool.exe",
-  "sha256": "1401239627e7a3d8c51b00410d01695b58ef75da250e28d8193165d6dba88f79",
+  "sha256": "8127581bf099dc72b83d97bf2c24d15febdccd2dee46e1f0b729cca0af245e0b",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
   "notes": "1.0.4：实例管理与整合包打开合并、多 versions 目录、下载前置显示与连锁下载、兼容版本标红、禁用/删除孤立依赖处理、禁用管理入口前置、工具栏菜单精简。",
   "publishedAt": "2026-10-25T08:11:07.931403+00:00"

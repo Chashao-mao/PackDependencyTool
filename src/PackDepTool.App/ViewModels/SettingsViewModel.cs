@@ -80,7 +80,15 @@ public sealed partial class SettingsViewModel : ObservableObject
     public IReadOnlyList<LayoutOption> LayoutOptions { get; }
     public string DataDirectory { get; }
     public string StorageDescription { get; }
-    public string VersionLabel => "Pack Dependency Tool v1.0.0 · .NET 9 / Avalonia";
+    public string VersionLabel
+    {
+        get
+        {
+            var version = typeof(SettingsViewModel).Assembly.GetName().Version;
+            var text = version is null ? "unknown" : version.ToString(3);
+            return $"Pack Dependency Tool v{text} · .NET 9 / Avalonia";
+        }
+    }
 
     [ObservableProperty] private ThemeOption? _selectedTheme;
     [ObservableProperty] private LayoutOption? _selectedLayout;
