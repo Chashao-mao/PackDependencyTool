@@ -2655,10 +2655,54 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 "永久删除"))
             return;
 
+        var dependents = FindDependentMods([node]);
+        var disableDependents = false;
+        if (dependents.Count > 0)
+        {
+            disableDependents = await _dialogs.ConfirmAsync(
+                "一并禁用依赖模组？",
+                $"删除 {node.Name} 后，以下已安装模组将失去依赖：{Environment.NewLine}{Environment.NewLine}" +
+                DescribeMods(dependents) +
+                $"{Environment.NewLine}{Environment.NewLine}是否将它们一并禁用？",
+                "一并禁用",
+                "保留并删除");
+        }
+
+        var disabling = new[] { node }
+            .Concat(disableDependents ? dependents : [])
+            .GroupBy(target => target.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        var orphanPrerequisites = FindOrphanPrerequisites(disabling);
+        var disableOrphans = false;
+        if (orphanPrerequisites.Count > 0)
+        {
+            disableOrphans = await _dialogs.ConfirmAsync(
+                "一并禁用孤立前置？",
+                $"删除 {node.Name} 后，以下已安装前置将没有其他模组依赖：{Environment.NewLine}{Environment.NewLine}" +
+                DescribeMods(orphanPrerequisites) +
+                $"{Environment.NewLine}{Environment.NewLine}是否将它们也一并禁用？",
+                "一并禁用",
+                "仅删除当前模组");
+        }
+
         try
         {
+            var disabled = 0;
+            foreach (var extra in (disableDependents ? dependents : [])
+                         .Concat(disableOrphans ? orphanPrerequisites : [])
+                         .GroupBy(target => target.Id, StringComparer.OrdinalIgnoreCase)
+                         .Select(group => group.First()))
+            {
+                if (!HasLocalJar(extra)) continue;
+                _services.ModFiles.Disable(extra, _scanResult.RootPath);
+                disabled++;
+            }
+
             File.Delete(path);
-            StatusText = $"已永久删除 {Path.GetFileName(path)}，正在重新扫描…";
+            StatusText = disabled == 0
+                ? $"已永久删除 {Path.GetFileName(path)}，正在重新扫描…"
+                : $"已永久删除 {Path.GetFileName(path)}，并禁用 {disabled} 个相关模组，正在重新扫描…";
             await ScanAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
