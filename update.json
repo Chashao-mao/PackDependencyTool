@@ -1,9 +1,9 @@
 {
-  "version": "1.0.3",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.3",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.3/PackDependencyTool.exe",
-  "sha256": "fc95f36d1569b9a9d81ae7c4ea07093dd8e024db6945d68cbbc18016f35f07d1",
+  "version": "1.0.4",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.4",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.4/PackDependencyTool.exe",
+  "sha256": "1401239627e7a3d8c51b00410d01695b58ef75da250e28d8193165d6dba88f79",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "1.0.3：列表虚拟化/预加载、跨窗口依赖线、时间/分类/加载器排序与正倒序、自动关闭下载窗口、本地忽略缺失依赖、多加载器跟随实例、独立安装优先内嵌、图标/分类缓存、显式批量更新检查、新图标。",
-  "publishedAt": "2026-10-24T08:35:03.373266+00:00"
+  "notes": "1.0.4：实例管理与整合包打开合并、多 versions 目录、下载前置显示与连锁下载、兼容版本标红、禁用/删除孤立依赖处理、禁用管理入口前置、工具栏菜单精简。",
+  "publishedAt": "2026-10-25T08:11:07.931403+00:00"
 }
