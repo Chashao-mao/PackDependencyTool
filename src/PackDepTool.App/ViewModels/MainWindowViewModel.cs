@@ -2620,8 +2620,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
         }
 
-        if (!string.IsNullOrWhiteSpace(result.InstancePath))
-            await OpenPackAsync(result.InstancePath, autoScan: true);
+        if (string.IsNullOrWhiteSpace(result.InstancePath))
+        {
+            StatusText = "未选择实例。";
+            return;
+        }
+
+        // A startup/background scan may still own the busy gate. Cancel and wait
+        // before switching so the new instance is not silently ignored.
+        if (IsBusy)
+        {
+            _operationCts?.Cancel();
+            for (var attempt = 0; attempt < 50 && IsBusy; attempt++)
+                await Task.Delay(100);
+        }
+
+        StatusText = $"正在打开实例：{result.InstancePath}";
+        await OpenPackAsync(result.InstancePath, autoScan: true);
     }
 
     [RelayCommand]

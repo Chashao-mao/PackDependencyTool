@@ -26,7 +26,7 @@
     <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
             BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,10">
       <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-        <TextBlock Text="实例文件夹" Classes="caption" VerticalAlignment="Center" />
+        <TextBlock Text="管理启动器实例目录" Classes="caption" VerticalAlignment="Center" />
         <Button Grid.Column="1" Content="添加 versions 文件夹…" Command="{Binding AddFolderCommand}" Height="30" />
         <Button Grid.Column="2" Content="扫描启动器" Command="{Binding ScanLaunchersCommand}" Height="30" />
       </Grid>
@@ -38,7 +38,7 @@
                 BorderThickness="1" CornerRadius="12" Padding="8">
           <Grid RowDefinitions="Auto,*" RowSpacing="4">
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-              <TextBlock Text="versions 文件夹" Classes="section" VerticalAlignment="Center" />
+              <TextBlock Text="已添加目录" Classes="section" VerticalAlignment="Center" />
               <Button Grid.Column="1" Content="移除" Command="{Binding RemoveFolderCommand}"
                       IsEnabled="{Binding CanRemoveFolder}" FontSize="9.5" Padding="7,2" MinHeight="24" />
             </Grid>
@@ -68,6 +68,7 @@
             </Grid>
             <ListBox Grid.Row="1" x:Name="InstanceList" ItemsSource="{Binding Instances}"
                      SelectedItem="{Binding Selected, Mode=TwoWay}"
+                     SelectionChanged="OnInstanceSelectionChanged"
                      DoubleTapped="OnInstanceDoubleTapped" Background="Transparent">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="scan:MinecraftInstanceInfo">
@@ -81,7 +82,6 @@
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
-            <TextBlock Grid.Row="2" Text="双击实例可直接打开" Classes="caption" />
           </Grid>
         </Border>
       </Grid>
@@ -107,25 +107,25 @@
             <TextBlock Grid.Row="5" Grid.Column="0" Text="实例目录" Classes="caption" />
             <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Selected.Path}"
                        FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
-            <TextBlock Grid.Row="6" Grid.Column="0" Text="游戏目录" Classes="caption" />
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="游戏目录" Classes="caption"
+                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
             <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.EffectiveRoot}"
-                       FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+                       FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
           </Grid>
           <StackPanel Grid.Row="3" VerticalAlignment="Bottom" Spacing="6">
             <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap" />
           </StackPanel>
-          <TextBlock Grid.Row="4" Text="切换实例会重新扫描整合包；不会修改游戏文件。"
-                     Classes="caption" TextWrapping="Wrap" />
         </Grid>
       </Border>
     </Grid>
 
     <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
-      <TextBlock Text="选择实例后点击打开，或直接双击实例。" Classes="caption"
-                 VerticalAlignment="Center" />
+      <TextBlock Text="切换实例会重新扫描整合包；不会修改游戏文件。双击实例也可直接打开。"
+                 Classes="caption" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
         <Button Content="关闭" Command="{Binding CancelCommand}" />
-        <Button Content="打开选中实例" Classes="accent" Command="{Binding OpenCommand}"
+        <Button Content="打开选中实例" Classes="accent" Click="OnOpenSelectedClick"
                 IsEnabled="{Binding CanOpen}" />
       </StackPanel>
     </Grid>

@@ -175,9 +175,15 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Open()
+    private void Open() => OpenSelected();
+
+    public void OpenSelected()
     {
-        if (Selected is null || SelectedFolder is null) return;
+        if (Selected is null || SelectedFolder is null)
+        {
+            StatusText = "请先选择一个实例。";
+            return;
+        }
         Completed?.Invoke(new InstanceManagerResult
         {
             VersionsDirectory = SelectedFolder.Path,

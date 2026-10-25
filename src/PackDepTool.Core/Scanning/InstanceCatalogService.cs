@@ -16,6 +16,8 @@ public sealed class MinecraftInstanceInfo
     public int DisabledModCount { get; init; }
     public DateTimeOffset ModifiedAt { get; init; }
     public bool HasJson { get; init; }
+    public bool HasSeparateGameDirectory =>
+        !string.Equals(Path, EffectiveRoot, StringComparison.OrdinalIgnoreCase);
 
     public string Detail => $"{MinecraftVersion} · {LoaderText(Loader)} · {ModCount} 个模组";
     public string ModifiedText => ModifiedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");

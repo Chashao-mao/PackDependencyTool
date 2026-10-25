@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using PackDepTool.App.ViewModels;
+using PackDepTool.Core.Scanning;
 
 namespace PackDepTool.App.Views;
 
@@ -35,10 +36,18 @@ public partial class InstanceManagerDialog : Window
 
     private void OnCompleted(InstanceManagerResult? result) => Close(result);
 
+    private void OnOpenSelectedClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        _viewModel?.OpenSelected();
+
+    private void OnInstanceSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_viewModel is not null && InstanceList.SelectedItem is MinecraftInstanceInfo instance)
+            _viewModel.Selected = instance;
+    }
+
     private void OnInstanceDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (_viewModel?.Selected is null) return;
-        _viewModel.OpenCommand.Execute(null);
+        _viewModel?.OpenSelected();
         e.Handled = true;
     }
 }
