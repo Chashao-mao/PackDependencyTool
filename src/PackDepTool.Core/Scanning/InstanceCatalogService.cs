@@ -20,6 +20,8 @@ public sealed class MinecraftInstanceInfo
         !string.Equals(Path, EffectiveRoot, StringComparison.OrdinalIgnoreCase);
 
     public string Detail => $"{MinecraftVersion} · {LoaderText(Loader)} · {ModCount} 个模组";
+    public string LoaderLabel => LoaderText(Loader);
+    public string CountText => $"{ModCount} 个模组";
     public string ModifiedText => ModifiedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
 
     public static string LoaderText(LoaderKind loader) => loader switch

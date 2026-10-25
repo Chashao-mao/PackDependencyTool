@@ -5,124 +5,180 @@
         x:Class="PackDepTool.App.Views.InstanceManagerDialog"
         x:DataType="vm:InstanceManagerViewModel"
         Title="实例管理"
-        Width="900"
-        Height="660"
-        MinWidth="760"
-        MinHeight="540"
+        Width="940"
+        Height="680"
+        MinWidth="800"
+        MinHeight="560"
         CanResize="True"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackground}">
 
-  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
-    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
-      <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
-              HorizontalAlignment="Left" Margin="0,0,0,7" />
-      <TextBlock Text="实例管理" Classes="title" FontSize="18" />
-      <TextBlock Text="添加多个 versions 文件夹，选择文件夹后从实例列表切换；也可以扫描启动器目录。"
-                 Classes="caption" TextWrapping="Wrap" />
-    </StackPanel>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="22">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+      <StackPanel Spacing="3">
+        <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
+                HorizontalAlignment="Left" Margin="0,0,0,7" />
+        <TextBlock Text="实例管理" Classes="title" FontSize="20" />
+        <TextBlock Text="添加启动器的 versions 文件夹，查看实例并切换当前整合包。"
+                   Classes="caption" TextWrapping="Wrap" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="chip" VerticalAlignment="Center">
+        <TextBlock Text="{Binding SummaryText}" FontSize="10.5" />
+      </Border>
+    </Grid>
 
-    <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
-            BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,10">
-      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-        <TextBlock Text="管理启动器实例目录" Classes="caption" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Content="添加 versions 文件夹…" Command="{Binding AddFolderCommand}" Height="30" />
-        <Button Grid.Column="2" Content="扫描启动器" Command="{Binding ScanLaunchersCommand}" Height="30" />
-      </Grid>
-    </Border>
+    <Grid Grid.Row="1" ColumnDefinitions="320,*" ColumnSpacing="14">
+      <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+              BorderThickness="1" CornerRadius="12" Padding="12">
+        <Grid RowDefinitions="Auto,Auto,Auto,12,Auto,*" RowSpacing="7">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TextBlock Text="实例来源" Classes="section" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="＋ 添加" Command="{Binding AddFolderCommand}"
+                    Classes="accent" FontSize="10" Padding="9,3" MinHeight="27"
+                    ToolTip.Tip="添加 versions 文件夹" />
+          </Grid>
 
-    <Grid Grid.Row="2" ColumnDefinitions="290,*" ColumnSpacing="12">
-      <Grid RowDefinitions="Auto,150,Auto,*" RowSpacing="8">
-        <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
-                BorderThickness="1" CornerRadius="12" Padding="8">
-          <Grid RowDefinitions="Auto,*" RowSpacing="4">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-              <TextBlock Text="已添加目录" Classes="section" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Content="移除" Command="{Binding RemoveFolderCommand}"
-                      IsEnabled="{Binding CanRemoveFolder}" FontSize="9.5" Padding="7,2" MinHeight="24" />
-            </Grid>
-            <ListBox Grid.Row="1" ItemsSource="{Binding Folders}"
-                     SelectedItem="{Binding SelectedFolder, Mode=TwoWay}" Background="Transparent">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:VersionsFolderItem">
-                  <StackPanel Spacing="1" Margin="2,2">
-                    <TextBlock Text="{Binding DisplayName}" FontSize="11" FontWeight="SemiBold"
+          <ListBox Grid.Row="1" Height="112" ItemsSource="{Binding Folders}"
+                   SelectedItem="{Binding SelectedFolder, Mode=TwoWay}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:VersionsFolderItem">
+                <Grid ColumnDefinitions="*,Auto" Margin="2,3">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Path}" FontSize="9" Foreground="{DynamicResource TextMuted}"
+                    <TextBlock Text="{Binding Path}" FontSize="9"
+                               Foreground="{DynamicResource TextMuted}"
                                TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </Grid>
-        </Border>
+                  <Border Grid.Column="1" Classes="chip" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding InstanceCount}" FontSize="9.5" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
 
-        <Border Grid.Row="2" Grid.RowSpan="2" Background="{DynamicResource PanelAlt}"
-                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" CornerRadius="12" Padding="8">
-          <Grid RowDefinitions="Auto,*,Auto" RowSpacing="4">
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-              <TextBlock Text="实例列表" Classes="section" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Content="刷新" Command="{Binding RescanCommand}" FontSize="9.5"
-                      Padding="7,2" MinHeight="24" />
-            </Grid>
-            <ListBox Grid.Row="1" x:Name="InstanceList" ItemsSource="{Binding Instances}"
+          <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <Button Content="移除目录" Command="{Binding RemoveFolderCommand}"
+                    IsEnabled="{Binding CanRemoveFolder}" FontSize="9.5" Padding="8,2" MinHeight="25" />
+            <Button Grid.Column="1" Content="扫描启动器" Command="{Binding ScanLaunchersCommand}"
+                    FontSize="9.5" Padding="8,2" MinHeight="25" HorizontalAlignment="Left" />
+          </Grid>
+
+          <Border Grid.Row="3" Height="1" Background="{DynamicResource CardBorder}" />
+
+          <Grid Grid.Row="4" ColumnDefinitions="*,Auto">
+            <TextBlock Text="实例列表" Classes="section" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="刷新" Command="{Binding RescanCommand}"
+                    FontSize="9.5" Padding="8,2" MinHeight="25" />
+          </Grid>
+
+          <Grid Grid.Row="5">
+            <ListBox x:Name="InstanceList" ItemsSource="{Binding Instances}"
                      SelectedItem="{Binding Selected, Mode=TwoWay}"
                      SelectionChanged="OnInstanceSelectionChanged"
                      DoubleTapped="OnInstanceDoubleTapped" Background="Transparent">
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="scan:MinecraftInstanceInfo">
-                  <StackPanel Spacing="2" Margin="2,3">
-                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding Detail}" FontSize="9.5"
-                               Foreground="{DynamicResource TextMuted}"
-                               TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
+                  <Grid ColumnDefinitions="*,Auto" Margin="2,4">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Detail}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextMuted}"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding MinecraftVersion}" FontSize="9.5"
+                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                  </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
+            <TextBlock Text="还没有添加 versions 文件夹" Classes="caption"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding !HasFolders}" />
+            <TextBlock Text="此目录下没有实例" Classes="caption"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding ShowEmptyInstances}" />
           </Grid>
-        </Border>
-      </Grid>
+        </Grid>
+      </Border>
 
       <Border Grid.Column="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
               BorderThickness="1" CornerRadius="12" Padding="16">
-        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="10">
-          <TextBlock Text="实例详情" Classes="section" />
-          <TextBlock Grid.Row="1" Text="{Binding Selected.Name, FallbackValue='未选择实例'}"
-                     FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <Grid Grid.Row="2" ColumnDefinitions="90,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
-                RowSpacing="6" ColumnSpacing="8">
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="版本" Classes="caption" />
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.MinecraftVersion}" />
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="加载器" Classes="caption" />
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.Loader}" />
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="模组" Classes="caption" />
-            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.ModCount}" />
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="禁用" Classes="caption" />
-            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Selected.DisabledModCount}" />
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="最后修改" Classes="caption" />
-            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.ModifiedText}" />
-            <TextBlock Grid.Row="5" Grid.Column="0" Text="实例目录" Classes="caption" />
-            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Selected.Path}"
-                       FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
-            <TextBlock Grid.Row="6" Grid.Column="0" Text="游戏目录" Classes="caption"
-                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
-            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Selected.EffectiveRoot}"
-                       FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
-                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="10">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TextBlock Text="实例详情" Classes="section" VerticalAlignment="Center" />
+            <Border Grid.Column="1" Classes="chip" IsVisible="{Binding HasSelection}">
+              <TextBlock Text="{Binding Selected.LoaderLabel}" FontSize="9.5" />
+            </Border>
           </Grid>
-          <StackPanel Grid.Row="3" VerticalAlignment="Bottom" Spacing="6">
-            <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap" />
+
+          <StackPanel Grid.Row="1" Spacing="3">
+            <TextBlock Text="{Binding Selected.Name, FallbackValue='未选择实例'}"
+                       FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="从左侧选择一个实例查看详情。" Classes="caption"
+                       IsVisible="{Binding !HasSelection}" />
           </StackPanel>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8"
+                ColumnSpacing="8" IsVisible="{Binding HasSelection}">
+            <Border Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="Minecraft" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.MinecraftVersion}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="加载器" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.LoaderLabel}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Row="1" Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="模组" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.ModCount}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Row="1" Grid.Column="1" Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="禁用" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.DisabledModCount}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Grid Grid.Row="3" ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
+                RowSpacing="5" ColumnSpacing="8" IsVisible="{Binding HasSelection}">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="实例目录" Classes="caption" FontSize="9.5" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.Path}"
+                       FontSize="9.5" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="游戏目录" Classes="caption" FontSize="9.5"
+                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.EffectiveRoot}"
+                       FontSize="9.5" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="最后修改" Classes="caption" FontSize="9.5" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.ModifiedText}"
+                       FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+          </Grid>
+
+          <Border Grid.Row="4" VerticalAlignment="Bottom" Background="{DynamicResource PanelBackground}"
+                  CornerRadius="7" Padding="9,7">
+            <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap" />
+          </Border>
+
+          <TextBlock Grid.Row="5" Text="切换实例会重新扫描整合包；不会修改游戏文件。双击实例也可直接打开。"
+                     Classes="caption" TextWrapping="Wrap" />
         </Grid>
       </Border>
     </Grid>
 
-    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
-      <TextBlock Text="切换实例会重新扫描整合包；不会修改游戏文件。双击实例也可直接打开。"
-                 Classes="caption" VerticalAlignment="Center" />
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <TextBlock Text="选择实例后点击打开，或直接双击实例。" Classes="caption"
+                 VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
         <Button Content="关闭" Command="{Binding CancelCommand}" />
         <Button Content="打开选中实例" Classes="accent" Click="OnOpenSelectedClick"

@@ -62,6 +62,7 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
         _selectedFolder = Folders.FirstOrDefault();
         _versionsDirectory = _selectedFolder?.Path ?? string.Empty;
         _initializing = false;
+        OnPropertyChanged(nameof(SummaryText));
     }
 
     public ObservableCollection<VersionsFolderItem> Folders { get; } = [];
@@ -75,8 +76,11 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
 
     public bool HasFolders => Folders.Count > 0;
     public bool HasInstances => Instances.Count > 0;
+    public bool HasSelection => Selected is not null;
+    public bool ShowEmptyInstances => HasFolders && !HasInstances;
     public bool CanOpen => Selected is not null;
     public bool CanRemoveFolder => SelectedFolder is not null;
+    public string SummaryText => $"{Folders.Count} 个目录 · {Instances.Count} 个实例";
 
     public event Action<InstanceManagerResult?>? Completed;
 
@@ -98,6 +102,7 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
         var item = AddFolder(resolved);
         OnPropertyChanged(nameof(HasFolders));
         OnPropertyChanged(nameof(CanRemoveFolder));
+        OnPropertyChanged(nameof(SummaryText));
         _suppressFolderAutoScan = true;
         SelectedFolder = item;
         _suppressFolderAutoScan = false;
@@ -123,6 +128,8 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
         OnPropertyChanged(nameof(HasFolders));
         OnPropertyChanged(nameof(CanRemoveFolder));
         OnPropertyChanged(nameof(HasInstances));
+        OnPropertyChanged(nameof(ShowEmptyInstances));
+        OnPropertyChanged(nameof(SummaryText));
     }
 
     [RelayCommand]
@@ -158,6 +165,7 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
 
             var item = AddFolder(folder);
             OnPropertyChanged(nameof(HasFolders));
+            OnPropertyChanged(nameof(SummaryText));
             _suppressFolderAutoScan = true;
             SelectedFolder = item;
             _suppressFolderAutoScan = false;
@@ -228,7 +236,10 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
             folder.InstanceCount = Instances.Count;
             Selected = Instances.FirstOrDefault();
             OnPropertyChanged(nameof(HasInstances));
+            OnPropertyChanged(nameof(ShowEmptyInstances));
+            OnPropertyChanged(nameof(HasSelection));
             OnPropertyChanged(nameof(CanOpen));
+            OnPropertyChanged(nameof(SummaryText));
             StatusText = Instances.Count == 0
                 ? result.Warnings.FirstOrDefault() ?? $"未找到实例：{folder.Path}"
                 : $"共 {Instances.Count} 个实例 · {folder.Path}";
@@ -245,8 +256,11 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
         }
     }
 
-    partial void OnSelectedChanged(MinecraftInstanceInfo? value) =>
+    partial void OnSelectedChanged(MinecraftInstanceInfo? value)
+    {
         OnPropertyChanged(nameof(CanOpen));
+        OnPropertyChanged(nameof(HasSelection));
+    }
 
     partial void OnSelectedFolderChanged(VersionsFolderItem? value)
     {
