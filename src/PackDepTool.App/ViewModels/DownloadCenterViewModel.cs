@@ -284,6 +284,8 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     [ObservableProperty] private string _pageText = "第 1 页";
     [ObservableProperty] private bool _isLoadingPage;
 
+    public Func<string, string, Task<bool>>? ConfirmChainDownload { get; set; }
+
     public event Action<DownloadCenterResult?>? Completed;
 
     public async Task InitializeAsync()
@@ -602,6 +604,131 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
         }
     }
 
+    private async Task QueueModWithDependenciesAsync(
+        DownloadVersion root,
+        string rootName,
+        string rootTitle)
+    {
+        var modsDir = Path.Combine(_context.PackRoot!, "mods");
+        var chain = new List<DownloadVersion>();
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ProjectKey(root),
+        };
+        var installed = _context.InstalledProjectIds;
+        var queuedKeys = _queueProjectKeys.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pending = new Queue<DownloadVersion>();
+        pending.Enqueue(root);
+
+        while (pending.Count > 0 && chain.Count < 25)
+        {
+            var current = pending.Dequeue();
+            foreach (var dependencyId in current.RequiredDependencies)
+            {
+                var key = $"{current.Source}:{dependencyId}";
+                if (!seen.Add(key) || installed.Contains(dependencyId) || queuedKeys.Contains(key))
+                    continue;
+
+                try
+                {
+                    var project = new DownloadProject
+                    {
+                        Source = current.Source,
+                        Type = DownloadProjectType.Mod,
+                        ProjectId = dependencyId,
+                        Name = dependencyId,
+                    };
+                    var versions = await _downloader.GetVersionsAsync(
+                        project, _context.McVersion, _context.Loader, CancellationToken.None);
+                    var dependency = versions.FirstOrDefault(version => version.IsCompatible) ??
+                                     versions.FirstOrDefault();
+                    if (dependency is null)
+                    {
+                        StatusText = $"未能找到前置 {dependencyId} 的可用版本，继续下载当前模组。";
+                        continue;
+                    }
+
+                    chain.Add(dependency);
+                    pending.Enqueue(dependency);
+                }
+                catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or
+                                               CurseForgeApiException or ModrinthApiException or
+                                               MissingApiKeyException)
+                {
+                    StatusText = $"读取前置 {dependencyId} 失败：{ex.Message}";
+                }
+            }
+        }
+
+        var includeChain = false;
+        if (chain.Count > 0)
+        {
+            try
+            {
+                var resolvedNames = await _downloader.GetDependencyNamesAsync(
+                    root.Source, chain.Select(version => version.ProjectId).ToList(), CancellationToken.None);
+                foreach (var pair in resolvedNames)
+                    names[pair.Key] = pair.Value;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or
+                                           ArgumentException)
+            {
+                // Fall back to project IDs.
+            }
+
+            var text = string.Join(Environment.NewLine, chain.Select(version =>
+                $"· {(names.TryGetValue(version.ProjectId, out var name) ? name : version.ProjectName)} ({version.ProjectId})"));
+            if (chain.Count > 12)
+                text += $"{Environment.NewLine}· …共 {chain.Count} 个必需前置";
+            var confirm = ConfirmChainDownload;
+            includeChain = confirm is not null &&
+                           await confirm(
+                               "一并下载必需前置？",
+                               $"下载 {rootName} {rootTitle} 需要以下必需前置：{Environment.NewLine}{Environment.NewLine}" +
+                               text + $"{Environment.NewLine}{Environment.NewLine}是否一并加入下载队列？");
+        }
+
+        var queued = 0;
+        try
+        {
+            if (includeChain)
+            {
+                foreach (var dependency in chain)
+                {
+                    await EnqueueVersionAsync(dependency, names.TryGetValue(dependency.ProjectId, out var name)
+                        ? name
+                        : dependency.ProjectName, dependency.VersionNumber, modsDir);
+                    queued++;
+                }
+            }
+
+            await EnqueueVersionAsync(root, rootName, rootTitle, modsDir);
+            queued++;
+            StatusText = includeChain
+                ? $"已加入 {queued} 个下载（含 {chain.Count} 个必需前置）。"
+                : "已加入下载队列，可继续选择其他版本。";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or
+                                       InvalidOperationException or CurseForgeApiException or
+                                       ModrinthApiException or MissingApiKeyException)
+        {
+            StatusText = $"加入队列失败：{ex.Message}";
+        }
+    }
+
+    private async Task EnqueueVersionAsync(
+        DownloadVersion version,
+        string name,
+        string title,
+        string modsDirectory)
+    {
+        var request = await _downloader.CreateFileRequestAsync(version, modsDirectory, CancellationToken.None);
+        var queued = _queue.Enqueue(request, name, title);
+        _queueProjectKeys[queued.Id] = ProjectKey(version);
+        _sessionQueueIds.Add(queued.Id);
+    }
+
     [RelayCommand]
     private async Task DownloadAsync()
     {
@@ -628,21 +755,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
 
         if (!IsModpack)
         {
-            try
-            {
-                var request = await _downloader.CreateFileRequestAsync(
-                    downloadVersion, Path.Combine(_context.PackRoot!, "mods"), CancellationToken.None);
-                var queued = _queue.Enqueue(request, SelectedProject.Name, SelectedVersion.Title);
-                _queueProjectKeys[queued.Id] = ProjectKey(downloadVersion);
-                _sessionQueueIds.Add(queued.Id);
-                StatusText = "已加入下载队列，可继续选择其他版本。";
-            }
-            catch (Exception ex) when (ex is HttpRequestException or IOException or
-                                           InvalidOperationException or CurseForgeApiException or
-                                           ModrinthApiException or MissingApiKeyException)
-            {
-                StatusText = $"加入队列失败：{ex.Message}";
-            }
+            await QueueModWithDependenciesAsync(downloadVersion, SelectedProject.Name, SelectedVersion.Title);
             return;
         }
 

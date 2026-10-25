@@ -33,6 +33,8 @@ public partial class DownloadCenterDialog : Window
         {
             _viewModel.Completed += OnCompleted;
             SearchBox.KeyDown += OnSearchKeyDown;
+            _viewModel.ConfirmChainDownload = (title, message) =>
+                MessageDialog.ShowAsync(this, title, message, "一并下载", "仅下载当前");
         }
     }
 
