@@ -88,8 +88,6 @@
             <Button Content="更多 ▾">
               <Button.Flyout>
                 <MenuFlyout>
-                  <MenuItem Header="管理已禁用模组…" Command="{Binding OpenDisabledModsCommand}" />
-                  <Separator />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   <Separator />
@@ -445,6 +443,9 @@
                 <Button Content="工具" Command="{Binding OpenPackToolsCommand}"
                         FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="整合包检查、模组清单导出与重复文件清理" />
+                <Button Content="禁用管理" Command="{Binding OpenDisabledModsCommand}"
+                        FontSize="10.5" Padding="9,3" MinHeight="28"
+                        ToolTip.Tip="管理已禁用的 .jar.disabled，可批量启用或永久删除" />
               </StackPanel>
             </Grid>
           </Border>

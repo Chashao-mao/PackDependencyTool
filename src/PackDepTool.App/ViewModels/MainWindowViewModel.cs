@@ -2552,7 +2552,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!await _dialogs.ConfirmAsync(
                 "禁用模组",
                 $"禁用 {node.Name}（{node.Id}）？{Environment.NewLine}{Environment.NewLine}" +
-                "将把 JAR 重命名为 .jar.disabled，之后可在「更多 → 管理已禁用模组」中恢复。"))
+                "将把 JAR 重命名为 .jar.disabled，之后可用「禁用管理」恢复。"))
             return;
 
         var orphanPrerequisites = FindOrphanPrerequisites([node]);
@@ -4160,7 +4160,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 只使用与当前 MC / 加载器兼容的最新版本；旧 JAR 会移到 .packdep-trash。",
             BatchModAction.Disable =>
                 $"禁用选中的 {nodes.Count} 个模组？{Environment.NewLine}{Environment.NewLine}" +
-                "将 JAR 重命名为 .jar.disabled，可在「更多 → 管理已禁用模组」恢复。",
+                "将 JAR 重命名为 .jar.disabled，可用「禁用管理」恢复。",
             BatchModAction.Delete =>
                 $@"删除选中的 {nodes.Count} 个模组？
 
