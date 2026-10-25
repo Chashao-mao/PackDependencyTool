@@ -17,6 +17,7 @@ public enum PackToolsAction
     OpenConfig,
     OpenResourcePacks,
     CleanDuplicateFiles,
+    CleanDuplicateModFiles,
 }
 
 public sealed class PackToolsResult
@@ -123,6 +124,7 @@ public sealed partial class PackToolsViewModel : ObservableObject
     public bool HasDuplicateMods => DuplicateMods.Count > 0;
     public bool HasDuplicateHashes => DuplicateHashes.Count > 0;
     public bool CanCleanDuplicates => Report.DuplicateJarCount > 0;
+    public bool CanCleanDuplicateMods => Report.DuplicateModIds.Count > 0;
 
     public event Action<PackToolsResult?>? Completed;
 
@@ -158,6 +160,19 @@ public sealed partial class PackToolsViewModel : ObservableObject
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         Complete(PackToolsAction.CleanDuplicateFiles, extras);
+    }
+
+    [RelayCommand]
+    private void CleanDuplicateModFiles()
+    {
+        var extras = Report.DuplicateModIds
+            .SelectMany(group => group.Files
+                .OrderBy(file => file.RelativePath, StringComparer.OrdinalIgnoreCase)
+                .Skip(1)
+                .Select(file => file.AbsolutePath))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        Complete(PackToolsAction.CleanDuplicateModFiles, extras);
     }
 
     [RelayCommand]

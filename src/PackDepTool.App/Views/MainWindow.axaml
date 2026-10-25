@@ -43,6 +43,8 @@
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <Button Content="选择整合包" Command="{Binding PickFolderCommand}" ToolTip.Tip="Ctrl+O" />
+            <Button Content="实例" Command="{Binding OpenInstancesCommand}"
+                    ToolTip.Tip="选择 versions 文件夹、查看实例并切换当前整合包" />
             <Button Content="扫描" Classes="accent" Command="{Binding RescanCommand}" ToolTip.Tip="F5" />
             <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
             <Button Content="补全 ▾" ToolTip.Tip="联网补全项目资料，或下载缺失依赖">

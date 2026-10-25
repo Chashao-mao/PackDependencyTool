@@ -161,6 +161,20 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<GameInstallResult?>(Owner);
     }
 
+    public async Task<InstanceManagerResult?> ShowInstanceManagerAsync(string? versionsDirectory)
+    {
+        if (Owner is null) return null;
+
+        var viewModel = new InstanceManagerViewModel(
+            new InstanceCatalogService(),
+            _pclLocator,
+            versionsDirectory,
+            () => PickFolderAsync("选择 versions 文件夹"),
+            candidates => ShowPclDirectoryPickerAsync(candidates));
+        var dialog = new InstanceManagerDialog { DataContext = viewModel };
+        return await dialog.ShowDialog<InstanceManagerResult?>(Owner);
+    }
+
     public async Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates)
     {

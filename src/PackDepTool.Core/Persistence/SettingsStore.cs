@@ -44,6 +44,7 @@ public sealed class AppSettings
     public bool GameInstallUseTargetAsInstance { get; set; }
 
     public string? LoaderSwitchInstanceDirectory { get; set; }
+    public string? VersionsDirectory { get; set; }
 
     public AppSettings Clone()
     {
@@ -84,6 +85,7 @@ public sealed class AppSettings
         GameInstallDownloadAssets = other.GameInstallDownloadAssets;
         GameInstallUseTargetAsInstance = other.GameInstallUseTargetAsInstance;
         LoaderSwitchInstanceDirectory = other.LoaderSwitchInstanceDirectory;
+        VersionsDirectory = other.VersionsDirectory;
     }
 }
 

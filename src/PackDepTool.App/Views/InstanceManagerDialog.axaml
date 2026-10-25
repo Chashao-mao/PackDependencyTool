@@ -1,0 +1,100 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        xmlns:scan="using:PackDepTool.Core.Scanning"
+        x:Class="PackDepTool.App.Views.InstanceManagerDialog"
+        x:DataType="vm:InstanceManagerViewModel"
+        Title="实例管理"
+        Width="860"
+        Height="620"
+        MinWidth="720"
+        MinHeight="500"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackground}">
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
+      <Border Width="42" Height="3" CornerRadius="2" Background="{DynamicResource Accent}"
+              HorizontalAlignment="Left" Margin="0,0,0,7" />
+      <TextBlock Text="实例管理" Classes="title" FontSize="18" />
+      <TextBlock Text="选择一个 versions 文件夹，查看实例并切换当前整合包；也可以扫描启动器目录。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+            BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,10">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+        <TextBlock Text="versions" Classes="caption" VerticalAlignment="Center" />
+        <TextBox Grid.Column="1" Text="{Binding VersionsDirectory, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                 Height="30" Watermark="例如 D:\mc\.minecraft\versions" />
+        <Button Grid.Column="2" Content="浏览…" Command="{Binding BrowseCommand}" Height="30" />
+        <Button Grid.Column="3" Content="读取" Command="{Binding ScanCommand}" Height="30" />
+        <Button Grid.Column="4" Content="扫描启动器" Command="{Binding ScanLaunchersCommand}" Height="30" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="320,*" ColumnSpacing="12">
+      <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+              BorderThickness="1" CornerRadius="12" Padding="8">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="实例列表" Classes="section" Margin="4,2,4,6" />
+          <ListBox Grid.Row="1" ItemsSource="{Binding Instances}"
+                   SelectedItem="{Binding Selected, Mode=TwoWay}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="scan:MinecraftInstanceInfo">
+                <StackPanel Spacing="2" Margin="2,3">
+                  <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Detail}" FontSize="9.5"
+                             Foreground="{DynamicResource TextMuted}"
+                             TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+              BorderThickness="1" CornerRadius="12" Padding="16">
+        <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="10">
+          <TextBlock Text="实例详情" Classes="section" />
+          <TextBlock Grid.Row="1" Text="{Binding Selected.Name, FallbackValue='未选择实例'}"
+                     FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <Grid Grid.Row="2" ColumnDefinitions="90,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                RowSpacing="6" ColumnSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="版本" Classes="caption" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.MinecraftVersion}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="加载器" Classes="caption" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.Loader}" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="模组" Classes="caption" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.ModCount}" />
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="禁用" Classes="caption" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Selected.DisabledModCount}" />
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="目录" Classes="caption" />
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Selected.Path}"
+                       FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="游戏目录" Classes="caption" />
+            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Selected.EffectiveRoot}"
+                       FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+          </Grid>
+          <StackPanel Grid.Row="3" VerticalAlignment="Bottom" Spacing="6">
+            <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="切换实例会重新扫描整合包；不会修改游戏文件。" Classes="caption"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="关闭" Command="{Binding CancelCommand}" />
+        <Button Content="打开选中实例" Classes="accent" Command="{Binding OpenCommand}"
+                IsEnabled="{Binding CanOpen}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

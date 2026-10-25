@@ -2598,6 +2598,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task OpenInstancesAsync()
+    {
+        var result = await _dialogs.ShowInstanceManagerAsync(_services.Settings.VersionsDirectory);
+        if (result is null) return;
+
+        if (!string.IsNullOrWhiteSpace(result.VersionsDirectory))
+        {
+            _services.Settings.VersionsDirectory = result.VersionsDirectory;
+            try
+            {
+                _services.SettingsStore.Save(_services.Settings);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.InstancePath))
+            await OpenPackAsync(result.InstancePath, autoScan: true);
+    }
+
+    [RelayCommand]
     private async Task OpenDisabledModsAsync()
     {
         if (_scanResult is null)
@@ -4255,6 +4278,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             case PackToolsAction.CleanDuplicateFiles:
                 await CleanDuplicateJarsAsync(result.ExtraFiles);
                 break;
+            case PackToolsAction.CleanDuplicateModFiles:
+                await CleanDuplicateModJarsAsync(result.ExtraFiles);
+                break;
         }
     }
 
@@ -4306,6 +4332,38 @@ public sealed partial class MainWindowViewModel : ObservableObject
         PackListExporter.ExportAuditMarkdown(report, path);
         StatusText = $"检查报告已导出：{Path.GetFileName(path)}";
         await _dialogs.ShowMessageAsync("导出完成", $"检查报告已写入：{Environment.NewLine}{path}");
+    }
+
+    private async Task CleanDuplicateModJarsAsync(IReadOnlyList<string> paths)
+    {
+        if (_scanResult is null || paths.Count == 0) return;
+        if (!await _dialogs.ConfirmAsync(
+                "清理重复 modId",
+                $"将把 {paths.Count} 个重复 modId 的额外 JAR 移到 .packdep-trash，" +
+                $"{Environment.NewLine}每个重复组按路径保留第一个文件。继续吗？",
+                "清理"))
+            return;
+
+        var moved = 0;
+        var failures = new List<string>();
+        foreach (var path in paths)
+        {
+            try
+            {
+                _services.ModFiles.MoveFileToTrash(path, _scanResult.RootPath);
+                moved++;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                failures.Add($"{Path.GetFileName(path)}：{ex.Message}");
+            }
+        }
+
+        StatusText = $"已清理 {moved} 个重复 modId 副本，正在重新扫描…";
+        if (failures.Count > 0)
+            await _dialogs.ShowMessageAsync("部分重复文件未清理",
+                string.Join(Environment.NewLine, failures.Take(10)));
+        await ScanAsync();
     }
 
     private async Task CleanDuplicateJarsAsync(IReadOnlyList<string> paths)
