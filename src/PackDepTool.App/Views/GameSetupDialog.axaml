@@ -39,7 +39,7 @@
         <TextBlock Text="实例名称" Classes="caption" VerticalAlignment="Center" />
         <TextBox Grid.Column="1" Text="{Binding InstanceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  Height="32" Watermark="留空自动命名，如 1.21.1-neoforge-21.1.264"
-                 IsEnabled="{Binding !UseTargetAsInstance}" />
+                 ToolTip.Tip="自定义实例名称；直接安装到现有目录时仅用于显示" />
       </Grid>
 
       <Grid Grid.Row="2" ColumnDefinitions="110,*,Auto" ColumnSpacing="8">

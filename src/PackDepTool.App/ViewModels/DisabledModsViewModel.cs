@@ -22,7 +22,15 @@ public sealed partial class DisabledModsViewModel : ObservableObject
     public DisabledModsViewModel(IReadOnlyList<DisabledModFile> files)
     {
         foreach (var file in files)
-            Items.Add(new DisabledModItem(file));
+        {
+            var item = new DisabledModItem(file);
+            item.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName != nameof(DisabledModItem.IsChecked)) return;
+                OnPropertyChanged(nameof(HasChecked));
+            };
+            Items.Add(item);
+        }
         _selected = Items.FirstOrDefault();
     }
 
@@ -30,14 +38,21 @@ public sealed partial class DisabledModsViewModel : ObservableObject
 
     [ObservableProperty] private DisabledModItem? _selected;
 
+    public bool HasChecked => Items.Any(item => item.IsChecked);
+
     public event Action<DisabledModsResult?>? Completed;
+
+    private IReadOnlyList<DisabledModItem> Chosen =>
+        Items.Where(item => item.IsChecked).DefaultIfEmpty(Selected).Where(item => item is not null)
+            .Select(item => item!).Distinct().ToList();
 
     [RelayCommand]
     private void EnableSelected()
     {
-        if (Selected is null) return;
+        var chosen = Chosen;
+        if (chosen.Count == 0) return;
         var result = new DisabledModsResult { Action = DisabledModsAction.Enable };
-        result.Items.Add(Selected);
+        result.Items.AddRange(chosen);
         Completed?.Invoke(result);
     }
 
@@ -52,9 +67,10 @@ public sealed partial class DisabledModsViewModel : ObservableObject
     [RelayCommand]
     private void DeleteSelected()
     {
-        if (Selected is null) return;
+        var chosen = Chosen;
+        if (chosen.Count == 0) return;
         var result = new DisabledModsResult { Action = DisabledModsAction.Delete };
-        result.Items.Add(Selected);
+        result.Items.AddRange(chosen);
         Completed?.Invoke(result);
     }
 

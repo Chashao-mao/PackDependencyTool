@@ -36,8 +36,10 @@ public partial class DownloadProgressWindow : Window
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(DownloadProgressViewModel.IsRunning)) return;
-        if (_viewModel is { IsRunning: false })
-            Topmost = false;
+        if (_viewModel is not { IsRunning: false } viewModel) return;
+        Topmost = false;
+        if (viewModel.AutoCloseOnSuccess && !viewModel.HasError)
+            Avalonia.Threading.DispatcherTimer.RunOnce(Close, TimeSpan.FromSeconds(1.2));
     }
 
     public static DownloadProgressWindow ShowFor(DownloadProgressViewModel viewModel)

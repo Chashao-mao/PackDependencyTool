@@ -280,6 +280,7 @@ public sealed partial class GameSetupViewModel : ObservableObject
         var detail = new DownloadProgressViewModel(
             "下载游戏本体与加载器",
             $"{request.MinecraftVersion} · {SelectedLoader.Label} {loaderVersion}".Trim());
+        detail.AutoCloseOnSuccess = true;
         DownloadProgressWindow.ShowFor(detail);
         var progress = new Progress<DownloadProgress>(report =>
         {

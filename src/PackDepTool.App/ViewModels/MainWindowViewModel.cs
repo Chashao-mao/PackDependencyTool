@@ -50,6 +50,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string? _selectedNodeId;
     private string? _selectedEdgeId;
     private string? _pendingReplaceNodeId;
+    private HashSet<string> _pendingReplaceProjectIds = new(StringComparer.OrdinalIgnoreCase);
     private string? _pendingFocusNodeId;
     private bool _suppressSelectionSync;
     private bool _suppressRecent;
@@ -805,6 +806,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (node is null) return;
 
         _pendingReplaceNodeId = HasLocalJar(node) ? node.Id : null;
+        _pendingReplaceProjectIds = ProjectKeys(node);
         try
         {
             await OpenDownloadCenterAsync(DownloadProjectType.Mod, node.Id);
@@ -812,7 +814,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
         finally
         {
             _pendingReplaceNodeId = null;
+            _pendingReplaceProjectIds.Clear();
         }
+    }
+
+    private static HashSet<string> ProjectKeys(ModNode node)
+    {
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(node.ProjectIds.Modrinth))
+            keys.Add($"Modrinth:{node.ProjectIds.Modrinth}");
+        if (!string.IsNullOrWhiteSpace(node.ProjectIds.CurseForge))
+            keys.Add($"CurseForge:{node.ProjectIds.CurseForge}");
+        return keys;
     }
 
     private IReadOnlySet<string> BuildInstalledProjectIds()
@@ -881,14 +894,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 var oldNode = _graph.FindNode(_pendingReplaceNodeId);
                 var oldPath = oldNode is null ? null : _services.ModFiles.ResolveLocalFile(oldNode, _scanResult.RootPath);
-                if (oldPath is not null &&
+                var sameProject = _pendingReplaceProjectIds.Overlaps(result.DownloadedProjectIds);
+                if (!sameProject)
+                {
+                    StatusText = $"已下载模组 {Path.GetFileName(result.ModFilePath)}，未替换其他模组，正在重新扫描…";
+                }
+                else if (oldPath is not null &&
                     !string.Equals(Path.GetFullPath(oldPath), Path.GetFullPath(result.ModFilePath),
                         StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
                         _services.ModFiles.Disable(oldNode!, _scanResult.RootPath);
-                        StatusText = $"已下载新版本并禁用旧版本，正在重新扫描…";
+                        StatusText = $"已下载同项目新版本并禁用旧版本，正在重新扫描…";
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
                     {
@@ -933,6 +951,69 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
 
         await ImportModpackArchiveAsync(archive);
+    }
+
+    /// <summary>Copies JARs dropped onto the window into the current pack's mods folder.</summary>
+    public async Task ImportDroppedJarsAsync(IReadOnlyList<string> jars)
+    {
+        if (IsBusy) return;
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开或扫描一个整合包，再拖入模组";
+            await _dialogs.ShowMessageAsync("拖入模组", "请先打开或扫描一个整合包，再拖入 .jar 模组。");
+            return;
+        }
+
+        var modsDirectory = Path.Combine(_scanResult.RootPath, "mods");
+        try
+        {
+            Directory.CreateDirectory(modsDirectory);
+            var copied = 0;
+            var skipped = 0;
+            var failures = new List<string>();
+            foreach (var source in jars.Where(File.Exists))
+            {
+                try
+                {
+                    var name = Path.GetFileName(source);
+                    var destination = Path.Combine(modsDirectory, name);
+                    if (string.Equals(Path.GetFullPath(source), Path.GetFullPath(destination),
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    if (File.Exists(destination))
+                    {
+                        var stem = Path.GetFileNameWithoutExtension(name);
+                        var extension = Path.GetExtension(name);
+                        destination = Path.Combine(modsDirectory,
+                            $"{stem}-dropped-{DateTime.Now:HHmmss}{extension}");
+                    }
+
+                    File.Copy(source, destination, overwrite: false);
+                    copied++;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                    failures.Add($"{Path.GetFileName(source)}：{ex.Message}");
+                }
+            }
+
+            StatusText = $"已拖入 {copied} 个模组" +
+                         (skipped > 0 ? $"，跳过 {skipped} 个已在 mods 目录的文件" : string.Empty) +
+                         "，正在重新扫描…";
+            if (failures.Count > 0)
+                await _dialogs.ShowMessageAsync("部分模组未导入",
+                    string.Join(Environment.NewLine, failures.Take(10)));
+            await ScanAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"拖入模组失败：{ex.Message}";
+            await _dialogs.ShowMessageAsync("拖入模组失败", ex.Message);
+        }
     }
 
     private async Task ImportModpackArchiveAsync(string archive)
@@ -2415,6 +2496,32 @@ public sealed partial class MainWindowViewModel : ObservableObject
         return File.Exists(path) && path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Installed mods that require one of the roots, transitively.</summary>
+    private List<ModNode> FindOrphanDependents(IEnumerable<ModNode> roots)
+    {
+        var result = new List<ModNode>();
+        if (_graph is null) return result;
+
+        var seen = new HashSet<string>(roots.Select(node => node.Id), StringComparer.OrdinalIgnoreCase);
+        var queue = new Queue<string>(seen);
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            foreach (var edge in _graph.Edges.Where(edge =>
+                         edge.Type == EdgeType.Requires &&
+                         string.Equals(edge.To, current, StringComparison.OrdinalIgnoreCase)))
+            {
+                var dependent = _graph.FindNode(edge.From);
+                if (dependent is null || dependent.IsSynthetic || !HasLocalJar(dependent) ||
+                    !seen.Add(dependent.Id))
+                    continue;
+                result.Add(dependent);
+                queue.Enqueue(dependent.Id);
+            }
+        }
+        return result;
+    }
+
     [RelayCommand]
     private async Task DisableSelectedModAsync()
     {
@@ -2426,16 +2533,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var orphans = FindOrphanDependents([node]);
+        var orphanText = orphans.Count == 0
+            ? string.Empty
+            : $"{Environment.NewLine}{Environment.NewLine}以下模组依赖它，将一并禁用：{Environment.NewLine}" +
+              string.Join(Environment.NewLine, orphans.Take(8).Select(dep => $"· {dep.Name} ({dep.Id})")) +
+              (orphans.Count > 8 ? $"{Environment.NewLine}· …共 {orphans.Count} 个" : string.Empty);
         if (!await _dialogs.ConfirmAsync(
-                "禁用模组",
+                orphans.Count > 0 ? "禁用模组及其依赖" : "禁用模组",
                 $"禁用 {node.Name}（{node.Id}）？{Environment.NewLine}{Environment.NewLine}" +
-                "将把 JAR 重命名为 .jar.disabled，之后可在「更多 → 管理已禁用模组」中恢复。"))
+                "将把 JAR 重命名为 .jar.disabled，之后可在「更多 → 管理已禁用模组」中恢复。" +
+                orphanText))
             return;
 
         try
         {
-            var path = _services.ModFiles.Disable(node, _scanResult.RootPath);
-            StatusText = $"已禁用 {Path.GetFileName(path)}，正在重新扫描…";
+            var disabled = 0;
+            foreach (var target in new[] { node }.Concat(orphans))
+            {
+                if (!HasLocalJar(target)) continue;
+                _services.ModFiles.Disable(target, _scanResult.RootPath);
+                disabled++;
+            }
+            StatusText = $"已禁用 {disabled} 个模组，正在重新扫描…";
             await ScanAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
@@ -3957,16 +4077,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _ => "批量操作",
         };
 
+        var disableNodes = action == BatchModAction.Disable
+            ? nodes.Concat(FindOrphanDependents(nodes))
+                .GroupBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList()
+            : nodes;
+        var orphanCount = disableNodes.Count - nodes.Count;
         var confirm = action switch
         {
             BatchModAction.Download =>
                 $"下载选中的 {nodes.Count} 个未安装模组？已安装的会自动跳过，仅下载与当前 MC / 加载器兼容的版本。",
             BatchModAction.Upgrade =>
-                $"检查并升级选中的 {nodes.Count} 个模组？\n\n只使用与当前 MC / 加载器兼容的最新版本；旧 JAR 会移到 .packdep-trash。",
+                $@"检查并升级选中的 {nodes.Count} 个模组？
+
+只使用与当前 MC / 加载器兼容的最新版本；旧 JAR 会移到 .packdep-trash。",
             BatchModAction.Disable =>
-                $"禁用选中的 {nodes.Count} 个模组？\n\n将 JAR 重命名为 .jar.disabled，可在「更多 → 管理已禁用模组」恢复。",
+                $"禁用选中的 {nodes.Count} 个模组？" +
+                (orphanCount > 0 ? $@"
+
+检测到 {orphanCount} 个依赖它们的模组，将一并禁用。" : string.Empty) +
+                @"
+
+将 JAR 重命名为 .jar.disabled，可在「更多 → 管理已禁用模组」恢复。",
             BatchModAction.Delete =>
-                $"删除选中的 {nodes.Count} 个模组？\n\n不会永久删除：文件会移到 .packdep-trash，可手动恢复。",
+                $@"删除选中的 {nodes.Count} 个模组？
+
+不会永久删除：文件会移到 .packdep-trash，可手动恢复。",
             _ => $"处理选中的 {nodes.Count} 个模组？",
         };
         if (!await _dialogs.ConfirmAsync(title, confirm)) return;
@@ -3977,7 +4114,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             try
             {
                 result = action == BatchModAction.Disable
-                    ? _services.Batch.Disable(nodes, _scanResult.RootPath)
+                    ? _services.Batch.Disable(disableNodes, _scanResult.RootPath)
                     : _services.Batch.Delete(nodes, _scanResult.RootPath);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)

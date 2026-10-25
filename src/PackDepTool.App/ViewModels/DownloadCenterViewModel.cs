@@ -27,6 +27,9 @@ public sealed class DownloadCenterResult
 {
     public string? PackRoot { get; init; }
     public string? ModFilePath { get; init; }
+    public string? LastDownloadedProjectId { get; init; }
+    public IReadOnlySet<string> DownloadedProjectIds { get; init; } =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     public PackImportResult? ImportResult { get; init; }
 }
 
@@ -175,6 +178,9 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     private readonly Func<Task<string?>> _pickFolder;
     private readonly DownloadQueueService _queue;
     private string? _lastDownloadedPath;
+    private string? _lastDownloadedProjectId;
+    private readonly HashSet<string> _downloadedProjectIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<Guid, string> _queueProjectKeys = [];
     private int _queueRefreshVersion;
     private readonly HashSet<Guid> _sessionQueueIds = [];
     private bool _autoCloseRaised;
@@ -441,7 +447,14 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
         {
             if (item.State == DownloadQueueState.Completed &&
                 File.Exists(item.Request.DestinationPath))
+            {
                 _lastDownloadedPath = item.Request.DestinationPath;
+                if (_queueProjectKeys.TryGetValue(item.Id, out var key))
+                {
+                    _lastDownloadedProjectId = key;
+                    _downloadedProjectIds.Add(key);
+                }
+            }
 
             var row = Queue.FirstOrDefault(existing => existing.Item.Id == item.Id);
             if (row is null)
@@ -465,7 +478,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
             !string.IsNullOrWhiteSpace(_lastDownloadedPath))
         {
             _autoCloseRaised = true;
-            Completed?.Invoke(new DownloadCenterResult { ModFilePath = _lastDownloadedPath });
+            Completed?.Invoke(BuildResult());
         }
     }
 
@@ -572,6 +585,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
                 var request = await _downloader.CreateFileRequestAsync(
                     downloadVersion, Path.Combine(_context.PackRoot!, "mods"), CancellationToken.None);
                 var queued = _queue.Enqueue(request, SelectedProject.Name, SelectedVersion.Title);
+                _queueProjectKeys[queued.Id] = ProjectKey(downloadVersion);
                 _sessionQueueIds.Add(queued.Id);
                 StatusText = "已加入下载队列，可继续选择其他版本。";
             }
@@ -619,7 +633,10 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
 
                 StatusText = $"已下载：{download.FileName}";
                 detail.Finish(true, $"已下载：{download.FileName}");
-                Completed?.Invoke(new DownloadCenterResult { ModFilePath = download.FilePath });
+                var projectKey = ProjectKey(downloadVersion);
+                _lastDownloadedProjectId = projectKey;
+                _downloadedProjectIds.Add(projectKey);
+                Completed?.Invoke(BuildResult(download.FilePath));
                 return;
             }
 
@@ -697,9 +714,22 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
         foreach (var item in _queue.Snapshot())
             if (item.State is DownloadQueueState.Queued or DownloadQueueState.Running or DownloadQueueState.Paused)
                 _queue.Cancel(item);
-        Completed?.Invoke(string.IsNullOrWhiteSpace(_lastDownloadedPath)
-            ? null
-            : new DownloadCenterResult { ModFilePath = _lastDownloadedPath });
+        Completed?.Invoke(string.IsNullOrWhiteSpace(_lastDownloadedPath) ? null : BuildResult());
+    }
+
+    private static string ProjectKey(DownloadVersion version) =>
+        $"{version.Source}:{version.ProjectId}";
+
+    private DownloadCenterResult BuildResult(string? path = null)
+    {
+        if (!string.IsNullOrWhiteSpace(path)) _lastDownloadedPath = path;
+        return new DownloadCenterResult
+        {
+            ModFilePath = _lastDownloadedPath,
+            LastDownloadedProjectId = _lastDownloadedProjectId,
+            DownloadedProjectIds = new HashSet<string>(_downloadedProjectIds,
+                StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     public void Dispose()

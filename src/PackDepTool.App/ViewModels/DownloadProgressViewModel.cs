@@ -42,6 +42,9 @@ public sealed partial class DownloadProgressViewModel : ObservableObject
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private bool _isIndeterminate;
 
+    /// <summary>Close the progress window shortly after a successful finish.</summary>
+    public bool AutoCloseOnSuccess { get; set; }
+
     public ObservableCollection<ProgressLogItem> Logs { get; } = [];
 
     public event Action? CancelRequested;

@@ -544,9 +544,11 @@ public sealed class HistoryChangeItem
     public IBrush Brush { get; }
 }
 
-public sealed class DisabledModItem
+public sealed partial class DisabledModItem : ObservableObject
 {
     public DisabledModItem(DisabledModFile model) => Model = model;
+
+    [ObservableProperty] private bool _isChecked;
 
     public DisabledModFile Model { get; }
     public string DisplayName => Model.DisplayName;

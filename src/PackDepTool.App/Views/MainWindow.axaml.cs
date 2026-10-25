@@ -288,6 +288,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        var jars = paths?.Where(path =>
+            File.Exists(path) &&
+            Path.GetExtension(path).Equals(".jar", StringComparison.OrdinalIgnoreCase)).ToList();
+        if (jars is { Count: > 0 })
+        {
+            _ = _viewModel.ImportDroppedJarsAsync(jars);
+            e.Handled = true;
+            return;
+        }
+
         var target = paths?.FirstOrDefault(path => Directory.Exists(path));
         if (target is not null)
             _ = _viewModel.OpenPathAsync(target);
