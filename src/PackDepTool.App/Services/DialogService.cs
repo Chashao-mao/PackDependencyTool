@@ -171,7 +171,7 @@ public sealed class DialogService : IDialogService
             _pclLocator,
             versionsDirectories,
             lastVersionsDirectory,
-            () => PickFolderAsync("选择 versions 文件夹"),
+            title => PickFolderAsync(title),
             candidates => ShowPclDirectoryPickerAsync(candidates));
         var dialog = new InstanceManagerDialog { DataContext = viewModel };
         return await dialog.ShowDialog<InstanceManagerResult?>(Owner);

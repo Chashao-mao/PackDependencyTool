@@ -403,19 +403,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     // ------------------------------------------------------------------ commands
 
     [RelayCommand]
-    private async Task PickFolderAsync()
-    {
-        var path = await _dialogs.PickFolderAsync("选择整合包文件夹（包含 mods 目录）");
-        if (string.IsNullOrWhiteSpace(path)) return;
-        await OpenPackAsync(path, autoScan: true);
-    }
-
-    [RelayCommand]
     private async Task RescanAsync()
     {
         if (string.IsNullOrWhiteSpace(PackPath))
         {
-            await PickFolderAsync();
+            await OpenInstancesAsync();
             return;
         }
 
@@ -1379,8 +1371,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             new Progress<(int Done, int Total, string Name)>(value =>
         {
             ProgressValue = (double)value.Done / value.Total;
-            ProgressText = $"检查更新 {value.Done}/{value.Total}";
-            StatusText = $"检查更新 · {value.Name}";
+            ProgressText = $"检查模组更新 {value.Done}/{value.Total}";
+            StatusText = $"检查模组更新 · {value.Name}";
         });
 
         try
@@ -2620,9 +2612,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
         }
 
-        if (string.IsNullOrWhiteSpace(result.InstancePath))
+        var target = result.DirectPackPath ?? result.InstancePath;
+        if (string.IsNullOrWhiteSpace(target))
         {
-            StatusText = "未选择实例。";
+            StatusText = "未选择整合包或实例。";
             return;
         }
 
@@ -2635,8 +2628,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 await Task.Delay(100);
         }
 
-        StatusText = $"正在打开实例：{result.InstancePath}";
-        await OpenPackAsync(result.InstancePath, autoScan: true);
+        StatusText = result.DirectPackPath is not null
+            ? $"正在打开整合包：{target}"
+            : $"正在打开实例：{target}";
+        await OpenPackAsync(target, autoScan: true);
     }
 
     [RelayCommand]
@@ -4001,7 +3996,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnOnlyUpdatableChanged(bool value)
     {
         if (value && !HasUpdateCheck)
-            StatusText = "请先点击「检查更新」，再筛选可更新模组";
+            StatusText = "请先点击「检查模组更新」，再筛选可更新模组";
         RefreshView();
     }
 

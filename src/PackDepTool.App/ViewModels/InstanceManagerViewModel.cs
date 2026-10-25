@@ -10,6 +10,7 @@ public sealed class InstanceManagerResult
     public string? VersionsDirectory { get; init; }
     public IReadOnlyList<string> VersionsDirectories { get; init; } = [];
     public string? InstancePath { get; init; }
+    public string? DirectPackPath { get; init; }
 }
 
 public sealed partial class VersionsFolderItem : ObservableObject
@@ -34,7 +35,7 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
 {
     private readonly InstanceCatalogService _catalog;
     private readonly PclLocatorService _pclLocator;
-    private readonly Func<Task<string?>> _pickFolder;
+    private readonly Func<string, Task<string?>> _pickFolder;
     private readonly Func<IReadOnlyList<PclGameDirectoryCandidate>, Task<PclGameDirectoryCandidate?>> _pickLauncher;
     private bool _initializing;
     private bool _suppressFolderAutoScan;
@@ -45,7 +46,7 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
         PclLocatorService pclLocator,
         IReadOnlyList<string> versionsDirectories,
         string? lastVersionsDirectory,
-        Func<Task<string?>> pickFolder,
+        Func<string, Task<string?>> pickFolder,
         Func<IReadOnlyList<PclGameDirectoryCandidate>, Task<PclGameDirectoryCandidate?>> pickLauncher)
     {
         _catalog = catalog;
@@ -87,9 +88,28 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
     public async Task InitializeAsync() => await ScanSelectedFolderAsync();
 
     [RelayCommand]
+    private async Task OpenPackAsync()
+    {
+        var folder = await _pickFolder("选择整合包文件夹（包含 mods 目录）");
+        if (string.IsNullOrWhiteSpace(folder)) return;
+        if (!Directory.Exists(folder))
+        {
+            StatusText = $"目录不存在：{folder}";
+            return;
+        }
+
+        Completed?.Invoke(new InstanceManagerResult
+        {
+            DirectPackPath = Path.GetFullPath(folder),
+            VersionsDirectory = SelectedFolder?.Path,
+            VersionsDirectories = Folders.Select(item => item.Path).ToList(),
+        });
+    }
+
+    [RelayCommand]
     private async Task AddFolderAsync()
     {
-        var folder = await _pickFolder();
+        var folder = await _pickFolder("选择 versions 文件夹");
         if (string.IsNullOrWhiteSpace(folder)) return;
 
         var resolved = InstanceCatalogService.ResolveVersionsDirectory(folder);

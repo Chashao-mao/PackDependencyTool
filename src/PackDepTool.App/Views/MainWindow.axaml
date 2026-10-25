@@ -14,7 +14,7 @@
         Background="{DynamicResource AppBackground}">
 
   <Window.KeyBindings>
-    <KeyBinding Gesture="Ctrl+O" Command="{Binding PickFolderCommand}" />
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenInstancesCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding RescanCommand}" />
     <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportJsonCommand}" />
     <KeyBinding Gesture="Ctrl+R" Command="{Binding RelayoutCommand}" />
@@ -42,9 +42,7 @@
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <Button Content="选择整合包" Command="{Binding PickFolderCommand}" ToolTip.Tip="Ctrl+O" />
-            <Button Content="实例" Command="{Binding OpenInstancesCommand}"
-                    ToolTip.Tip="选择 versions 文件夹、查看实例并切换当前整合包" />
+            <Button Content="实例管理" Command="{Binding OpenInstancesCommand}" ToolTip.Tip="Ctrl+O 打开整合包或切换 versions 实例" />
             <Button Content="扫描" Classes="accent" Command="{Binding RescanCommand}" ToolTip.Tip="F5" />
             <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
             <Button Content="补全 ▾" ToolTip.Tip="联网补全项目资料，或下载缺失依赖">
@@ -79,31 +77,26 @@
                   <MenuItem Header="关系图 PNG…" Command="{Binding ExportGraphPngCommand}" />
                   <Separator />
                   <MenuItem Header="Markdown 分析报告" Command="{Binding ExportReportCommand}" />
-                  <Separator />
                   <MenuItem Header="整合包（.mrpack）" Command="{Binding ExportPclPackCommand}" />
+                  <Separator />
+                  <MenuItem Header="模组清单 Markdown…" Command="{Binding ExportModListCommand}" />
+                  <MenuItem Header="缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
+                  <MenuItem Header="模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
             <Button Content="更多 ▾">
               <Button.Flyout>
                 <MenuFlyout>
-                  <MenuItem Header="整合包工具箱…" Command="{Binding OpenPackToolsCommand}" />
-                  <MenuItem Header="导出模组清单…" Command="{Binding ExportModListCommand}" />
-                  <MenuItem Header="导出缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
-                  <MenuItem Header="导出模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
-                  <Separator />
                   <MenuItem Header="管理已禁用模组…" Command="{Binding OpenDisabledModsCommand}" />
-                  <Separator />
-                  <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
-                  <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
                   <Separator />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   <Separator />
-                  <MenuItem Header="检查更新" Command="{Binding CheckForUpdatesCommand}"
+                  <MenuItem Header="检查程序更新" Command="{Binding CheckForUpdatesCommand}"
                             IsEnabled="{Binding !IsCheckingUpdates}" />
-                  <MenuItem Header="打开更新页" Command="{Binding OpenUpdatePageCommand}" />
-                  <MenuItem Header="打开实例目录" Command="{Binding OpenPackFolderCommand}" />
+                  <MenuItem Header="打开程序更新页" Command="{Binding OpenUpdatePageCommand}" />
+                  <MenuItem Header="打开整合包目录" Command="{Binding OpenPackFolderCommand}" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
@@ -116,7 +109,8 @@
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
-            <Button Content="重新布局" Command="{Binding RelayoutCommand}" ToolTip.Tip="Ctrl+R" />
+            <Button Content="重新布局" Command="{Binding RelayoutCommand}" ToolTip.Tip="Ctrl+R"
+                    IsVisible="{Binding IsGraphView}" />
             <Button Content="设置" Classes="ghost" Command="{Binding OpenSettingsCommand}"
                     ToolTip.Tip="Ctrl+Shift+S" />
           </StackPanel>
@@ -233,8 +227,8 @@
               <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
                         IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
                         IsEnabled="{Binding HasUpdateCheck}"
-                        ToolTip.Tip="先点击「检查更新」，再筛选有可用更新的模组" />
-              <Button Grid.Row="3" Grid.Column="1" Content="检查更新"
+                        ToolTip.Tip="先点击「检查模组更新」，再筛选有可用更新的模组" />
+              <Button Grid.Row="3" Grid.Column="1" Content="检查模组更新"
                       Command="{Binding CheckUpdatesCommand}"
                       IsVisible="{Binding !IsCheckingUpdates}"
                       IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24"
@@ -724,13 +718,13 @@
                            IsVisible="{Binding !IsPackLoaded}" />
                 <TextBlock Text="当前筛选没有匹配的模组" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
                            IsVisible="{Binding IsPackLoaded}" />
-                <TextBlock Text="选择一个整合包文件夹（包含 mods/*.jar），或直接把文件夹拖进窗口。"
+                <TextBlock Text="在「实例管理」中打开整合包，或直接把文件夹拖进窗口。"
                            Classes="caption" TextWrapping="Wrap" TextAlignment="Center"
                            IsVisible="{Binding !IsPackLoaded}" />
                 <TextBlock Text="试试放宽状态/加载器/关系筛选，或清空搜索内容。"
                            Classes="caption" TextWrapping="Wrap" TextAlignment="Center"
                            IsVisible="{Binding IsPackLoaded}" />
-                <Button Classes="accent" Content="选择整合包" Command="{Binding PickFolderCommand}"
+                <Button Classes="accent" Content="打开整合包 / 实例…" Command="{Binding OpenInstancesCommand}"
                         HorizontalAlignment="Center" Margin="0,4,0,0" IsVisible="{Binding !IsPackLoaded}" />
                 <Button Content="重置筛选" Command="{Binding ResetFiltersCommand}"
                         HorizontalAlignment="Center" Margin="0,4,0,0" IsVisible="{Binding IsPackLoaded}" />
