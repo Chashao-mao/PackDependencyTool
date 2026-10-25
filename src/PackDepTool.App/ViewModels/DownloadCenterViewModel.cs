@@ -79,8 +79,8 @@ public sealed class DownloadVersionItem
     public DownloadVersionItem(DownloadVersion model)
     {
         Model = model;
-        CompatibilityText = model.IsCompatible ? "兼容" : "其他版本";
-        CompatibilityBrush = new SolidColorBrush(model.IsCompatible ? GraphPalette.Success : GraphPalette.TextMuted);
+        CompatibilityText = model.IsCompatible ? "兼容" : "不兼容 · 可强下";
+        CompatibilityBrush = new SolidColorBrush(model.IsCompatible ? GraphPalette.Success : GraphPalette.EdgeIncompatible);
         var dependencyCount = model.Dependencies.Count;
         DependenciesText = dependencyCount > 0 ? $"{dependencyCount} 个前置" : string.Empty;
     }
@@ -245,6 +245,12 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     [ObservableProperty] private string _targetText = string.Empty;
     [ObservableProperty] private string _downloadButtonText;
 
+    public string ContextText => IsModpack
+        ? "整合包不需要匹配当前实例版本"
+        : string.IsNullOrWhiteSpace(_context.McVersion)
+            ? "未指定当前实例版本"
+            : $"当前实例：{_context.McVersion} · {GraphPalette.LoaderText(_context.Loader)}";
+
     public ObservableCollection<DownloadProjectItem> Projects { get; } = [];
     public ObservableCollection<DownloadVersionItem> Versions { get; } = [];
     public ObservableCollection<DownloadQueueRow> Queue { get; } = [];
@@ -270,6 +276,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     {
         IsModpack = value?.Value == DownloadProjectType.Modpack;
         DownloadButtonText = IsModpack ? "下载并导入" : "下载到 mods";
+        OnPropertyChanged(nameof(ContextText));
         UpdateTargetText();
         Projects.Clear();
         Versions.Clear();
@@ -531,13 +538,14 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
                 Versions.Add(new DownloadVersionItem(version));
 
             HasVersions = Versions.Count > 0;
-            SelectedVersion = Versions.FirstOrDefault(version => version.Model.IsCompatible) ??
-                              Versions.FirstOrDefault();
+            var compatible = Versions.FirstOrDefault(version => version.Model.IsCompatible);
+            SelectedVersion = compatible ?? Versions.FirstOrDefault();
             StatusText = Versions.Count == 0
                 ? "没有可用版本。"
-                : $"共 {Versions.Count} 个版本" + (IsModpack
-                    ? string.Empty
-                    : $"（当前整合包：{_context.McVersion ?? "unknown"} / {_context.Loader}）");
+                : compatible is null
+                    ? $"共 {Versions.Count} 个版本；没有与当前实例兼容的版本，其他版本已标红，可强制下载。"
+                    : $"共 {Versions.Count} 个版本，已自动选择兼容版本。" +
+                      (IsModpack ? string.Empty : $" 当前实例：{_context.McVersion} / {GraphPalette.LoaderText(_context.Loader)}");
         }
         catch (Exception ex) when (ex is CurseForgeApiException or ModrinthApiException or HttpRequestException or
                                        MissingApiKeyException)

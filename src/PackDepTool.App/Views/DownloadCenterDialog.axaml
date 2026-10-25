@@ -18,6 +18,10 @@
       <TextBlock Text="下载中心" Classes="title" FontSize="18" />
       <TextBlock Text="从 Modrinth / CurseForge 下载模组或整合包；整合包会先下载再导入并自动扫描。"
                  Classes="caption" TextWrapping="Wrap" />
+      <Border Classes="chip" HorizontalAlignment="Left" Margin="0,5,0,0"
+              IsVisible="{Binding !IsModpack}">
+        <TextBlock Text="{Binding ContextText}" FontSize="10" />
+      </Border>
     </StackPanel>
 
     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
@@ -140,7 +144,7 @@
                                  Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding CompatibilityText}" FontSize="9.5"
+                      <TextBlock Text="{Binding CompatibilityText}" FontSize="9.5" FontWeight="SemiBold"
                                  Foreground="{Binding CompatibilityBrush}" HorizontalAlignment="Right" />
                       <TextBlock Text="{Binding SizeText}" FontSize="9" Foreground="{DynamicResource TextMuted}"
                                  HorizontalAlignment="Right" />

@@ -723,7 +723,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (IsBusy || _scanResult is null) return;
         if (!node.IsSynthetic)
         {
-            await OpenDownloadCenterAsync(DownloadProjectType.Mod, node.Id);
+            await OpenDownloadCenterAsync(DownloadProjectType.Mod, DownloadSearchQuery(node));
             return;
         }
 
@@ -801,13 +801,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _pendingReplaceProjectIds = ProjectKeys(node);
         try
         {
-            await OpenDownloadCenterAsync(DownloadProjectType.Mod, node.Id);
+            await OpenDownloadCenterAsync(DownloadProjectType.Mod, DownloadSearchQuery(node));
         }
         finally
         {
             _pendingReplaceNodeId = null;
             _pendingReplaceProjectIds.Clear();
         }
+    }
+
+    private static string DownloadSearchQuery(ModNode node)
+    {
+        if (!string.IsNullOrWhiteSpace(node.ProjectIds.Slug))
+            return node.ProjectIds.Slug!;
+        if (!string.IsNullOrWhiteSpace(node.Name))
+            return node.Name;
+        return node.Id;
     }
 
     private static HashSet<string> ProjectKeys(ModNode node)
