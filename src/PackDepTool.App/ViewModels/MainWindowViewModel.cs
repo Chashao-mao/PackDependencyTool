@@ -2497,6 +2497,41 @@ public sealed partial class MainWindowViewModel : ObservableObject
         return File.Exists(path) && path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>Installed mods that require one of the roots, transitively.</summary>
+    private List<ModNode> FindDependentMods(IEnumerable<ModNode> roots)
+    {
+        var result = new List<ModNode>();
+        if (_graph is null) return result;
+
+        var seen = new HashSet<string>(roots.Select(node => node.Id), StringComparer.OrdinalIgnoreCase);
+        var queue = new Queue<string>(seen);
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            foreach (var edge in _graph.Edges.Where(edge =>
+                         edge.Type == EdgeType.Requires &&
+                         string.Equals(edge.To, current, StringComparison.OrdinalIgnoreCase)))
+            {
+                var dependent = _graph.FindNode(edge.From);
+                if (dependent is null || dependent.IsSynthetic || dependent.IsEmbedded ||
+                    !HasLocalJar(dependent) || !seen.Add(dependent.Id))
+                    continue;
+                result.Add(dependent);
+                queue.Enqueue(dependent.Id);
+            }
+        }
+        return result;
+    }
+
+    private static string DescribeMods(IEnumerable<ModNode> mods, int max = 8)
+    {
+        var list = mods.ToList();
+        var text = string.Join(Environment.NewLine, list.Take(max).Select(dep => $"· {dep.Name} ({dep.Id})"));
+        if (list.Count > max)
+            text += $"{Environment.NewLine}· …共 {list.Count} 个";
+        return text;
+    }
+
     /// <summary>
     /// Installed prerequisites of the disabled roots that will have no remaining
     /// installed dependent after those roots are disabled.
@@ -2549,13 +2584,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var dependents = FindDependentMods([node]);
+        var dependentText = dependents.Count == 0
+            ? string.Empty
+            : $"{Environment.NewLine}{Environment.NewLine}以下已安装模组依赖它，将一并禁用：{Environment.NewLine}" +
+              DescribeMods(dependents);
         if (!await _dialogs.ConfirmAsync(
-                "禁用模组",
+                dependents.Count == 0 ? "禁用模组" : "禁用模组及其依赖模组",
                 $"禁用 {node.Name}（{node.Id}）？{Environment.NewLine}{Environment.NewLine}" +
-                "将把 JAR 重命名为 .jar.disabled，之后可用「禁用管理」恢复。"))
+                "将把 JAR 重命名为 .jar.disabled，之后可用「禁用管理」恢复。" + dependentText))
             return;
 
-        var orphanPrerequisites = FindOrphanPrerequisites([node]);
+        var disabling = new[] { node }.Concat(dependents)
+            .GroupBy(target => target.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        var orphanPrerequisites = FindOrphanPrerequisites(disabling);
         var disableOrphans = false;
         if (orphanPrerequisites.Count > 0)
         {
@@ -2573,7 +2617,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var targets = new[] { node }
+            var targets = disabling
                 .Concat(disableOrphans ? orphanPrerequisites : [])
                 .Where(HasLocalJar)
                 .GroupBy(target => target.Id, StringComparer.OrdinalIgnoreCase)
@@ -4149,7 +4193,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _ => "批量操作",
         };
 
-        var disableNodes = new List<ModNode>(nodes);
+        var dependentMods = action == BatchModAction.Disable
+            ? FindDependentMods(nodes)
+            : [];
+        var disableNodes = nodes.Concat(dependentMods)
+            .GroupBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        var dependentText = dependentMods.Count == 0
+            ? string.Empty
+            : $"{Environment.NewLine}{Environment.NewLine}以下 {dependentMods.Count} 个已安装模组依赖选中项，将一并禁用：" +
+              $"{Environment.NewLine}{DescribeMods(dependentMods)}";
         var confirm = action switch
         {
             BatchModAction.Download =>
@@ -4160,7 +4214,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 只使用与当前 MC / 加载器兼容的最新版本；旧 JAR 会移到 .packdep-trash。",
             BatchModAction.Disable =>
                 $"禁用选中的 {nodes.Count} 个模组？{Environment.NewLine}{Environment.NewLine}" +
-                "将 JAR 重命名为 .jar.disabled，可用「禁用管理」恢复。",
+                "将 JAR 重命名为 .jar.disabled，可用「禁用管理」恢复。" + dependentText,
             BatchModAction.Delete =>
                 $@"删除选中的 {nodes.Count} 个模组？
 
@@ -4171,7 +4225,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (action == BatchModAction.Disable)
         {
-            var orphanPrerequisites = FindOrphanPrerequisites(nodes);
+            var orphanPrerequisites = FindOrphanPrerequisites(disableNodes);
             if (orphanPrerequisites.Count > 0)
             {
                 var list = string.Join(Environment.NewLine,
