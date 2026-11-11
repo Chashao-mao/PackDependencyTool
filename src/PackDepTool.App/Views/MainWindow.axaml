@@ -52,19 +52,7 @@
                   Classes="nav" Classes.active="{Binding IsDiagnosticsPage}" FontSize="12" MinHeight="36" />
           <Button Content="服务端" Command="{Binding NavigateCommand}" CommandParameter="server"
                   Classes="nav" Classes.active="{Binding IsServerPage}" FontSize="12" MinHeight="36" />
-          <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0"
-                  Margin="2,10,2,2" Padding="0,8,0,0">
-            <StackPanel Spacing="2">
-              <TextBlock Text="维护" FontSize="9.5" Margin="9,0,0,3"
-                         Foreground="{DynamicResource TextMuted}" />
-              <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
-                      Classes="nav" FontSize="11" MinHeight="30" />
-              <Button Content="历史对比" Command="{Binding CompareModListHistoryCommand}"
-                      Classes="nav" FontSize="11" MinHeight="30" />
-              <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
-                      Classes="nav" FontSize="11" MinHeight="30" />
-            </StackPanel>
-          </Border>
+
         </StackPanel>
 
         <StackPanel Grid.Row="2" Spacing="5">
@@ -1363,6 +1351,21 @@
                       <Button Content="模组列表" Command="{Binding EnterWorkspaceCommand}"
                               FontSize="11" Padding="12,7" Margin="0,0,8,4" />
                     </WrapPanel>
+                    <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0"
+                            Padding="0,8,0,0" Margin="0,4,0,0">
+                      <StackPanel Spacing="5">
+                        <TextBlock Text="本实例工具" FontSize="9.5"
+                                   Foreground="{DynamicResource TextMuted}" />
+                        <WrapPanel>
+                          <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                                  FontSize="10" Padding="8,4" Margin="0,0,6,3" />
+                          <Button Content="历史对比" Command="{Binding CompareModListHistoryCommand}"
+                                  FontSize="10" Padding="8,4" Margin="0,0,6,3" />
+                          <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
+                                  FontSize="10" Padding="8,4" Margin="0,0,6,3" />
+                        </WrapPanel>
+                      </StackPanel>
+                    </Border>
                   </StackPanel>
                 </Border>
 
