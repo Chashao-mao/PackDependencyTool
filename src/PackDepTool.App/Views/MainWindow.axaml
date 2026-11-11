@@ -102,6 +102,7 @@
                     <Separator />
                     <MenuItem Header="下载模组…" Command="{Binding DownloadModsCommand}" />
                     <MenuItem Header="下载整合包…" Command="{Binding DownloadModpackCommand}" />
+                    <MenuItem Header="导入模组列表…" Command="{Binding ImportModListCommand}" />
                     <MenuItem Header="导入本地整合包…" Command="{Binding ImportLocalModpackCommand}" />
                     <Separator />
                     <MenuItem Header="游戏本体 / 加载器…" Command="{Binding OpenGameSetupCommand}" />
@@ -119,6 +120,7 @@
                     <MenuItem Header="模组清单 Markdown…" Command="{Binding ExportModListCommand}" />
                     <MenuItem Header="缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
                     <MenuItem Header="模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
+                    <MenuItem Header="模组列表长图（含依赖线）…" Command="{Binding ExportModListPngCommand}" />
                   </MenuItem>
                   <MenuItem Header="分析与诊断">
                     <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />

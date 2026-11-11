@@ -29,6 +29,8 @@ public sealed class ParsedMod
 {
     public string ModId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    /// <summary>Chinese display name discovered in assets/*/lang/zh_cn.json.</summary>
+    public string? LocalizedName { get; set; }
     public string Version { get; set; } = "unknown";
     public LoaderKind Loader { get; set; } = LoaderKind.Unknown;
     public string? Description { get; set; }

@@ -2354,7 +2354,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             node.NameZh = _translationOverrides.TryGetValue(node.Id, out var custom) &&
                           !string.IsNullOrWhiteSpace(custom)
                 ? custom.Trim()
-                : null;
+                : node.JarNameZh;
         }
     }
 
@@ -3591,6 +3591,120 @@ public sealed partial class MainWindowViewModel : ObservableObject
             GameRunning = false;
             GameRunningText = "无法读取游戏进程状态";
         }
+    }
+
+    [RelayCommand]
+    private async Task ExportModListPngAsync()
+    {
+        if (_graph is null || NodeItems.Count == 0)
+        {
+            StatusText = "当前列表没有可导出的模组。";
+            return;
+        }
+
+        var path = await _dialogs.PickSaveFileAsync(
+            "导出模组列表长图", $"{PackName}-mods.png", "png", "PNG 图片");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            StatusText = $"正在渲染 {NodeItems.Count} 个模组…";
+            var items = NodeItems.ToList();
+            var graph = _graph;
+            var light = string.Equals(_services.Settings.Theme, "Light", StringComparison.OrdinalIgnoreCase);
+            await Task.Run(() => ModListPngExporter.Export(
+                items, graph, path, $"{PackName} · 模组列表与依赖关系", light));
+            StatusText = $"长图已导出：{Path.GetFileName(path)}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"导出长图失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportModListAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个整合包。";
+            return;
+        }
+
+        var file = await _dialogs.PickOpenFileAsync(
+            "选择模组列表", ["txt", "csv", "list"], "文本文件");
+        if (string.IsNullOrWhiteSpace(file)) return;
+
+        string[] lines;
+        try
+        {
+            lines = await File.ReadAllLinesAsync(file);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"读取模组列表失败：{ex.Message}";
+            return;
+        }
+
+        var queries = lines
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0 && !line.StartsWith('#'))
+            .Select(line => line.Split(',', StringSplitOptions.TrimEntries)[0])
+            .Where(line => line.Length > 0 && !line.Equals("name", StringComparison.OrdinalIgnoreCase) &&
+                           !line.Equals("mod", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(100)
+            .ToList();
+        if (queries.Count == 0)
+        {
+            StatusText = "模组列表为空。";
+            return;
+        }
+
+        var queued = 0;
+        var failed = new List<string>();
+        StatusText = $"正在解析 {queries.Count} 个模组…";
+        foreach (var query in queries)
+        {
+            var clean = query.StartsWith("modrinth:", StringComparison.OrdinalIgnoreCase)
+                ? query[9..]
+                : query.StartsWith("curseforge:", StringComparison.OrdinalIgnoreCase)
+                    ? query[11..]
+                    : query;
+            var node = new ModNode { Id = clean.Trim(), Name = clean.Trim(), Loader = _scanResult.Profile.Loader };
+            var project = await _services.Resolver.ResolveAsync(node);
+            if (project is null)
+            {
+                failed.Add(clean);
+                continue;
+            }
+
+            var versions = await _services.Downloader.GetVersionsAsync(
+                project, _scanResult.Profile.McVersion, _scanResult.Profile.Loader);
+            var version = versions.FirstOrDefault(item => item.IsCompatible);
+            if (version is null)
+            {
+                failed.Add($"{clean}（无兼容版本）");
+                continue;
+            }
+
+            try
+            {
+                var request = await _services.Downloader.CreateFileRequestAsync(version, _scanResult.ModsDirectory);
+                _services.DownloadQueue.Enqueue(request, version.ProjectName, version.VersionNumber);
+                queued++;
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException)
+            {
+                failed.Add($"{clean}（{ex.Message}）");
+            }
+        }
+
+        StatusText = $"已加入下载队列 {queued} 个" +
+                     (failed.Count > 0 ? $"，{failed.Count} 个未解析" : string.Empty);
+        if (failed.Count > 0)
+            await _dialogs.ShowMessageAsync("导入模组列表",
+                $"已加入 {queued} 个。\n\n未解析：\n{string.Join("\n", failed.Take(15))}");
     }
 
     [RelayCommand]

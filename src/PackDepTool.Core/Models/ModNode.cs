@@ -29,6 +29,9 @@ public sealed class ModNode
     public string? Slug { get; set; }
     /// <summary>User-provided Chinese display name. No third-party translation index is bundled.</summary>
     public string? NameZh { get; set; }
+    /// <summary>Chinese name embedded in the JAR's lang file; user overrides take priority.</summary>
+    [JsonIgnore]
+    public string? JarNameZh { get; set; }
     /// <summary>Modrinth / CurseForge project logo URL (not persisted; used to fetch icons).</summary>
     [JsonIgnore]
     public string? IconUrl { get; set; }

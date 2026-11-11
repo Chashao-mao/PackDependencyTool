@@ -149,6 +149,7 @@ public sealed class ModScanner
                 await ReadEntryTextAsync(archive, "META-INF/MANIFEST.MF", cancellationToken).ConfigureAwait(false);
 
             ParseArchive(archive, texts, preferredLoader, jar, cancellationToken);
+            await ApplyChineseNamesAsync(archive, jar, cancellationToken).ConfigureAwait(false);
 
             if (jar.Mods.Count == 0)
             {
@@ -184,6 +185,62 @@ public sealed class ModScanner
         }
 
         return jar;
+    }
+
+    private static async Task ApplyChineseNamesAsync(
+        ZipArchive archive,
+        JarScanResult jar,
+        CancellationToken cancellationToken)
+    {
+        if (jar.Mods.Count == 0) return;
+
+        var translations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var entries = archive.Entries
+            .Where(entry => entry.FullName.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) &&
+                            entry.FullName.EndsWith("/lang/zh_cn.json", StringComparison.OrdinalIgnoreCase) &&
+                            entry.Length is > 0 and <= 1024 * 1024)
+            .Take(24);
+        foreach (var entry in entries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                await using var stream = entry.Open();
+                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                if (document.RootElement.ValueKind != JsonValueKind.Object) continue;
+                foreach (var property in document.RootElement.EnumerateObject())
+                {
+                    if (property.Value.ValueKind != JsonValueKind.String) continue;
+                    var value = property.Value.GetString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                        translations[property.Name] = value.Trim();
+                }
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or InvalidDataException)
+            {
+                // A malformed lang file should not make the JAR unreadable.
+            }
+        }
+
+        if (translations.Count == 0) return;
+        foreach (var mod in jar.Mods)
+        {
+            if (string.IsNullOrWhiteSpace(mod.ModId)) continue;
+            foreach (var key in new[]
+                     {
+                         $"modmenu.nameTranslation.{mod.ModId}",
+                         $"{mod.ModId}.name",
+                         $"{mod.ModId}.modname",
+                         $"itemGroup.{mod.ModId}",
+                         $"mod.{mod.ModId}.name",
+                     })
+            {
+                if (!translations.TryGetValue(key, out var value)) continue;
+                mod.LocalizedName = value;
+                break;
+            }
+        }
     }
 
     private static bool TryDescribeLibraryJar(
