@@ -453,6 +453,9 @@
                 <Button Content="冲突扫描" Command="{Binding ScanJarConflictsCommand}"
                         FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="扫描重复类、资源覆盖和 Mixin 目标重叠" />
+                <Button Content="服务端" Command="{Binding OpenServerToolsCommand}"
+                        FontSize="10.5" Padding="9,3" MinHeight="28"
+                        ToolTip.Tip="筛选客户端模组、生成服务端包并检查启动前 Gate" />
                 <Button Content="禁用管理" Command="{Binding OpenDisabledModsCommand}"
                         FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="管理已禁用的 .jar.disabled，可批量启用或永久删除" />

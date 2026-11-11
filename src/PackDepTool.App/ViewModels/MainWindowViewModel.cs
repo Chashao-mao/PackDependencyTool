@@ -2580,6 +2580,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task OpenServerToolsAsync()
+    {
+        if (_scanResult is null || _graph is null) return;
+        await _dialogs.ShowServerToolsAsync(_scanResult.RootPath, _graph);
+    }
+
+    [RelayCommand]
     private async Task ScanJarConflictsAsync()
     {
         if (_scanResult is null) return;

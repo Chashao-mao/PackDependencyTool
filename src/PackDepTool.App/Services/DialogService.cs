@@ -199,6 +199,20 @@ public sealed class DialogService : IDialogService
         await dialog.ShowDialog(Owner);
     }
 
+    public async Task ShowServerToolsAsync(string packRoot, GraphDocument graph)
+    {
+        if (Owner is null) return;
+
+        var viewModel = new ServerToolsViewModel(
+            packRoot,
+            graph,
+            Path.Combine(packRoot, "server-pack"),
+            () => PickFolderAsync("选择服务端包输出目录"),
+            () => PickOpenFileAsync("选择 java.exe", ["exe"], "Java 可执行文件"));
+        var dialog = new ServerToolsDialog { DataContext = viewModel };
+        await dialog.ShowDialog(Owner);
+    }
+
     public async Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates)
     {
