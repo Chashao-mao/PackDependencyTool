@@ -31,6 +31,7 @@ public sealed class ViewStateSnapshot
     public string SortOption { get; set; } = "name";
     public string CategoryFilter { get; set; } = "all";
     public string ViewOption { get; set; } = "graph";
+    public string GroupMode { get; set; } = "none";
 }
 
 /// <summary>

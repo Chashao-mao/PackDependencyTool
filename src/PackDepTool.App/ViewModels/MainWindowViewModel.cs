@@ -194,6 +194,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _rulesSummary = "本地规则 0 条";
     [ObservableProperty] private string? _selectedRecentPack;
     [ObservableProperty] private ViewOption _selectedViewOption = ViewOption.All[0];
+    [ObservableProperty] private GroupModeOption _selectedGroupMode = GroupModeOption.All[0];
     [ObservableProperty] private bool _hasDependencyRows;
     [ObservableProperty] private bool _hasDependencyStatus;
     [ObservableProperty] private string _dependencyStatusSummary = string.Empty;
@@ -230,6 +231,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IReadOnlyList<ModSortOption> SortOptions => ModSortOption.All;
     public IReadOnlyList<CategoryFilterOption> CategoryFilters => CategoryFilterOption.All;
     public IReadOnlyList<ViewOption> ViewOptions => ViewOption.All;
+    public IReadOnlyList<GroupModeOption> GroupModes => GroupModeOption.All;
 
     public bool IsListView => !string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
@@ -2775,6 +2777,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             SortOption = SelectedSortOption.Value.ToString(),
             CategoryFilter = SelectedCategoryFilter.Value?.ToString() ?? string.Empty,
             ViewOption = SelectedViewOption.Value,
+            GroupMode = SelectedGroupMode.Value,
         };
 
         try
@@ -2842,6 +2845,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                                  CategoryFilterOption.All[0];
         SelectedViewOption = ViewOption.All.FirstOrDefault(option => option.Value == snapshot.ViewOption) ??
                              ViewOption.All[0];
+        SelectedGroupMode = GroupModeOption.All.FirstOrDefault(option => option.Value == snapshot.GroupMode) ??
+                            GroupModeOption.All[0];
         RefreshView();
         StatusText = "已应用剪贴板中的视图状态。";
     }
@@ -3933,6 +3938,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         int IssueCountFor(string id) => actionableIssueCounts.GetValueOrDefault(id);
 
+        var groupHeaderByNode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!string.Equals(SelectedGroupMode.Value, "none", StringComparison.OrdinalIgnoreCase))
+        {
+            string GroupLabel(ModNode node) => SelectedGroupMode.Value switch
+            {
+                "category" => node.Category is { } category
+                    ? ModCategoryText.Name(category)
+                    : "未分类",
+                "loader" => GraphPalette.LoaderText(node.Loader),
+                "status" => GraphPalette.StatusText(node.Status),
+                "side" => GraphPalette.SideText(node.Side),
+                _ => string.Empty,
+            };
+
+            var grouped = matching
+                .OrderBy(node => GroupLabel(node.Model), StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            string? currentHeader = null;
+            foreach (var node in grouped)
+            {
+                var label = GroupLabel(node.Model);
+                if (!string.Equals(label, currentHeader, StringComparison.CurrentCulture))
+                    currentHeader = label;
+                groupHeaderByNode[node.Id] = currentHeader;
+            }
+            matching = grouped;
+        }
+
         _suppressSelectionSync = true;
         _suppressCheckedSync = true;
         NodeItems.Clear();
@@ -3944,7 +3977,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var issueCount = IssueCountFor(node.Id);
             _updateStates.TryGetValue(node.Id, out var updateState);
             var item = new NodeItemViewModel(node.Model, _graph, ++index, issueCount,
-                updateState?.Available == true, updateState?.LatestVersion)
+                updateState?.Available == true, updateState?.LatestVersion,
+                groupHeaderByNode.GetValueOrDefault(node.Id))
             {
                 IsChecked = _checkedNodeIds.Contains(node.Id),
             };
@@ -4647,6 +4681,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void ToggleDependencies() => IsDependenciesExpanded = !IsDependenciesExpanded;
 
     partial void OnSelectedSortOptionChanged(ModSortOption value) => RefreshView();
+    partial void OnSelectedGroupModeChanged(GroupModeOption value) => RefreshView();
     partial void OnSortDescendingChanged(bool value)
     {
         OnPropertyChanged(nameof(SortDirectionText));

@@ -485,6 +485,7 @@
             <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto,Auto" Background="{DynamicResource GraphBackground}">
               <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,0,0,1" Padding="12,6">
+                <StackPanel Spacing="4">
                 <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96">
                   <TextBlock Text="选" Grid.Column="0" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Text="#" Classes="section" VerticalAlignment="Center" />
@@ -495,6 +496,20 @@
                   <TextBlock Grid.Column="8" Text="侧" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="9" Text="状态" Classes="section" VerticalAlignment="Center" />
                 </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBlock Text="分组" FontSize="9.5" Foreground="{DynamicResource TextMuted}"
+                             VerticalAlignment="Center" />
+                  <ComboBox ItemsSource="{Binding GroupModes}"
+                            SelectedItem="{Binding SelectedGroupMode, Mode=TwoWay}"
+                            Height="24" FontSize="9.5" MinWidth="100">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:GroupModeOption">
+                        <TextBlock Text="{Binding Label}" FontSize="9.5" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+                </StackPanel>
               </Border>
 
               <ListBox Grid.Row="1" x:Name="ModuleList" Classes="dense" ItemsSource="{Binding NodeItems}"
@@ -509,6 +524,9 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:NodeItemViewModel">
                     <StackPanel>
+                    <TextBlock Text="{Binding GroupHeader}" IsVisible="{Binding HasGroupHeader}"
+                               FontSize="9.5" FontWeight="SemiBold" Margin="42,7,0,2"
+                               Foreground="{DynamicResource Accent}" />
                     <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96" ToolTip.Tip="{Binding Tooltip}">
 
                       <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"

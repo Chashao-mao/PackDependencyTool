@@ -16,9 +16,12 @@ public sealed partial class NodeItemViewModel : ObservableObject
         int index = 0,
         int issueCount = 0,
         bool updateAvailable = false,
-        string? latestVersion = null)
+        string? latestVersion = null,
+        string? groupHeader = null)
     {
         Model = model;
+        GroupHeader = groupHeader ?? string.Empty;
+        HasGroupHeader = !string.IsNullOrWhiteSpace(groupHeader);
         StatusBrush = GraphPalette.StatusBrush(model.Status);
         Icon = ModIconCache.Get(model);
         Initial = BuildInitial(model);
@@ -92,6 +95,8 @@ public sealed partial class NodeItemViewModel : ObservableObject
     }
 
     public ModNode Model { get; }
+    public string GroupHeader { get; }
+    public bool HasGroupHeader { get; }
     public string Id => Model.Id;
     public string? NameZh => Model.NameZh;
     public string Name => !string.IsNullOrWhiteSpace(Model.NameZh)
@@ -441,6 +446,18 @@ public sealed record ViewOption(string Value, string Label)
     [
         new("list", "模组清单"),
         new("graph", "依赖图"),
+    ];
+}
+
+public sealed record GroupModeOption(string Value, string Label)
+{
+    public static IReadOnlyList<GroupModeOption> All { get; } =
+    [
+        new("none", "不分组"),
+        new("category", "按分类"),
+        new("loader", "按加载器"),
+        new("status", "按状态"),
+        new("side", "按侧"),
     ];
 }
 
