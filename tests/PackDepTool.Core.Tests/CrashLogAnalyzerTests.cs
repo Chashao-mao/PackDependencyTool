@@ -31,10 +31,11 @@ public sealed class CrashLogAnalyzerTests
 
         Assert.Contains(report.Findings, finding => finding.RuleId == "missing-dependency");
         Assert.Contains(report.Findings, finding => finding.RuleId == "mixin");
-        Assert.Contains(report.Findings, finding => finding.RuleId == "out-of-memory");
+        Assert.Contains(report.Findings, finding => finding.RuleId == "oom-heap");
         Assert.Contains(report.Findings, finding => finding.RuleId == "class-missing");
         Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("sodium"));
         Assert.All(report.Findings, finding => Assert.False(string.IsNullOrWhiteSpace(finding.Evidence)));
+        Assert.Equal("崩溃报告", report.Facts?.FileKind);
     }
 
     [Fact]

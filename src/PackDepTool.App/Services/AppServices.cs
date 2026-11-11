@@ -56,6 +56,7 @@ public sealed class AppServices : IDisposable
         Backups = new PackBackupService();
         Locks = new VersionLockService();
         ModListHistory = new ModListHistoryService();
+        PackMerge = new PackMergeService();
         FileChanges = new FileChangeMonitor();
         Launcher = new MinecraftLaunchService();
         Resolver = new ModProjectResolver(modrinth, curseForge, keys);
@@ -96,6 +97,7 @@ public sealed class AppServices : IDisposable
     public PackBackupService Backups { get; }
     public VersionLockService Locks { get; }
     public ModListHistoryService ModListHistory { get; }
+    public PackMergeService PackMerge { get; }
     public FileChangeMonitor FileChanges { get; }
     public MinecraftLaunchService Launcher { get; }
     public ModProjectResolver Resolver { get; }

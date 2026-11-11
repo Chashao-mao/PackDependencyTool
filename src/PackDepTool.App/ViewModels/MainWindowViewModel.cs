@@ -98,6 +98,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _packPathDisplay = "尚未选择整合包";
     [ObservableProperty] private string _packName = "未选择整合包";
     [ObservableProperty] private string _profileSummary = "等待扫描";
+
+    public string LaunchMemoryText
+    {
+        get
+        {
+            if (!_services.Settings.AutoMemory) return $"{_services.Settings.OfflineRamMb} MB（手动）";
+            var mods = _graph?.Nodes.Count(node => !node.IsSynthetic) ?? 0;
+            return $"自动 · 约 {MinecraftLaunchService.RecommendedRamMb(mods)} MB";
+        }
+    }
+
+    public string LaunchJavaText => string.IsNullOrWhiteSpace(_services.Settings.JavaPath)
+        ? "自动探测（按 MC 版本匹配）"
+        : _services.Settings.JavaPath;
+
+    public string LaunchModeText => _services.Settings.DebugMode ? "调试模式" : "普通启动";
     [ObservableProperty] private string _countSummary = "0 个模组 · 0 条关系";
     [ObservableProperty] private string _statusText = "就绪 · 选择一个整合包目录开始分析";
     [ObservableProperty] private string _backupSummary = "暂无修复快照";
@@ -991,6 +1007,59 @@ public sealed partial class MainWindowViewModel : ObservableObject
         await ImportModpackArchiveAsync(archive);
     }
 
+    [RelayCommand]
+    private async Task MergeModpackAsync()
+    {
+        if (_scanResult is null || IsBusy) return;
+        var source = await _dialogs.PickFolderAsync("选择要合并进来的整合包");
+        if (string.IsNullOrWhiteSpace(source)) return;
+        if (!await _dialogs.ConfirmAsync(
+                "合并整合包",
+                $"把源整合包合并到当前实例？{Environment.NewLine}{Environment.NewLine}" +
+                $"源：{source}{Environment.NewLine}目标：{_scanResult.RootPath}{Environment.NewLine}{Environment.NewLine}" +
+                "同 modId 以目标为准；config 默认不覆盖已有文件。",
+                "开始合并", "取消"))
+            return;
+
+        var cts = BeginOperation();
+        IsBusy = true;
+        try
+        {
+            StatusText = "正在合并整合包…";
+            var result = await _services.PackMerge.MergeAsync(
+                source, _scanResult.RootPath, overwriteConfigs: false, cts.Token);
+            await _dialogs.ShowMessageAsync("合并完成",
+                $"{result.Summary}{Environment.NewLine}{Environment.NewLine}" +
+                $"报告：{result.ReportPath}" +
+                (result.Conflicts.Count > 0
+                    ? $"{Environment.NewLine}{Environment.NewLine}冲突 {result.Conflicts.Count} 项，详见报告。"
+                    : string.Empty));
+            await ScanAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"合并失败：{ex.Message}";
+            await _dialogs.ShowMessageAsync("合并失败", ex.Message);
+        }
+        finally
+        {
+            EndOperation(cts);
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportServerModpackAsync()
+    {
+        if (IsBusy) return;
+
+        var archive = await _dialogs.PickOpenFileAsync(
+            "选择服务端整合包文件（.mrpack / .zip）", ["mrpack", "zip"], "整合包文件");
+        if (string.IsNullOrWhiteSpace(archive)) return;
+
+        await ImportModpackArchiveAsync(archive, PackImportSide.Server);
+    }
+
     /// <summary>Called when a .mrpack/.zip is dropped onto the window.</summary>
     public async Task ImportDroppedModpackAsync(string archive)
     {
@@ -1068,7 +1137,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private async Task ImportModpackArchiveAsync(string archive)
+    private async Task ImportModpackArchiveAsync(string archive, PackImportSide side = PackImportSide.Both)
     {
         var parent = await _dialogs.PickFolderAsync("选择整合包导入到的父文件夹");
         if (string.IsNullOrWhiteSpace(parent)) return;
@@ -1097,7 +1166,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     StatusText = $"{report.Phase} · {report.Message}";
             });
 
-            import = await _services.Importer.ImportAsync(archive, parent, progress, cts.Token);
+            import = await _services.Importer.ImportAsync(archive, parent, progress, cts.Token, side);
             StatusText = $"整合包已导入：{import.PackRoot}";
             detail.Finish(true, $"整合包已导入：{import.PackRoot}");
         }

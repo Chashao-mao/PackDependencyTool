@@ -17,6 +17,8 @@
     <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
       <TextBlock Text="日志诊断" FontSize="20" FontWeight="SemiBold" />
       <TextBlock Text="{Binding SourceText}" Classes="caption" TextTrimming="CharacterEllipsis" />
+      <TextBlock Text="{Binding FactsText}" IsVisible="{Binding HasFacts}" FontSize="10.5"
+                 Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
       <TextBlock Text="{Binding Summary}" FontSize="11.5" FontWeight="SemiBold"
                  Foreground="{DynamicResource Accent}" TextWrapping="Wrap" />
     </StackPanel>
@@ -39,6 +41,10 @@
                 </Grid>
                 <TextBlock Text="{Binding Message}" FontSize="10.5" TextWrapping="Wrap"
                            Foreground="{DynamicResource TextSecondary}" />
+                <TextBlock Text="{Binding FixText}" IsVisible="{Binding HasFix}" FontSize="10"
+                           TextWrapping="Wrap" Foreground="{DynamicResource Accent}" />
+                <TextBlock Text="{Binding SourceText}" IsVisible="{Binding HasSource}" FontSize="9"
+                           TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
                 <TextBlock Text="{Binding RelatedText}" FontSize="9.5"
                            Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" />
                 <Border Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="8">

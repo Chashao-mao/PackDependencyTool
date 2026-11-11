@@ -9,6 +9,13 @@ namespace PackDepTool.Core.Net;
 /// Imports Modrinth (.mrpack) and CurseForge (manifest.json) packs, downloading
 /// their files from official APIs and extracting overrides with path-traversal protection.
 /// </summary>
+public enum PackImportSide
+{
+    Client,
+    Server,
+    Both,
+}
+
 public sealed class ModpackImporter
 {
     private const long MaxExtractedBytes = 4L * 1024 * 1024 * 1024;
@@ -32,7 +39,8 @@ public sealed class ModpackImporter
         string archivePath,
         string parentDirectory,
         IProgress<DownloadProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        PackImportSide side = PackImportSide.Both)
     {
         if (!File.Exists(archivePath))
             throw new FileNotFoundException("整合包文件不存在", archivePath);
@@ -47,7 +55,8 @@ public sealed class ModpackImporter
         var manifestText = ReadEntryText(archive, "manifest.json");
 
         if (!string.IsNullOrWhiteSpace(modrinthText))
-            return await ImportModrinthAsync(archive, modrinthText!, parentDirectory, progress, cancellationToken)
+            return await ImportModrinthAsync(
+                    archive, modrinthText!, parentDirectory, progress, cancellationToken, side)
                 .ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(manifestText))
@@ -62,7 +71,8 @@ public sealed class ModpackImporter
         string indexText,
         string parentDirectory,
         IProgress<DownloadProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        PackImportSide side)
     {
         using var doc = JsonDocument.Parse(indexText);
         var rootElement = doc.RootElement;
@@ -89,11 +99,20 @@ public sealed class ModpackImporter
                 continue;
             }
 
-            if (file.TryGetProperty("env", out var env) &&
-                string.Equals(GetString(env, "client"), "unsupported", StringComparison.OrdinalIgnoreCase))
+            if (file.TryGetProperty("env", out var env))
             {
-                result.SkippedFiles++;
-                continue;
+                if (side is PackImportSide.Client or PackImportSide.Both &&
+                    string.Equals(GetString(env, "client"), "unsupported", StringComparison.OrdinalIgnoreCase))
+                {
+                    result.SkippedFiles++;
+                    continue;
+                }
+                if (side is PackImportSide.Server or PackImportSide.Both &&
+                    string.Equals(GetString(env, "server"), "unsupported", StringComparison.OrdinalIgnoreCase))
+                {
+                    result.SkippedFiles++;
+                    continue;
+                }
             }
 
             var destination = SafeCombine(packRoot, relative);
@@ -136,7 +155,10 @@ public sealed class ModpackImporter
         }
 
         ExtractPrefix(archive, "overrides/", packRoot, result, progress, cancellationToken);
-        ExtractPrefix(archive, "client-overrides/", packRoot, result, progress, cancellationToken);
+        if (side is PackImportSide.Client or PackImportSide.Both)
+            ExtractPrefix(archive, "client-overrides/", packRoot, result, progress, cancellationToken);
+        if (side is PackImportSide.Server or PackImportSide.Both)
+            ExtractPrefix(archive, "server-overrides/", packRoot, result, progress, cancellationToken);
         return result;
     }
 
