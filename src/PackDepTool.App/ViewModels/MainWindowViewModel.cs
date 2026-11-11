@@ -201,8 +201,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasDependents;
     [ObservableProperty] private string _dependentsText = string.Empty;
     [ObservableProperty] private bool _hasMissingDependencies;
-    [ObservableProperty] private bool _isBasicInfoExpanded = true;
-    [ObservableProperty] private bool _isDescriptionExpanded = true;
+    [ObservableProperty] private bool _isBasicInfoExpanded;
+    [ObservableProperty] private bool _isDescriptionExpanded;
     [ObservableProperty] private bool _isDependenciesExpanded = true;
     [ObservableProperty] private bool _canDisableSelected;
     [ObservableProperty] private bool _canDeleteSelected;
@@ -4979,6 +4979,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
             item.IsChecked = selectAll;
             if (selectAll) _checkedNodeIds.Add(item.Id);
         }
+        _suppressCheckedSync = false;
+        UpdateCheckedState();
+    }
+
+    [RelayCommand]
+    private void ClearChecked()
+    {
+        _suppressCheckedSync = true;
+        _checkedNodeIds.Clear();
+        foreach (var item in NodeItems)
+            item.IsChecked = false;
         _suppressCheckedSync = false;
         UpdateCheckedState();
     }

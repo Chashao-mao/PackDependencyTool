@@ -42,52 +42,46 @@
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <Button Content="实例管理" Command="{Binding OpenInstancesCommand}" ToolTip.Tip="Ctrl+O 打开整合包或切换 versions 实例" />
-            <Button Content="扫描" Classes="accent" Command="{Binding RescanCommand}" ToolTip.Tip="F5" />
-            <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
-            <Button Content="补全 ▾" ToolTip.Tip="联网补全项目资料，或下载缺失依赖">
+            <Button Content="扫描" Classes="accent" Command="{Binding RescanCommand}" ToolTip.Tip="F5 重新扫描当前整合包" />
+            <Button Content="操作 ▾" ToolTip.Tip="实例、获取内容、导出、诊断、修复、设置">
               <Button.Flyout>
                 <MenuFlyout>
+                  <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
+                  <Separator />
                   <MenuItem Header="补全在线资料…" Command="{Binding EnrichCommand}" />
                   <MenuItem Header="下载缺失依赖…" Command="{Binding AutoCompleteDependenciesCommand}"
                             IsEnabled="{Binding HasMissingDependencies}" />
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
-            <Button Content="获取内容 ▾" ToolTip.Tip="下载模组 / 整合包，或导入本地整合包">
-              <Button.Flyout>
-                <MenuFlyout>
                   <MenuItem Header="下载模组…" Command="{Binding DownloadModsCommand}" />
                   <MenuItem Header="下载整合包…" Command="{Binding DownloadModpackCommand}" />
-                  <Separator />
                   <MenuItem Header="导入本地整合包…" Command="{Binding ImportLocalModpackCommand}" />
-                  <Separator />
                   <MenuItem Header="游戏本体 / 加载器…" Command="{Binding OpenGameSetupCommand}" />
                   <MenuItem Header="切换加载器…" Command="{Binding OpenLoaderSwitchCommand}" />
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
-            <Button Content="导出 ▾">
-              <Button.Flyout>
-                <MenuFlyout>
-                  <MenuItem Header="JSON 图数据" Command="{Binding ExportJsonCommand}" />
-                  <MenuItem Header="Graphviz DOT" Command="{Binding ExportDotCommand}" />
-                  <MenuItem Header="GraphML" Command="{Binding ExportGraphMlCommand}" />
-                  <MenuItem Header="CSV（节点 + 关系）" Command="{Binding ExportCsvCommand}" />
-                  <MenuItem Header="关系图 PNG…" Command="{Binding ExportGraphPngCommand}" />
                   <Separator />
-                  <MenuItem Header="Markdown 分析报告" Command="{Binding ExportReportCommand}" />
-                  <MenuItem Header="整合包（.mrpack）" Command="{Binding ExportPclPackCommand}" />
+                  <MenuItem Header="导出">
+                    <MenuItem Header="JSON 图数据" Command="{Binding ExportJsonCommand}" />
+                    <MenuItem Header="Graphviz DOT" Command="{Binding ExportDotCommand}" />
+                    <MenuItem Header="GraphML" Command="{Binding ExportGraphMlCommand}" />
+                    <MenuItem Header="CSV（节点 + 关系）" Command="{Binding ExportCsvCommand}" />
+                    <MenuItem Header="关系图 PNG…" Command="{Binding ExportGraphPngCommand}" />
+                    <MenuItem Header="Markdown 分析报告" Command="{Binding ExportReportCommand}" />
+                    <MenuItem Header="整合包（.mrpack）" Command="{Binding ExportPclPackCommand}" />
+                    <MenuItem Header="模组清单 Markdown…" Command="{Binding ExportModListCommand}" />
+                    <MenuItem Header="缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
+                    <MenuItem Header="模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
+                  </MenuItem>
                   <Separator />
-                  <MenuItem Header="模组清单 Markdown…" Command="{Binding ExportModListCommand}" />
-                  <MenuItem Header="缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
-                  <MenuItem Header="模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
-            <Button Content="更多 ▾">
-              <Button.Flyout>
-                <MenuFlyout>
+                  <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />
+                  <MenuItem Header="崩溃日志诊断…" Command="{Binding DiagnoseCrashCommand}" />
+                  <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
+                  <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
+                  <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />
+                  <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
+                  <MenuItem Header="服务端工具…" Command="{Binding OpenServerToolsCommand}" />
+                  <Separator />
+                  <MenuItem Header="禁用管理…" Command="{Binding OpenDisabledModsCommand}" />
+                  <MenuItem Header="撤销上次修复" Command="{Binding UndoLastBackupCommand}"
+                            IsEnabled="{Binding HasBackup}" />
+                  <MenuItem Header="备份中心…" Command="{Binding OpenBackupCenterCommand}" />
                   <MenuItem Header="备份 config…" Command="{Binding BackupConfigCommand}" />
                   <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
                             IsEnabled="{Binding HasConfigBackup}" />
@@ -95,42 +89,31 @@
                   <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
                   <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
                   <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
-                  <Separator />
-                  <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
-                  <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
-                  <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />
-                  <Separator />
                   <MenuItem Header="复制当前视图状态" Command="{Binding CopyViewStateCommand}" />
                   <MenuItem Header="应用剪贴板视图状态" Command="{Binding ApplyViewStateCommand}" />
                   <Separator />
+                  <MenuItem Header="面板">
+                    <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
+                    <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
+                  </MenuItem>
+                  <MenuItem Header="重新布局" Command="{Binding RelayoutCommand}"
+                            IsVisible="{Binding IsGraphView}" />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
+                  <MenuItem Header="打开整合包目录" Command="{Binding OpenPackFolderCommand}" />
                   <Separator />
                   <MenuItem Header="检查程序更新" Command="{Binding CheckForUpdatesCommand}"
                             IsEnabled="{Binding !IsCheckingUpdates}" />
                   <MenuItem Header="打开程序更新页" Command="{Binding OpenUpdatePageCommand}" />
-                  <MenuItem Header="打开整合包目录" Command="{Binding OpenPackFolderCommand}" />
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
-            <Border Width="1" Height="20" Background="{DynamicResource CardBorder}" Margin="3,0" />
-            <Button Content="面板 ▾" ToolTip.Tip="收起或显示左侧筛选/右侧详情">
-              <Button.Flyout>
-                <MenuFlyout>
-                  <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
-                  <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
-                </MenuFlyout>
-              </Button.Flyout>
-            </Button>
-            <Button Content="重新布局" Command="{Binding RelayoutCommand}" ToolTip.Tip="Ctrl+R"
-                    IsVisible="{Binding IsGraphView}" />
-            <Button Content="设置" Classes="ghost" Command="{Binding OpenSettingsCommand}"
-                    ToolTip.Tip="Ctrl+Shift+S" />
+            <Button Content="设置" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Ctrl+Shift+S" />
           </StackPanel>
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
-          <Border Classes="chip" HorizontalAlignment="Left" MaxWidth="760">
+          <Border Classes="chip" HorizontalAlignment="Left" MaxWidth="560">
             <TextBlock Text="{Binding PackPathDisplay}" FontSize="11" TextTrimming="CharacterEllipsis" />
           </Border>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
@@ -149,7 +132,14 @@
     </Border>
 
     <!-- ============================ Main content ============================ -->
-    <Grid Grid.Row="1" x:Name="MainContentGrid" ColumnDefinitions="300,6,*,6,400" Margin="10,10,10,6">
+    <Grid Grid.Row="1" x:Name="MainContentGrid" Margin="10,10,10,6">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="250" MinWidth="180" MaxWidth="360" />
+        <ColumnDefinition Width="5" />
+        <ColumnDefinition Width="*" MinWidth="400" />
+        <ColumnDefinition Width="5" />
+        <ColumnDefinition Width="310" MinWidth="230" MaxWidth="440" />
+      </Grid.ColumnDefinitions>
 
       <!-- Left: search + filters + issue/mod navigator -->
       <Border Grid.Column="0" x:Name="LeftPanelBorder" Classes="card" Padding="12" ClipToBounds="True">
@@ -191,27 +181,12 @@
                   BorderThickness="1" CornerRadius="6" Padding="9,7">
             <StackPanel Spacing="5">
               <TextBlock Text="关系类型" Classes="section" />
-            <WrapPanel>
-              <CheckBox Content="必需" IsChecked="{Binding ShowRequires, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="不兼容" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="可选" IsChecked="{Binding ShowOptional, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="推荐" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" Margin="0,0,12,0" />
-              <CheckBox Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
-            </WrapPanel>
-
-            <Grid ColumnDefinitions="52,*" ColumnSpacing="6" IsVisible="{Binding IsListView}"
-                  Margin="0,2,0,0">
-              <TextBlock Text="依赖线" Classes="caption" VerticalAlignment="Center" />
-              <ComboBox Grid.Column="1" ItemsSource="{Binding ConnectionLineOptions}"
-                        SelectedItem="{Binding SelectedConnectionLineMode, Mode=TwoWay}"
-                        FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch"
-                        ToolTip.Tip="依赖轨道显示哪些关系">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ConnectionLineOption">
-                    <TextBlock Text="{Binding Label}" FontSize="10.5" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="2">
+              <CheckBox Content="必需" IsChecked="{Binding ShowRequires, Mode=TwoWay}" />
+              <CheckBox Grid.Column="1" Content="不兼容" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" />
+              <CheckBox Grid.Row="1" Content="可选" IsChecked="{Binding ShowOptional, Mode=TwoWay}" />
+              <CheckBox Grid.Row="1" Grid.Column="1" Content="推荐" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" />
+              <CheckBox Grid.Row="2" Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
             </Grid>
 
             <StackPanel IsVisible="{Binding ShowLoaderFilters}" Spacing="5">
@@ -243,81 +218,80 @@
               </ComboBox>
             </Grid>
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2"
-                  Margin="0,2,0,0">
-              <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
-              <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
-                        IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
-              <CheckBox Grid.Row="1" Content="展开内嵌" FontSize="10.5"
-                        IsChecked="{Binding ShowEmbedded, Mode=TwoWay}"
-                        ToolTip.Tip="展开父模组下所有内嵌 JAR；依赖图始终不铺开内嵌节点" />
-              <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
-                        IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}"
-                        ToolTip.Tip="勾选后才显示底部未安装的可选/推荐依赖" />
-              <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
-                        IsChecked="{Binding ShowMissing, Mode=TwoWay}"
-                        ToolTip.Tip="在列表和依赖图中显示未安装的必需依赖；缺失节点相关连线为红虚线" />
-              <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
-                        IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
-                        IsEnabled="{Binding HasUpdateCheck}"
-                        ToolTip.Tip="先点击「检查模组更新」，再筛选有可用更新的模组" />
-              <Button Grid.Row="3" Grid.Column="1" Content="检查模组更新"
-                      Command="{Binding CheckUpdatesCommand}"
-                      IsVisible="{Binding !IsCheckingUpdates}"
-                      IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24"
-                      ToolTip.Tip="只检查已知项目；批量哈希匹配项目，不会为每个模组单独搜索" />
-              <Button Grid.Row="3" Grid.Column="1" Content="取消"
-                      Command="{Binding CancelUpdateCheckCommand}"
-                      IsVisible="{Binding IsCheckingUpdates}" FontSize="9.5"
-                      Padding="7,1" MinHeight="24" ToolTip.Tip="停止检查，不再发送新的请求" />
-            </Grid>
-
-            <TextBlock Text="功能分类" Classes="section" Margin="0,6,0,2" />
-            <ItemsControl ItemsSource="{Binding CategoryChips}" Margin="0,0,0,3">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <WrapPanel />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:CategoryChipItem">
-                  <Button Classes="categoryChip" Classes.active="{Binding IsActive}"
-                          Content="{Binding Display}" Command="{Binding SelectCommand}"
-                          Margin="0,0,4,4" ToolTip.Tip="按功能分类筛选" />
+            <ComboBox ItemsSource="{Binding StatusFilters}"
+                      SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}"
+                      FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch"
+                      Margin="0,2,0,0">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:StatusFilterOption">
+                  <TextBlock Text="{Binding Label}" FontSize="10.5" />
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <Grid RowDefinitions="Auto,Auto" RowSpacing="4" Margin="0,3,0,0">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
-                <ComboBox ItemsSource="{Binding StatusFilters}"
-                          SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}"
-                          FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:StatusFilterOption">
-                      <TextBlock Text="{Binding Label}" FontSize="10.5" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
-                <Button Grid.Column="1" Content="重置" Command="{Binding ResetFiltersCommand}"
-                        FontSize="10" Padding="8,2" MinHeight="28"
-                        ToolTip.Tip="清除搜索、状态、加载器与关系筛选" />
-              </Grid>
-              <ComboBox Grid.Row="1" ItemsSource="{Binding SortOptions}"
-                        SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
-                        FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ModSortOption">
-                    <TextBlock Text="{Binding Label}" FontSize="10.5" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
 
-            </Grid>
+            <Expander Header="显示选项" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
+              <StackPanel Spacing="5" Margin="0,4,0,0">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2">
+                  <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
+                  <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
+                            IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
+                  <CheckBox Grid.Row="1" Content="展开内嵌" FontSize="10.5"
+                            IsChecked="{Binding ShowEmbedded, Mode=TwoWay}"
+                            ToolTip.Tip="展开父模组下所有内嵌 JAR；依赖图始终不铺开内嵌节点" />
+                  <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
+                            IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}"
+                            ToolTip.Tip="勾选后才显示底部未安装的可选/推荐依赖" />
+                  <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
+                            IsChecked="{Binding ShowMissing, Mode=TwoWay}"
+                            ToolTip.Tip="在列表和依赖图中显示未安装的必需依赖" />
+                  <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
+                            IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
+                            IsEnabled="{Binding HasUpdateCheck}"
+                            ToolTip.Tip="先检查模组更新，再筛选有可用更新的模组" />
+                  <Button Grid.Row="3" Grid.Column="1" Content="检查模组更新"
+                          Command="{Binding CheckUpdatesCommand}"
+                          IsVisible="{Binding !IsCheckingUpdates}"
+                          IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24" />
+                </Grid>
+                <Grid ColumnDefinitions="52,*,Auto" ColumnSpacing="6" IsVisible="{Binding IsListView}">
+                  <TextBlock Text="依赖线" Classes="caption" VerticalAlignment="Center" />
+                  <ComboBox Grid.Column="1" ItemsSource="{Binding ConnectionLineOptions}"
+                            SelectedItem="{Binding SelectedConnectionLineMode, Mode=TwoWay}"
+                            FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ConnectionLineOption">
+                        <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Button Grid.Column="2" x:Name="RailManagerButton" Content="管理"
+                          Click="RailManager_Click" FontSize="9.5" Padding="6,1" MinHeight="28"
+                          ToolTip.Tip="隐藏 / 仅显示 / 恢复依赖线" />
+                </Grid>
+              </StackPanel>
+            </Expander>
+
+            <Expander Header="功能分类" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
+              <ItemsControl ItemsSource="{Binding CategoryChips}" Margin="0,4,0,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CategoryChipItem">
+                    <Button Classes="categoryChip" Classes.active="{Binding IsActive}"
+                            Content="{Binding Display}" Command="{Binding SelectCommand}"
+                            Margin="0,0,4,4" ToolTip.Tip="按功能分类筛选" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Expander>
             </StackPanel>
           </Border>
           </ScrollViewer>
 
-          <Grid Grid.Row="2" RowDefinitions="Auto,Auto,*" Margin="0,2,0,0">
+          <Grid Grid.Row="2" RowDefinitions="Auto,*" Margin="0,2,0,0">
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Spacing="1">
                 <TextBlock Text="问题速览" Classes="section" IsVisible="{Binding IsListView}" />
@@ -328,35 +302,7 @@
               </StackPanel>
             </Grid>
 
-            <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="5,3"
-                    IsVisible="{Binding HasGraph}" Margin="0,2,0,3">
-              <StackPanel Spacing="3">
-                <Grid ColumnDefinitions="Auto,*">
-                  <Button Content="全选" Command="{Binding SelectAllVisibleCommand}"
-                          FontSize="10.5" Padding="5,1" MinHeight="22"
-                          ToolTip.Tip="勾选 / 取消当前列表的全部模组" />
-                  <TextBlock Grid.Column="1" Text="{Binding CheckedCount, StringFormat='已选 {0}'}"
-                             FontSize="10.5" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
-                             HorizontalAlignment="Right" />
-                </Grid>
-                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="2">
-                  <Button Grid.Column="0" Content="下载" Command="{Binding BatchDownloadCommand}" IsEnabled="{Binding HasChecked}"
-                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
-                          ToolTip.Tip="批量下载选中的未安装模组" />
-                  <Button Grid.Column="1" Content="升级" Command="{Binding BatchUpgradeCommand}" IsEnabled="{Binding HasChecked}"
-                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
-                          ToolTip.Tip="批量升级选中的已安装模组" />
-                  <Button Grid.Column="2" Content="禁用" Command="{Binding BatchDisableCommand}" IsEnabled="{Binding HasChecked}"
-                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
-                          ToolTip.Tip="批量禁用选中模组（.jar.disabled）" />
-                  <Button Grid.Column="3" Classes="danger" Content="删除" Command="{Binding BatchDeleteCommand}" IsEnabled="{Binding HasChecked}"
-                          FontSize="10.5" Padding="2,1" MinHeight="21" HorizontalAlignment="Stretch"
-                          ToolTip.Tip="批量移到 .packdep-trash" />
-                </Grid>
-              </StackPanel>
-            </Border>
-
-            <ListBox Grid.Row="2" ItemsSource="{Binding Issues}"
+            <ListBox Grid.Row="1" ItemsSource="{Binding Issues}"
                      SelectedItem="{Binding SelectedIssue, Mode=TwoWay}"
                      IsVisible="{Binding IsListView}">
               <ListBox.ItemTemplate>
@@ -374,7 +320,7 @@
               </ListBox.ItemTemplate>
             </ListBox>
 
-            <ListBox Grid.Row="2" ItemsSource="{Binding NodeItems}"
+            <ListBox Grid.Row="1" ItemsSource="{Binding NodeItems}"
                      SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
                      IsVisible="{Binding IsGraphView}">
               <ListBox.ItemTemplate>
@@ -420,14 +366,11 @@
           <Border Grid.Row="0" Background="{DynamicResource PanelBackground}"
                   BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="12,6">
             <Grid ColumnDefinitions="*,Auto">
-              <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="8" VerticalAlignment="Center"
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalAlignment="Center"
                     ToolTip.Tip="单击查看详情 · 双击定位 · 右键快捷连接">
                 <TextBlock Text="模组清单" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsListView}" />
                 <TextBlock Text="依赖图" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsGraphView}" />
-                <Border Grid.Column="1" Classes="chip" Padding="7,2">
-                  <TextBlock Text="{Binding CountSummary}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}" />
-                </Border>
-                <Grid Grid.Column="2">
+                <Grid Grid.Column="1">
                   <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRelationFocus}"
                               VerticalAlignment="Center">
                     <TextBlock Text="{Binding RelationFocusTitle}" FontSize="10.5"
@@ -462,9 +405,6 @@
                 <CheckBox Content="简化连线" IsChecked="{Binding FocusEdgesOnly, Mode=TwoWay}"
                           IsVisible="{Binding IsGraphView}" FontSize="10" VerticalAlignment="Center"
                           ToolTip.Tip="折叠库/前置节点的密集入线，选中或悬停时展开相关连线" />
-                <Button x:Name="RailManagerButton" Content="线" IsVisible="{Binding IsListView}"
-                        Click="RailManager_Click" FontSize="10.5" Padding="7,3" MinHeight="28"
-                        ToolTip.Tip="管理依赖线：隐藏 / 仅显示 / 恢复" />
                 <ComboBox ItemsSource="{Binding GroupModes}"
                           SelectedItem="{Binding SelectedGroupMode, Mode=TwoWay}"
                           Width="96" Height="30" FontSize="10.5"
@@ -475,45 +415,13 @@
                     </DataTemplate>
                   </ComboBox.ItemTemplate>
                 </ComboBox>
-                <Button Content="工具" Command="{Binding OpenPackToolsCommand}"
-                        FontSize="10.5" Padding="8,3" MinHeight="28"
-                        ToolTip.Tip="整合包检查、模组清单导出与重复文件清理" />
-                <Button Content="分析 ▾" FontSize="10.5" Padding="8,3" MinHeight="28"
-                        ToolTip.Tip="日志、冲突、性能、数据包与二分诊断">
-                  <Button.Flyout>
-                    <MenuFlyout>
-                      <MenuItem Header="崩溃日志诊断…" Command="{Binding DiagnoseCrashCommand}" />
-                      <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
-                      <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
-                      <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />
-                      <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
-                      <Separator />
-                      <MenuItem Header="服务端工具…" Command="{Binding OpenServerToolsCommand}" />
-                    </MenuFlyout>
-                  </Button.Flyout>
-                </Button>
-                <Button Content="修复 ▾" FontSize="10.5" Padding="8,3" MinHeight="28"
-                        ToolTip.Tip="禁用管理、撤销修复与备份中心">
-                  <Button.Flyout>
-                    <MenuFlyout>
-                      <MenuItem Header="禁用管理…" Command="{Binding OpenDisabledModsCommand}" />
-                      <MenuItem Header="撤销上次修复" Command="{Binding UndoLastBackupCommand}"
-                                IsEnabled="{Binding HasBackup}" />
-                      <Separator />
-                      <MenuItem Header="备份中心…" Command="{Binding OpenBackupCenterCommand}" />
-                      <MenuItem Header="备份 config…" Command="{Binding BackupConfigCommand}" />
-                      <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
-                                IsEnabled="{Binding HasConfigBackup}" />
-                    </MenuFlyout>
-                  </Button.Flyout>
-                </Button>
               </StackPanel>
             </Grid>
           </Border>
 
           <Grid Grid.Row="1">
             <!-- Structured mod list -->
-            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto,Auto" Background="{DynamicResource GraphBackground}">
+            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,Auto,*,Auto,Auto" Background="{DynamicResource GraphBackground}">
               <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,0,0,1" Padding="12,6">
                 <StackPanel Spacing="4">
@@ -530,7 +438,30 @@
                 </StackPanel>
               </Border>
 
-              <ListBox Grid.Row="1" x:Name="ModuleList" Classes="dense" ItemsSource="{Binding NodeItems}"
+              <Border Grid.Row="1" IsVisible="{Binding HasChecked}"
+                      Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                      BorderThickness="0,0,0,1" Padding="10,4">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                  <TextBlock Text="{Binding CheckedCount, StringFormat='已选 {0} 个'}"
+                             FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <WrapPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="全选" Command="{Binding SelectAllVisibleCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="23" Margin="3,0" />
+                    <Button Content="清除" Command="{Binding ClearCheckedCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="23" Margin="3,0" />
+                    <Button Content="下载" Command="{Binding BatchDownloadCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="23" Margin="3,0" />
+                    <Button Content="升级" Command="{Binding BatchUpgradeCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="23" Margin="3,0" />
+                    <Button Content="禁用" Command="{Binding BatchDisableCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="23" Margin="3,0" />
+                    <Button Content="删除" Classes="danger" Command="{Binding BatchDeleteCommand}"
+                            FontSize="9.5" Padding="6,1" MinHeight="23" Margin="3,0" />
+                  </WrapPanel>
+                </Grid>
+              </Border>
+
+              <ListBox Grid.Row="2" x:Name="ModuleList" Classes="dense" ItemsSource="{Binding NodeItems}"
                        SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
                        DoubleTapped="ModuleList_DoubleTapped"
                        Background="Transparent">
@@ -651,10 +582,10 @@
                 </ListBox.ItemTemplate>
               </ListBox>
 
-              <Canvas Grid.Row="1" x:Name="DependencyRailOverlay"
+              <Canvas Grid.Row="2" x:Name="DependencyRailOverlay"
                       IsHitTestVisible="False" ClipToBounds="True" />
 
-              <Border Grid.Row="2" IsVisible="{Binding ShowMissingSection}"
+              <Border Grid.Row="3" IsVisible="{Binding ShowMissingSection}"
                       Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,1,0,0" Padding="10,5,10,6">
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
@@ -698,7 +629,7 @@
                 </Grid>
               </Border>
 
-              <Border Grid.Row="3" IsVisible="{Binding ShowOptionalSection}"
+              <Border Grid.Row="4" IsVisible="{Binding ShowOptionalSection}"
                       Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="1,0,0,0" Padding="10,5,10,6">
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="4">
@@ -862,6 +793,19 @@
                           <TextBlock Text="{Binding RepairAdviceText}" FontSize="9"
                                      Foreground="{Binding RepairAdviceBrush}" TextWrapping="Wrap" />
                         </Border>
+                        <WrapPanel IsVisible="{Binding IsNodeSelected}" Margin="0,3,0,0">
+                          <Button Content="{Binding DownloadSelectedLabel}" Command="{Binding DownloadSelectedModCommand}"
+                                  FontSize="9.5" Padding="7,2" MinHeight="24" Margin="0,0,5,4" />
+                          <Button Content="禁用" Command="{Binding DisableSelectedModCommand}"
+                                  IsVisible="{Binding CanDisableSelected}"
+                                  FontSize="9.5" Padding="7,2" MinHeight="24" Margin="0,0,5,4" />
+                          <Button Content="删除" Classes="danger" Command="{Binding DeleteSelectedModCommand}"
+                                  IsVisible="{Binding CanDeleteSelected}"
+                                  FontSize="9.5" Padding="7,2" MinHeight="24" Margin="0,0,5,4" />
+                          <Button Content="定位 JAR" Command="{Binding OpenSelectedFileCommand}"
+                                  IsVisible="{Binding CanOpenFile}"
+                                  FontSize="9.5" Padding="7,2" MinHeight="24" Margin="0,0,5,4" />
+                        </WrapPanel>
                         <WrapPanel Margin="0,2,0,0">
                           <Border Classes="chip" Padding="6,1" Margin="0,0,5,0">
                             <TextBlock Text="模组详情" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />

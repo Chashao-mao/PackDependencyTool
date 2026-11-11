@@ -528,21 +528,29 @@ public partial class MainWindow : Window
 
     private bool _leftPanelVisible = true;
     private bool _rightPanelVisible = true;
+    private double _leftPanelWidth = 250;
+    private double _rightPanelWidth = 310;
 
     private void ToggleLeftPanel_Click(object? sender, RoutedEventArgs e)
     {
+        if (_leftPanelVisible)
+            _leftPanelWidth = Math.Max(180, MainContentGrid.ColumnDefinitions[0].ActualWidth);
         _leftPanelVisible = !_leftPanelVisible;
-        MainContentGrid.ColumnDefinitions[0].Width = new GridLength(_leftPanelVisible ? 300 : 0);
-        MainContentGrid.ColumnDefinitions[1].Width = new GridLength(_leftPanelVisible ? 6 : 0);
+        MainContentGrid.ColumnDefinitions[0].Width =
+            new GridLength(_leftPanelVisible ? _leftPanelWidth : 0);
+        MainContentGrid.ColumnDefinitions[1].Width = new GridLength(_leftPanelVisible ? 5 : 0);
         LeftPanelBorder.IsVisible = _leftPanelVisible;
         LeftPanelSplitter.IsVisible = _leftPanelVisible;
     }
 
     private void ToggleRightPanel_Click(object? sender, RoutedEventArgs e)
     {
+        if (_rightPanelVisible)
+            _rightPanelWidth = Math.Max(230, MainContentGrid.ColumnDefinitions[4].ActualWidth);
         _rightPanelVisible = !_rightPanelVisible;
-        MainContentGrid.ColumnDefinitions[3].Width = new GridLength(_rightPanelVisible ? 6 : 0);
-        MainContentGrid.ColumnDefinitions[4].Width = new GridLength(_rightPanelVisible ? 400 : 0);
+        MainContentGrid.ColumnDefinitions[3].Width = new GridLength(_rightPanelVisible ? 5 : 0);
+        MainContentGrid.ColumnDefinitions[4].Width =
+            new GridLength(_rightPanelVisible ? _rightPanelWidth : 0);
         RightPanelBorder.IsVisible = _rightPanelVisible;
         RightPanelSplitter.IsVisible = _rightPanelVisible;
     }
