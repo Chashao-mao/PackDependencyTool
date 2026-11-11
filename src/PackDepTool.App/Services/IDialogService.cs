@@ -27,6 +27,7 @@ public interface IDialogService
     Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot);
     Task ShowDiagnosticReportAsync(DiagnosticReport report);
     Task ShowServerToolsAsync(string packRoot, GraphDocument graph);
+    Task ShowBisectionAsync(GraphDocument graph);
     Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates);
 

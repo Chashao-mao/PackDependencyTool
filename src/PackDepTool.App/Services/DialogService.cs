@@ -213,6 +213,14 @@ public sealed class DialogService : IDialogService
         await dialog.ShowDialog(Owner);
     }
 
+    public async Task ShowBisectionAsync(GraphDocument graph)
+    {
+        if (Owner is null) return;
+        var viewModel = new BisectionViewModel(graph);
+        var dialog = new BisectionDialog { DataContext = viewModel };
+        await dialog.ShowDialog(Owner);
+    }
+
     public async Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates)
     {

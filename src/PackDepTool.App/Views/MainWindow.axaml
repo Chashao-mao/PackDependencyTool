@@ -96,6 +96,8 @@
                   <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
                   <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
                   <Separator />
+                  <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
+                  <Separator />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   <Separator />

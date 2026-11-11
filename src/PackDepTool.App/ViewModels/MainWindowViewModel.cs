@@ -2704,6 +2704,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task OpenBisectionAsync()
+    {
+        if (_graph is null) return;
+        await _dialogs.ShowBisectionAsync(_graph);
+    }
+
+    [RelayCommand]
     private async Task OpenServerToolsAsync()
     {
         if (_scanResult is null || _graph is null) return;

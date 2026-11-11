@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        xmlns:models="using:PackDepTool.Core.Models"
+        x:Class="PackDepTool.App.Views.BisectionDialog"
+        x:DataType="vm:BisectionViewModel"
+        Title="二分诊断"
+        Width="780"
+        Height="620"
+        MinWidth="680"
+        MinHeight="480"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,12">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="依赖感知二分" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Grid.Column="1" Text="{Binding StepText}" Classes="caption" VerticalAlignment="Center" />
+      </Grid>
+      <TextBlock Text="{Binding Instruction}" FontSize="12" FontWeight="SemiBold"
+                 Foreground="{DynamicResource Accent}" TextWrapping="Wrap" />
+      <TextBlock Text="同时启用下面的必需依赖；不要把这部分当成嫌疑模组。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12">
+      <Border Classes="card" Padding="10">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="测试组（当前嫌疑）" Classes="section" Margin="4,2,4,6" />
+          <ListBox Grid.Row="1" ItemsSource="{Binding TestGroup}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="models:ModNode">
+                <StackPanel Spacing="1" Margin="2,3">
+                  <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Id}" FontSize="9.5"
+                             Foreground="{DynamicResource TextMuted}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" Padding="10">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="必须同时启用（依赖）" Classes="section" Margin="4,2,4,6" />
+          <ListBox Grid.Row="1" ItemsSource="{Binding RequiredDependencies}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="models:ModNode">
+                <StackPanel Spacing="1" Margin="2,3">
+                  <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Id}" FontSize="9.5"
+                             Foreground="{DynamicResource TextMuted}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="重新开始" Command="{Binding ResetCommand}" />
+        <Button Content="启动正常" Command="{Binding ReportWorksCommand}" IsEnabled="{Binding CanReport}" />
+        <Button Content="启动崩溃" Classes="accent" Command="{Binding ReportCrashedCommand}"
+                IsEnabled="{Binding CanReport}" />
+        <Button Content="关闭" Command="{Binding CloseCommand}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
