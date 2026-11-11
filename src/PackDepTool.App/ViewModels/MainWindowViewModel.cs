@@ -128,6 +128,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _fileChangeText = string.Empty;
     [ObservableProperty] private bool _isOverviewMode = true;
     [ObservableProperty] private string _activePage = "home";
+    public string ActivePageSubtitle => ActivePage switch
+    {
+        "instances" => "管理实例、启动游戏和查看日志",
+        "mods" => "模组清单、依赖关系和批量操作",
+        "diagnostics" => "崩溃、冲突、性能和数据包诊断",
+        "server" => "服务端模组筛选、部署和打包",
+        _ => "工作空间概览与当前实例健康",
+    };
+
 
     public bool IsHomePage => string.Equals(ActivePage, "home", StringComparison.OrdinalIgnoreCase);
     public bool IsInstancesPage => string.Equals(ActivePage, "instances", StringComparison.OrdinalIgnoreCase);
@@ -3211,6 +3220,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDiagnosticsPage));
         OnPropertyChanged(nameof(IsServerPage));
         OnPropertyChanged(nameof(ActivePageTitle));
+        OnPropertyChanged(nameof(ActivePageSubtitle));
     }
 
     [RelayCommand]

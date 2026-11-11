@@ -52,6 +52,14 @@
                   Classes="nav" Classes.active="{Binding IsDiagnosticsPage}" FontSize="12" MinHeight="36" />
           <Button Content="服务端" Command="{Binding NavigateCommand}" CommandParameter="server"
                   Classes="nav" Classes.active="{Binding IsServerPage}" FontSize="12" MinHeight="36" />
+          <TextBlock Text="维护" FontSize="9" Margin="10,12,0,2"
+                     Foreground="{DynamicResource TextMuted}" />
+          <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                  Classes="ghost" FontSize="10.5" HorizontalAlignment="Left" Padding="10,4" />
+          <Button Content="历史对比" Command="{Binding CompareModListHistoryCommand}"
+                  Classes="ghost" FontSize="10.5" HorizontalAlignment="Left" Padding="10,4" />
+          <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
+                  Classes="ghost" FontSize="10.5" HorizontalAlignment="Left" Padding="10,4" />
         </StackPanel>
 
         <StackPanel Grid.Row="2" Spacing="5">
@@ -79,8 +87,8 @@
       <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel VerticalAlignment="Center" Spacing="1">
-            <TextBlock Text="{Binding ActivePageTitle}" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="Pack Dependency Tool" Classes="caption" />
+            <TextBlock Text="{Binding ActivePageTitle}" FontSize="17" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding ActivePageSubtitle}" Classes="caption" />
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -1260,104 +1268,115 @@
 
       <Border IsVisible="{Binding IsInstancesPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="14" Margin="24,26">
-            <StackPanel Spacing="4">
-              <TextBlock Text="实例" FontSize="28" FontWeight="SemiBold" />
-              <TextBlock Text="选择要打开的实例；启动配置和日志从这里进入。"
-                         Classes="caption" />
-            </StackPanel>
+          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="12" Margin="24,22,24,24">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="3">
+                <TextBlock Text="实例管理" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock Text="管理 Minecraft 实例、启动配置和日志。" Classes="caption" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="＋ 新建实例" Command="{Binding OpenInstancesCommand}"
+                      Classes="accent" VerticalAlignment="Center" />
+            </Grid>
 
-            <Border Classes="card" Padding="14" CornerRadius="12">
-              <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="9">
-                <Grid ColumnDefinitions="*,Auto">
-                  <StackPanel Spacing="2">
-                    <TextBlock Text="实例列表" Classes="section" />
-                    <TextBlock Text="{Binding InstancesRootText}" FontSize="9"
+            <Grid ColumnDefinitions="1.35*,*" ColumnSpacing="12">
+              <Border Classes="card" Padding="12" CornerRadius="10">
+                <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="实例列表" Classes="section" />
+                      <TextBlock Text="{Binding InstancesRootText}" FontSize="9"
+                                 TextTrimming="CharacterEllipsis"
+                                 Foreground="{DynamicResource TextMuted}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="刷新" Command="{Binding LoadInstancesCommand}"
+                            FontSize="10" VerticalAlignment="Center" />
+                  </Grid>
+                  <TextBlock Grid.Row="1" Text="{Binding Instances.Count, StringFormat='共 {0} 个实例'}"
+                             Classes="caption" />
+                  <ListBox Grid.Row="2" ItemsSource="{Binding Instances}"
+                           SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
+                           Background="Transparent" Height="420">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate x:DataType="scanning:MinecraftInstanceInfo">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,5">
+                          <StackPanel Spacing="2">
+                            <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Detail}" FontSize="9.5"
+                                       Foreground="{DynamicResource TextSecondary}" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="1" Text="{Binding ModifiedText}" FontSize="9"
+                                     Foreground="{DynamicResource TextMuted}"
+                                     VerticalAlignment="Center" />
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                  <WrapPanel Grid.Row="3">
+                    <Button Content="打开选中实例" Command="{Binding OpenSelectedInstanceCommand}"
+                            Classes="accent" FontSize="11" Padding="12,6" Margin="0,0,8,4" />
+                    <Button Content="实例管理…" Command="{Binding OpenInstancesCommand}"
+                            FontSize="11" Padding="12,6" Margin="0,0,8,4" />
+                    <Button Content="重新扫描" Command="{Binding RescanCommand}"
+                            FontSize="11" Padding="12,6" Margin="0,0,8,4" />
+                  </WrapPanel>
+                </Grid>
+              </Border>
+
+              <StackPanel Grid.Column="1" Spacing="12">
+                <Border Classes="card" Padding="16" CornerRadius="10">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="当前实例" Classes="section" />
+                    <TextBlock Text="{Binding PackName}" FontSize="19" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding PackPathDisplay}" FontSize="9"
                                TextTrimming="CharacterEllipsis"
                                Foreground="{DynamicResource TextMuted}" />
+                    <TextBlock Text="{Binding ProfileSummary}" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource Accent}" />
+                    <TextBlock Text="{Binding CountSummary}" Classes="caption" />
+                    <Grid ColumnDefinitions="72,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6"
+                          Margin="0,4,0,0">
+                      <TextBlock Text="内存" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding LaunchMemoryText}" FontSize="10.5" />
+                      <TextBlock Grid.Row="1" Text="Java" VerticalAlignment="Center" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LaunchJavaText}"
+                                 FontSize="9.5" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="2" Text="模式" VerticalAlignment="Center" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LaunchModeText}" FontSize="10.5" />
+                    </Grid>
+                    <WrapPanel Margin="0,4,0,0">
+                      <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
+                              IsEnabled="{Binding HasGraph}" Classes="accent"
+                              FontSize="11" Padding="14,7" Margin="0,0,8,4" />
+                      <Button Content="启动前诊断" Command="{Binding DiagnoseLaunchCommand}"
+                              IsEnabled="{Binding HasGraph}" FontSize="11" Padding="12,7" Margin="0,0,8,4" />
+                      <Button Content="模组列表" Command="{Binding EnterWorkspaceCommand}"
+                              FontSize="11" Padding="12,7" Margin="0,0,8,4" />
+                    </WrapPanel>
                   </StackPanel>
-                  <Button Grid.Column="1" Content="刷新" Command="{Binding LoadInstancesCommand}"
-                          FontSize="10" VerticalAlignment="Center" />
-                </Grid>
-                <ListBox Grid.Row="1" ItemsSource="{Binding Instances}"
-                         SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
-                         Background="Transparent" MaxHeight="230">
-                  <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="scanning:MinecraftInstanceInfo">
-                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,4">
-                        <StackPanel Spacing="2">
-                          <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
-                          <TextBlock Text="{Binding Detail}" FontSize="9.5"
-                                     Foreground="{DynamicResource TextSecondary}" />
-                        </StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding ModifiedText}" FontSize="9"
-                                   Foreground="{DynamicResource TextMuted}"
-                                   VerticalAlignment="Center" />
-                      </Grid>
-                    </DataTemplate>
-                  </ListBox.ItemTemplate>
-                </ListBox>
-                <WrapPanel Grid.Row="2">
-                  <Button Content="打开选中实例" Command="{Binding OpenSelectedInstanceCommand}"
-                          Classes="accent" FontSize="11" Padding="12,6" Margin="0,0,8,4" />
-                  <Button Content="实例管理…" Command="{Binding OpenInstancesCommand}"
-                          FontSize="11" Padding="12,6" Margin="0,0,8,4" />
-                  <Button Content="重新扫描" Command="{Binding RescanCommand}"
-                          FontSize="11" Padding="12,6" Margin="0,0,8,4" />
-                </WrapPanel>
-              </Grid>
-            </Border>
+                </Border>
 
-            <Grid ColumnDefinitions="1.25*,*" ColumnSpacing="12">
-              <Border Classes="card" Padding="16" CornerRadius="12">
-                <StackPanel Spacing="9">
-                  <TextBlock Text="当前实例与启动" Classes="section" />
-                  <TextBlock Text="{Binding PackName}" FontSize="16" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding ProfileSummary}" FontSize="12" FontWeight="SemiBold"
-                             Foreground="{DynamicResource Accent}" />
-                  <Grid ColumnDefinitions="76,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
-                    <TextBlock Text="内存" VerticalAlignment="Center" />
-                    <TextBlock Grid.Column="1" Text="{Binding LaunchMemoryText}" FontSize="10.5" />
-                    <TextBlock Grid.Row="1" Text="Java" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LaunchJavaText}"
-                               FontSize="9.5" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Row="2" Text="模式" VerticalAlignment="Center" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LaunchModeText}" FontSize="10.5" />
-                  </Grid>
-                  <WrapPanel>
-                    <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
-                            IsEnabled="{Binding HasGraph}" Classes="accent"
-                            FontSize="11" Padding="14,7" Margin="0,0,8,4" />
-                    <Button Content="启动前诊断" Command="{Binding DiagnoseLaunchCommand}"
-                            IsEnabled="{Binding HasGraph}" FontSize="11" Padding="12,7" Margin="0,0,8,4" />
-                  </WrapPanel>
-                  <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap"
-                             MaxHeight="36" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
-              </Border>
-
-              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12">
-                <StackPanel Spacing="9">
-                  <TextBlock Text="最近打开" Classes="section" />
-                  <ComboBox ItemsSource="{Binding RecentPacks}"
-                            SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
-                            HorizontalAlignment="Stretch" Height="32" FontSize="10.5"
-                            PlaceholderText="选择最近整合包">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="x:String">
-                        <TextBlock Text="{Binding}" FontSize="10" TextTrimming="CharacterEllipsis" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                  <TextBlock Text="日志" Classes="section" Margin="0,4,0,0" />
-                  <WrapPanel>
-                    <Button Content="打开 latest.log" Command="{Binding OpenLatestLogCommand}"
-                            FontSize="10" Margin="0,0,6,4" />
-                    <Button Content="实时日志" Command="{Binding OpenLogTailCommand}"
-                            FontSize="10" Margin="0,0,6,4" />
-                  </WrapPanel>
-                </StackPanel>
-              </Border>
+                <Border Classes="card" Padding="14" CornerRadius="10">
+                  <StackPanel Spacing="7">
+                    <TextBlock Text="最近打开" Classes="section" />
+                    <ComboBox ItemsSource="{Binding RecentPacks}"
+                              SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
+                              HorizontalAlignment="Stretch" Height="30" FontSize="10.5"
+                              PlaceholderText="选择最近整合包">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <TextBlock Text="{Binding}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <WrapPanel Margin="0,2,0,0">
+                      <Button Content="打开 latest.log" Command="{Binding OpenLatestLogCommand}"
+                              FontSize="10" Margin="0,0,6,4" />
+                      <Button Content="实时日志" Command="{Binding OpenLogTailCommand}"
+                              FontSize="10" Margin="0,0,6,4" />
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
             </Grid>
           </StackPanel>
         </ScrollViewer>
@@ -1365,8 +1384,8 @@
 
       <Border IsVisible="{Binding IsDiagnosticsPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="16" Margin="24,26">
-            <TextBlock Text="诊断" FontSize="28" FontWeight="SemiBold" />
+          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="14" Margin="24,22,24,24">
+            <TextBlock Text="诊断" FontSize="24" FontWeight="SemiBold" />
             <TextBlock Text="从日志、冲突或性能数据开始，不需要先进入模组列表。" Classes="caption" />
             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
               <Border Classes="card" Padding="18" CornerRadius="12">
@@ -1411,8 +1430,8 @@
 
       <Border IsVisible="{Binding IsServerPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="16" Margin="24,26">
-            <TextBlock Text="服务端" FontSize="28" FontWeight="SemiBold" />
+          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="14" Margin="24,22,24,24">
+            <TextBlock Text="服务端" FontSize="24" FontWeight="SemiBold" />
             <TextBlock Text="筛选客户端模组、生成服务端包并检查启动前 Gate。" Classes="caption" />
             <Border Classes="card" Padding="18" CornerRadius="12">
               <StackPanel Spacing="8">
@@ -1429,32 +1448,37 @@
       <Border IsVisible="{Binding IsHomePage}" Margin="10,10,10,6"
               Background="{DynamicResource AppBackground}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel MaxWidth="1040" HorizontalAlignment="Center" Spacing="18" Margin="24,28,24,24">
-            <StackPanel Spacing="6" IsVisible="{Binding !HasGraph}">
-              <TextBlock Text="开始使用" FontSize="28" FontWeight="SemiBold" />
-              <TextBlock Text="选择一个整合包，先做体检，再进入模组列表处理问题。"
-                         FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="14" Margin="24,22,24,24">
+            <StackPanel Spacing="2">
+              <TextBlock Text="概览" FontSize="24" FontWeight="SemiBold" />
+              <TextBlock Text="当前实例健康、常用入口和最近打开。" Classes="caption" />
             </StackPanel>
 
-            <Grid ColumnDefinitions="1.15*,*" ColumnSpacing="14" IsVisible="{Binding !HasGraph}">
+            <StackPanel Spacing="6" IsVisible="{Binding !HasGraph}">
+              <TextBlock Text="开始使用" FontSize="24" FontWeight="SemiBold" />
+              <TextBlock Text="选择一个整合包，先做体检，再进入模组列表处理问题。"
+                         FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="1.45*,*" ColumnSpacing="12" IsVisible="{Binding !HasGraph}">
               <Border Classes="card" Padding="20" CornerRadius="12">
                 <StackPanel Spacing="9">
-                  <TextBlock Text="① 打开整合包" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="① 打开整合包" FontSize="17" FontWeight="SemiBold" />
                   <TextBlock Text="选择包含 mods 文件夹的实例目录，或直接把文件夹拖进窗口。"
                              FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
                   <Button Content="选择整合包…" Command="{Binding OpenInstancesCommand}"
-                          Classes="accent" FontSize="13" Padding="16,8" MinHeight="38"
+                          Classes="accent" FontSize="12" Padding="16,8" MinHeight="36"
                           HorizontalAlignment="Left" Margin="0,4,0,0" />
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Classes="card" Padding="20" CornerRadius="12">
                 <StackPanel Spacing="9">
-                  <TextBlock Text="最近使用" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="最近使用" FontSize="17" FontWeight="SemiBold" />
                   <TextBlock Text="选择后会自动扫描当前实例。" FontSize="11"
                              Foreground="{DynamicResource TextSecondary}" />
                   <ComboBox ItemsSource="{Binding RecentPacks}"
                             SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
-                            HorizontalAlignment="Stretch" Height="34" FontSize="11"
+                            HorizontalAlignment="Stretch" Height="32" FontSize="11"
                             PlaceholderText="选择最近整合包">
                     <ComboBox.ItemTemplate>
                       <DataTemplate x:DataType="x:String">
@@ -1462,31 +1486,109 @@
                       </DataTemplate>
                     </ComboBox.ItemTemplate>
                   </ComboBox>
-                  <TextBlock Text="{Binding PackPathDisplay}" FontSize="10"
-                             Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
               </Border>
             </Grid>
 
-            <Border Classes="card" Padding="18" CornerRadius="12" IsVisible="{Binding HasGraph}">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                <StackPanel Spacing="4">
-                  <TextBlock Text="当前实例" FontSize="13" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding PackName}" FontSize="14" FontWeight="SemiBold" />
-                  <TextBlock Text="{Binding ProfileSummary}" FontSize="15" FontWeight="SemiBold"
+            <Grid ColumnDefinitions="1.45*,*" ColumnSpacing="12" IsVisible="{Binding HasGraph}">
+              <Border Classes="card" Padding="18" CornerRadius="12">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="当前实例" Classes="section" />
+                  <TextBlock Text="{Binding PackName}" FontSize="20" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ProfileSummary}" FontSize="13" FontWeight="SemiBold"
                              Foreground="{DynamicResource Accent}" />
-                  <TextBlock Text="{Binding CountSummary}" FontSize="11"
-                             Foreground="{DynamicResource TextSecondary}" />
-                  <TextBlock Text="{Binding StatusText}" FontSize="10.5"
-                             Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding PackPathDisplay}" FontSize="9.5"
+                             TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextMuted}" />
+                  <TextBlock Text="{Binding CountSummary}" Classes="caption" />
+                  <WrapPanel Margin="0,8,0,0">
+                    <Button Content="进入模组列表" Command="{Binding EnterWorkspaceCommand}"
+                            Classes="accent" FontSize="12" Padding="14,8" MinHeight="36" Margin="0,0,8,0" />
+                    <Button Content="启动中心" Command="{Binding NavigateCommand}" CommandParameter="instances"
+                            FontSize="12" Padding="14,8" MinHeight="36" />
+                  </WrapPanel>
                 </StackPanel>
-                <Button Grid.Column="1" Content="进入模组列表 →" Command="{Binding EnterWorkspaceCommand}"
-                        Classes="accent" FontSize="12" Padding="14,7" MinHeight="36"
-                        VerticalAlignment="Center" />
-              </Grid>
-            </Border>
+              </Border>
 
-            <Border Classes="card" Padding="14" CornerRadius="10" IsVisible="{Binding GameRunning}">
+              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="健康概览" Classes="section" />
+                  <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                    <Border Classes="card" Padding="10,7" CornerRadius="8">
+                      <StackPanel>
+                        <TextBlock Text="{Binding MissingCount}" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Danger}" />
+                        <TextBlock Text="缺失依赖" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Classes="card" Padding="10,7" CornerRadius="8">
+                      <StackPanel>
+                        <TextBlock Text="{Binding ConflictCount}" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Warning}" />
+                        <TextBlock Text="冲突" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                    </Border>
+                    <Border Grid.Row="1" Classes="card" Padding="10,7" CornerRadius="8">
+                      <StackPanel>
+                        <TextBlock Text="{Binding ErrorCount}" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Danger}" />
+                        <TextBlock Text="错误" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                    </Border>
+                    <Border Grid.Row="1" Grid.Column="1" Classes="card" Padding="10,7" CornerRadius="8">
+                      <StackPanel>
+                        <TextBlock Text="{Binding InfoCount}" FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondary}" />
+                        <TextBlock Text="提示" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+                  <Button Content="一键体检向导" Command="{Binding OpenHealthWizardCommand}"
+                          FontSize="10.5" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Grid ColumnDefinitions="1.45*,*" ColumnSpacing="12" IsVisible="{Binding HasGraph}">
+              <Border Classes="card" Padding="16" CornerRadius="12">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="常用操作" Classes="section" />
+                  <WrapPanel>
+                    <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,7,7" />
+                    <Button Content="冲突扫描" Command="{Binding ScanJarConflictsCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,7,7" />
+                    <Button Content="服务端工具" Command="{Binding OpenServerToolsCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,7,7" />
+                    <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,7,7" />
+                    <Button Content="对比历史" Command="{Binding CompareModListHistoryCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,7,7" />
+                    <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,7,7" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+
+              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="最近打开" Classes="section" />
+                  <ComboBox ItemsSource="{Binding RecentPacks}"
+                            SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
+                            HorizontalAlignment="Stretch" Height="32" FontSize="10.5"
+                            PlaceholderText="选择最近整合包">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" FontSize="10" TextTrimming="CharacterEllipsis" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap"
+                             MaxHeight="34" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Border Classes="card" Padding="12" CornerRadius="10" IsVisible="{Binding GameRunning}">
               <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                 <Ellipse Width="10" Height="10" Fill="{DynamicResource Success}" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Spacing="2">
@@ -1496,84 +1598,10 @@
                 </StackPanel>
               </Grid>
             </Border>
-
-            <StackPanel Spacing="8">
-              <TextBlock Text="常用操作" FontSize="15" FontWeight="SemiBold" />
-              <WrapPanel>
-                <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
-                        IsEnabled="{Binding HasGraph}" Classes="accent" FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="一键体检" Command="{Binding OpenHealthWizardCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="冲突扫描" Command="{Binding ScanJarConflictsCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="服务端工具" Command="{Binding OpenServerToolsCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="对比上次模组列表" Command="{Binding CompareModListHistoryCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="下载缺失依赖" Command="{Binding AutoCompleteDependenciesCommand}"
-                        IsEnabled="{Binding HasMissingDependencies}"
-                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-              </WrapPanel>
-            </StackPanel>
-
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8" IsVisible="{Binding HasGraph}">
-              <Border Classes="card" Padding="12,8" CornerRadius="8">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <TextBlock Text="{Binding MissingCount}" FontSize="21" FontWeight="SemiBold"
-                             VerticalAlignment="Center" Foreground="{DynamicResource Danger}" />
-                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                    <TextBlock Text="缺失依赖" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="处理 →" Command="{Binding OpenMissingIssuesCommand}" Classes="link"
-                            FontSize="9.5" HorizontalAlignment="Left" />
-                  </StackPanel>
-                </Grid>
-              </Border>
-              <Border Grid.Column="1" Classes="card" Padding="12,8" CornerRadius="8">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <TextBlock Text="{Binding ConflictCount}" FontSize="21" FontWeight="SemiBold"
-                             VerticalAlignment="Center" Foreground="{DynamicResource Warning}" />
-                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                    <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="查看 →" Command="{Binding OpenConflictIssuesCommand}" Classes="link"
-                            FontSize="9.5" HorizontalAlignment="Left" />
-                  </StackPanel>
-                </Grid>
-              </Border>
-              <Border Grid.Column="2" Classes="card" Padding="12,8" CornerRadius="8">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <TextBlock Text="{Binding ErrorCount}" FontSize="21" FontWeight="SemiBold"
-                             VerticalAlignment="Center" Foreground="{DynamicResource Danger}" />
-                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                    <TextBlock Text="错误" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}" Classes="link"
-                            FontSize="9.5" HorizontalAlignment="Left" />
-                  </StackPanel>
-                </Grid>
-              </Border>
-              <Border Grid.Column="3" Classes="card" Padding="12,8" CornerRadius="8">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <TextBlock Text="{Binding InfoCount}" FontSize="21" FontWeight="SemiBold"
-                             VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
-                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                    <TextBlock Text="提示" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}" Classes="link"
-                            FontSize="9.5" HorizontalAlignment="Left" />
-                  </StackPanel>
-                </Grid>
-              </Border>
-            </Grid>
-
-            <TextBlock Text="进入模组列表后，可继续使用筛选、依赖图、批量修复和历史对比。"
-                       Classes="caption" HorizontalAlignment="Center" TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>
       </Border>
+
     </Grid>
 
     <!-- ============================ Status bar ============================ -->
