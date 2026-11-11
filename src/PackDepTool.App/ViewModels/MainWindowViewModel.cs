@@ -2704,6 +2704,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ScanDataPacksAsync()
+    {
+        if (_scanResult is null) return;
+        StatusText = "正在扫描 datapacks…";
+        var report = DataPackScanner.Analyze(_scanResult.RootPath);
+        StatusText = $"数据包扫描完成：{report.Findings.Count} 项问题。";
+        await _dialogs.ShowDiagnosticReportAsync(report);
+    }
+
+    [RelayCommand]
     private async Task AnalyzePerformanceAsync()
     {
         if (_scanResult is null) return;
