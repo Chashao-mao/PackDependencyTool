@@ -68,6 +68,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         CheckUpdatesOnStartup = _settings.CheckUpdatesOnStartup;
         AutoDownloadUpdates = _settings.AutoDownloadUpdates;
         AutoInstallUpdates = _settings.AutoInstallUpdates;
+        OfflineUsername = _settings.OfflineUsername;
+        OfflineRamMb = _settings.OfflineRamMb;
 
         HasStoredKey = hasStoredKey;
         IsFromEnvironment = keys.IsFromEnvironment;
@@ -110,6 +112,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _checkUpdatesOnStartup;
     [ObservableProperty] private bool _autoDownloadUpdates;
     [ObservableProperty] private bool _autoInstallUpdates;
+    [ObservableProperty] private string _offlineUsername = string.Empty;
+    [ObservableProperty] private int _offlineRamMb = 4096;
 
     [ObservableProperty] private string _keyInput = string.Empty;
     [ObservableProperty] private string _keyStatusText = string.Empty;
@@ -146,6 +150,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.CheckUpdatesOnStartup = CheckUpdatesOnStartup;
         _settings.AutoDownloadUpdates = AutoDownloadUpdates;
         _settings.AutoInstallUpdates = AutoInstallUpdates && AutoDownloadUpdates;
+        _settings.OfflineUsername = OfflineUsername.Trim();
+        _settings.OfflineRamMb = Math.Clamp(OfflineRamMb, 512, 65536);
         Completed?.Invoke(_settings);
     }
 

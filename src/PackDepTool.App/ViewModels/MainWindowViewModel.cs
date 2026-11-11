@@ -106,6 +106,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasFileChanges;
     [ObservableProperty] private string _fileChangeText = string.Empty;
     [ObservableProperty] private bool _isOverviewMode = true;
+    [ObservableProperty] private bool _gameRunning;
+    [ObservableProperty] private string _gameRunningText = string.Empty;
 
     public bool IsWorkspaceMode => !IsOverviewMode;
     [ObservableProperty] private string _updateStatusText = string.Empty;
@@ -2880,6 +2882,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         var items = new List<CommandPaletteItem>
         {
+            new("启动当前实例", "使用离线玩家名启动当前版本", "启动", string.Empty, LaunchCurrentInstanceCommand),
             new("扫描当前整合包", "重新读取 mods 目录并更新依赖关系", "扫描", "F5", RescanCommand),
             new("选择整合包", "打开实例管理或选择整合包目录", "实例", "Ctrl+O", OpenInstancesCommand),
             new("返回概览", "回到大按钮开始页", "视图", string.Empty, OpenOverviewCommand),
@@ -3371,6 +3374,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
         }
 
+        if (!string.IsNullOrWhiteSpace(result.LaunchVersionName) &&
+            !string.IsNullOrWhiteSpace(result.LaunchGameRoot))
+        {
+            await LaunchOfflineAsync(result.LaunchGameRoot, result.LaunchVersionName);
+            return;
+        }
+
         var target = result.DirectPackPath ?? result.InstancePath;
         if (string.IsNullOrWhiteSpace(target))
         {
@@ -3391,6 +3401,141 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? $"正在打开整合包：{target}"
             : $"正在打开实例：{target}";
         await OpenPackAsync(target, autoScan: true);
+    }
+
+    [RelayCommand]
+    private void OpenLatestLog()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个实例。";
+            return;
+        }
+        var log = Path.Combine(_scanResult.RootPath, "logs", "latest.log");
+        if (!File.Exists(log))
+        {
+            StatusText = "当前实例还没有 logs/latest.log。";
+            return;
+        }
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = log,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            StatusText = $"打开日志失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task LaunchCurrentInstanceAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个实例。";
+            return;
+        }
+
+        var instancePath = _scanResult.RootPath;
+        var versionsDirectory = Directory.GetParent(instancePath);
+        var gameRoot = versionsDirectory?.Parent;
+        if (versionsDirectory is null || gameRoot is null ||
+            !string.Equals(versionsDirectory.Name, "versions", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = "当前打开的是普通整合包目录，无法自动启动；请在实例管理中选择 PCL/versions 实例。";
+            return;
+        }
+
+        await LaunchOfflineAsync(gameRoot.FullName, new DirectoryInfo(instancePath).Name);
+    }
+
+    private async Task LaunchOfflineAsync(string gameRoot, string versionName)
+    {
+        var username = _services.Settings.OfflineUsername;
+        if (string.IsNullOrWhiteSpace(username) ||
+            !_services.Launcher.IsValidOfflineName(username))
+        {
+            StatusText = "请先在设置 → 离线登录中填写 3–16 位玩家名。";
+            return;
+        }
+
+        try
+        {
+            StatusText = $"正在构建启动参数：{versionName}…";
+            var process = await _services.Launcher.LaunchOfflineAsync(
+                gameRoot, versionName, username, _services.Settings.OfflineRamMb);
+            StatusText = $"已启动 {versionName}（离线身份 {username}，PID {process.Id}）。";
+            StartGameMonitor(process);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"启动失败：{ex.Message}";
+        }
+    }
+
+    private System.Diagnostics.Process? _gameProcess;
+    private DispatcherTimer? _gameMonitorTimer;
+    private TimeSpan _lastGameCpu;
+    private DateTime _lastGameSample;
+
+    private void StartGameMonitor(System.Diagnostics.Process process)
+    {
+        _gameProcess = process;
+        _lastGameCpu = TimeSpan.Zero;
+        _lastGameSample = DateTime.UtcNow;
+        GameRunning = true;
+        _gameMonitorTimer?.Stop();
+        _gameMonitorTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _gameMonitorTimer.Tick += (_, _) => RefreshGameMonitor();
+        _gameMonitorTimer.Start();
+        RefreshGameMonitor();
+    }
+
+    private void RefreshGameMonitor()
+    {
+        var process = _gameProcess;
+        if (process is null)
+        {
+            _gameMonitorTimer?.Stop();
+            GameRunning = false;
+            return;
+        }
+
+        try
+        {
+            if (process.HasExited)
+            {
+                _gameMonitorTimer?.Stop();
+                GameRunning = false;
+                GameRunningText = "游戏已退出";
+                StatusText = $"游戏进程已退出（代码 {process.ExitCode}）。";
+                _gameProcess = null;
+                return;
+            }
+
+            process.Refresh();
+            var cpu = process.TotalProcessorTime;
+            var now = DateTime.UtcNow;
+            var elapsed = (now - _lastGameSample).TotalMilliseconds;
+            var cpuPercent = elapsed <= 0
+                ? 0
+                : Math.Clamp((cpu - _lastGameCpu).TotalMilliseconds / elapsed /
+                             Math.Max(1, Environment.ProcessorCount) * 100, 0, 100);
+            _lastGameCpu = cpu;
+            _lastGameSample = now;
+            var memory = process.WorkingSet64 / 1024d / 1024d;
+            GameRunningText = $"运行中 · PID {process.Id} · 内存 {memory:0} MB · CPU {cpuPercent:0}%";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            _gameMonitorTimer?.Stop();
+            GameRunning = false;
+            GameRunningText = "无法读取游戏进程状态";
+        }
     }
 
     [RelayCommand]

@@ -1,24 +1,20 @@
-# Third-Party Notices
+# Third-party notices
 
-PackDependencyTool is distributed under the MIT License. The following
-third-party packages are used at runtime or during tests. Full license texts
-are in `licenses/`.
+## CmlLib.Core
 
-| Package | Version | License | Project |
-| --- | --- | --- | --- |
-| Avalonia | 11.3.22 | MIT | https://avaloniaui.net/ |
-| Avalonia.Desktop | 11.3.22 | MIT | https://avaloniaui.net/ |
-| Avalonia.Themes.Fluent | 11.3.22 | MIT | https://avaloniaui.net/ |
-| Avalonia.Fonts.Inter | 11.3.22 | MIT | https://avaloniaui.net/ |
-| CommunityToolkit.Mvvm | 8.4.2 | MIT | https://github.com/CommunityToolkit/dotnet |
-| System.Security.Cryptography.ProtectedData | 9.0.21 | MIT | https://github.com/dotnet/runtime |
-| Tomlyn | 0.19.0 | BSD-2-Clause | https://github.com/xoofx/Tomlyn |
-| xunit | 2.9.3 | Apache-2.0 | https://xunit.net/ |
-| Microsoft.NET.Test.Sdk | 17.14.1 | MIT | https://github.com/microsoft/vstest |
+- Project: https://github.com/CmlLib/CmlLib.Core
+- NuGet: https://www.nuget.org/packages/CmlLib.Core/4.0.4
+- License: MIT
+- Copyright: Copyright (c) 2023 AlphaBs
 
-NuGet packages are restored at build time and are not vendored in this
-repository. Their respective licenses and notices apply to the corresponding
-assemblies.
+CmlLib.Core is used to build Minecraft launch processes and to create offline sessions.
+It does not provide a NeoForge installer; NeoForge versions must already be installed by a launcher.
 
-No Minecraft mod files, modpack archives, PCL-CE data, MC百科 data, API keys or
-third-party artwork are distributed with this repository.
+The full MIT license text is available at:
+https://github.com/CmlLib/CmlLib.Core/blob/master/LICENSE
+
+## PCL CE
+
+PCL CE (https://github.com/PCL-Community/PCL-CE) was consulted as a behavioral reference for
+instance management and launcher UX. No PCL CE source code is copied into this repository.
+PCL CE is licensed under the Apache License 2.0.

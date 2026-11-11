@@ -39,6 +39,20 @@ public partial class InstanceManagerDialog : Window
     private void OnOpenSelectedClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         _viewModel?.OpenSelected();
 
+    private async void OnCopyInstanceClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_viewModel is not null) await _viewModel.CopySelectedAsync();
+    }
+
+    private async void OnDeleteInstanceClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_viewModel?.Selected is not { } selected) return;
+        var confirmed = await MessageDialog.ShowAsync(this, "删除实例",
+            $"将 {selected.Name} 移到 versions/.packdep-trash，不会永久删除。继续吗？",
+            "移到回收目录", "取消");
+        if (confirmed) await _viewModel.DeleteSelectedAsync();
+    }
+
     private void OnInstanceSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (_viewModel is not null && InstanceList.SelectedItem is MinecraftInstanceInfo instance)

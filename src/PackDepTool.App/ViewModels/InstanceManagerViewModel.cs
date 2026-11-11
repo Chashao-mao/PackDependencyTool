@@ -11,6 +11,8 @@ public sealed class InstanceManagerResult
     public IReadOnlyList<string> VersionsDirectories { get; init; } = [];
     public string? InstancePath { get; init; }
     public string? DirectPackPath { get; init; }
+    public string? LaunchGameRoot { get; init; }
+    public string? LaunchVersionName { get; init; }
 }
 
 public sealed partial class VersionsFolderItem : ObservableObject
@@ -217,6 +219,104 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
             VersionsDirectory = SelectedFolder.Path,
             VersionsDirectories = Folders.Select(folder => folder.Path).ToList(),
             InstancePath = Selected.EffectiveRoot,
+        });
+    }
+
+    [RelayCommand]
+    private void OpenFolder()
+    {
+        if (Selected is null) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{Selected.Path}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            StatusText = $"打开目录失败：{ex.Message}";
+        }
+    }
+
+    public async Task CopySelectedAsync()
+    {
+        if (Selected is null || SelectedFolder is null || IsBusy) return;
+        var source = Selected.Path;
+        var name = Selected.Name;
+        var target = UniqueTarget(SelectedFolder.Path, name + "-copy");
+        IsBusy = true;
+        StatusText = "正在复制实例…";
+        try
+        {
+            await Task.Run(() => CopyDirectory(source, target));
+            await ScanSelectedFolderAsync();
+            StatusText = $"已复制到 {Path.GetFileName(target)}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"复制失败：{ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task DeleteSelectedAsync()
+    {
+        if (Selected is null || SelectedFolder is null || IsBusy) return;
+        var source = Selected.Path;
+        var trash = Path.Combine(SelectedFolder.Path, ".packdep-trash",
+            $"{Selected.Name}-{DateTime.Now:yyyyMMdd-HHmmss}");
+        IsBusy = true;
+        StatusText = "正在移到回收目录…";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(trash)!);
+            Directory.Move(source, trash);
+            await ScanSelectedFolderAsync();
+            StatusText = $"已移到 {trash}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"删除失败：{ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private static string UniqueTarget(string versions, string baseName)
+    {
+        var target = Path.Combine(versions, baseName);
+        for (var index = 2; Directory.Exists(target); index++)
+            target = Path.Combine(versions, $"{baseName}-{index}");
+        return target;
+    }
+
+    private static void CopyDirectory(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(target, Path.GetRelativePath(source, directory)));
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            File.Copy(file, Path.Combine(target, Path.GetRelativePath(source, file)), overwrite: false);
+    }
+
+    [RelayCommand]
+    private void Launch()
+    {
+        if (Selected is null) return;
+        Completed?.Invoke(new InstanceManagerResult
+        {
+            VersionsDirectory = SelectedFolder?.Path,
+            VersionsDirectories = Folders.Select(folder => folder.Path).ToList(),
+            LaunchGameRoot = Selected.GameDirectory,
+            LaunchVersionName = Selected.Name,
         });
     }
 

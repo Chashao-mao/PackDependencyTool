@@ -48,6 +48,9 @@
               <Button.Flyout>
                 <MenuFlyout>
                   <MenuItem Header="命令面板…" Command="{Binding OpenCommandPaletteCommand}" />
+                  <MenuItem Header="启动当前实例" Command="{Binding LaunchCurrentInstanceCommand}" />
+                  <MenuItem Header="打开 latest.log" Command="{Binding OpenLatestLogCommand}" />
+                  <Separator />
                   <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
                   <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
                   <Separator />
@@ -1237,9 +1240,22 @@
               </Grid>
             </Border>
 
+            <Border Classes="card" Padding="14" CornerRadius="10" IsVisible="{Binding GameRunning}">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Ellipse Width="10" Height="10" Fill="{DynamicResource Success}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="游戏运行中" FontSize="11" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding GameRunningText}" FontSize="10.5"
+                             Foreground="{DynamicResource TextSecondary}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+
             <StackPanel Spacing="8">
               <TextBlock Text="常用操作" FontSize="15" FontWeight="SemiBold" />
               <WrapPanel>
+                <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
+                        Classes="accent" FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="一键体检" Command="{Binding OpenPackToolsCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"

@@ -56,6 +56,7 @@ public sealed class AppServices : IDisposable
         Backups = new PackBackupService();
         Locks = new VersionLockService();
         FileChanges = new FileChangeMonitor();
+        Launcher = new MinecraftLaunchService();
         Resolver = new ModProjectResolver(modrinth, curseForge, keys);
         AutoCompleter = new DependencyAutoCompleter(Downloader, Resolver);
         Batch = new ModBatchService(Downloader, Resolver, ModFiles);
@@ -94,6 +95,7 @@ public sealed class AppServices : IDisposable
     public PackBackupService Backups { get; }
     public VersionLockService Locks { get; }
     public FileChangeMonitor FileChanges { get; }
+    public MinecraftLaunchService Launcher { get; }
     public ModProjectResolver Resolver { get; }
     public DependencyAutoCompleter AutoCompleter { get; }
     public ModBatchService Batch { get; }

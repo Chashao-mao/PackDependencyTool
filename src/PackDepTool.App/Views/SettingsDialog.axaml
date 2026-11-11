@@ -24,6 +24,25 @@
 
         <Border Classes="card" Padding="16">
           <StackPanel Spacing="10">
+            <TextBlock Text="离线登录" Classes="section" />
+            <TextBlock Text="仅使用本地用户名启动，不进行微软账号验证；用户名会用于离线 UUID。"
+                       Classes="caption" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" RowSpacing="8">
+              <TextBlock Text="玩家名" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding OfflineUsername, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       Watermark="3–16 位字母、数字或下划线" MaxLength="16" />
+              <TextBlock Grid.Row="1" Text="最大内存 (MB)" VerticalAlignment="Center" />
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding OfflineRamMb, Mode=TwoWay}"
+                             Minimum="512" Maximum="65536" Increment="512" Width="160"
+                             HorizontalAlignment="Left" />
+            </Grid>
+            <TextBlock Text="启动实例时使用此身份；启动器不会保存密码或正版 token。"
+                       Classes="caption" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="16">
+          <StackPanel Spacing="10">
             <TextBlock Text="网络与 API" Classes="section" />
 
             <Grid ColumnDefinitions="*,Auto">

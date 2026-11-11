@@ -49,6 +49,10 @@ public sealed class AppSettings
     public string? VersionsDirectory { get; set; }
     public List<string> VersionsDirectories { get; set; } = [];
 
+    // Offline launch identity. No Microsoft account/token is stored here.
+    public string OfflineUsername { get; set; } = string.Empty;
+    public int OfflineRamMb { get; set; } = 4096;
+
     public AppSettings Clone()
     {
         var clone = (AppSettings)MemberwiseClone();
@@ -91,6 +95,8 @@ public sealed class AppSettings
         LoaderSwitchInstanceDirectory = other.LoaderSwitchInstanceDirectory;
         VersionsDirectory = other.VersionsDirectory;
         VersionsDirectories = [.. other.VersionsDirectories];
+        OfflineUsername = other.OfflineUsername;
+        OfflineRamMb = other.OfflineRamMb;
     }
 }
 

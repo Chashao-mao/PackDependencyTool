@@ -186,8 +186,13 @@
     <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
       <TextBlock Text="选择实例后点击打开，或直接双击实例。" Classes="caption"
                  VerticalAlignment="Center" />
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
         <Button Content="关闭" Command="{Binding CancelCommand}" />
+        <Button Content="打开目录" Command="{Binding OpenFolderCommand}" IsEnabled="{Binding CanOpen}" />
+        <Button Content="复制" Click="OnCopyInstanceClick" IsEnabled="{Binding CanOpen}" />
+        <Button Content="删除" Classes="danger" Click="OnDeleteInstanceClick" IsEnabled="{Binding CanOpen}" />
+        <Button Content="启动游戏" Command="{Binding LaunchCommand}"
+                IsEnabled="{Binding CanOpen}" ToolTip.Tip="使用设置中的离线玩家名启动选中实例" />
         <Button Content="打开选中实例" Classes="accent" Click="OnOpenSelectedClick"
                 IsEnabled="{Binding CanOpen}" />
       </StackPanel>
