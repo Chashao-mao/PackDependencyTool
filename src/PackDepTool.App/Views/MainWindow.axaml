@@ -56,10 +56,13 @@
         <StackPanel Grid.Row="2" Spacing="5">
           <TextBlock Text="{Binding PackPathDisplay}" FontSize="9" TextWrapping="Wrap"
                      Foreground="{DynamicResource TextMuted}" MaxHeight="45" />
-          <Button Content="⚙ 设置" Command="{Binding OpenSettingsCommand}" Classes="ghost"
-                  FontSize="10" Padding="8,3" HorizontalAlignment="Left" />
-          <TextBlock Text="{Binding VersionLabel}" FontSize="9" HorizontalAlignment="Center"
-                     Foreground="{DynamicResource TextMuted}" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+            <TextBlock Text="{Binding VersionLabel}" FontSize="9" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextMuted}" />
+            <Button Content="⚙" Command="{Binding OpenSettingsCommand}" Classes="ghost"
+                    FontSize="11" Padding="2,0" MinHeight="18" MinWidth="20"
+                    ToolTip.Tip="设置" />
+          </StackPanel>
         </StackPanel>
       </Grid>
     </Border>
