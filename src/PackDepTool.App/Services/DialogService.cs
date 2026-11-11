@@ -229,6 +229,21 @@ public sealed class DialogService : IDialogService
         await dialog.ShowDialog(Owner);
     }
 
+    public async Task<string?> ShowTextInputAsync(
+        string title, string message, string label, string initialValue)
+    {
+        if (Owner is null) return null;
+        var prompt = string.IsNullOrWhiteSpace(message) ? label : $"{message}\n{label}";
+        return await TextInputDialog.ShowAsync(Owner, title, prompt, initialValue);
+    }
+
+    public async Task<HealthWizardAction> ShowHealthWizardAsync(PackAuditReport report)
+    {
+        if (Owner is null) return HealthWizardAction.Close;
+        var dialog = new HealthWizardDialog { DataContext = new HealthWizardViewModel(report) };
+        return await dialog.ShowDialog<HealthWizardAction>(Owner);
+    }
+
     public async Task ShowLogTailAsync(string logPath)
     {
         if (Owner is null) return;
@@ -313,16 +328,6 @@ public sealed class DialogService : IDialogService
         var viewModel = new LocalRuleDialogViewModel(existing, modIds);
         var dialog = new LocalRuleDialog { DataContext = viewModel };
         return await dialog.ShowDialog<LocalRule?>(Owner);
-    }
-
-    public async Task<string?> ShowTextInputAsync(
-        string title,
-        string message,
-        string label,
-        string initialValue)
-    {
-        if (Owner is null) return null;
-        return await TextInputDialog.ShowAsync(Owner, title, message, label, initialValue);
     }
 
     public async Task<bool> ConfirmAsync(

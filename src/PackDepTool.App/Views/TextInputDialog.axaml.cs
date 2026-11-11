@@ -8,33 +8,46 @@ public partial class TextInputDialog : Window
     public TextInputDialog()
     {
         InitializeComponent();
-        OkButton.Click += (_, _) => Close(ValueBox.Text);
-        CancelButton.Click += (_, _) => Close(null);
-        ValueBox.KeyDown += OnValueKeyDown;
-    }
-
-    private void OnValueKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter) return;
-        Close(ValueBox.Text);
-        e.Handled = true;
+        Opened += (_, _) =>
+        {
+            InputBox.Focus();
+            InputBox.SelectAll();
+        };
     }
 
     public static async Task<string?> ShowAsync(
-        Window owner,
-        string title,
-        string message,
-        string label,
-        string initialValue)
+        Window owner, string title, string label, string initialValue = "")
     {
         var dialog = new TextInputDialog();
+        dialog.Title = title;
         dialog.TitleText.Text = title;
-        dialog.MessageText.Text = message;
         dialog.LabelText.Text = label;
-        dialog.ValueBox.Text = initialValue;
-        dialog.ValueBox.SelectAll();
-        dialog.ValueBox.Focus();
-
+        dialog.InputBox.Text = initialValue;
         return await dialog.ShowDialog<string?>(owner);
+    }
+
+    private void OnInputKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            Accept();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            Close(null);
+            e.Handled = true;
+        }
+    }
+
+    private void OnOkClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Accept();
+
+    private void OnCancelClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close(null);
+
+    private void Accept()
+    {
+        var value = InputBox.Text?.Trim() ?? string.Empty;
+        if (value.Length == 0) return;
+        Close(value);
     }
 }

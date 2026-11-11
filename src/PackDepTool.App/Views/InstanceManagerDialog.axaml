@@ -188,6 +188,8 @@
                  VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
         <Button Content="关闭" Command="{Binding CancelCommand}" />
+        <Button Content="新建" Click="OnCreateInstanceClick" IsEnabled="{Binding CanOpen}" />
+        <Button Content="重命名" Click="OnRenameInstanceClick" IsEnabled="{Binding CanOpen}" />
         <Button Content="打开目录" Command="{Binding OpenFolderCommand}" IsEnabled="{Binding CanOpen}" />
         <Button Content="复制" Click="OnCopyInstanceClick" IsEnabled="{Binding CanOpen}" />
         <Button Content="删除" Classes="danger" Click="OnDeleteInstanceClick" IsEnabled="{Binding CanOpen}" />

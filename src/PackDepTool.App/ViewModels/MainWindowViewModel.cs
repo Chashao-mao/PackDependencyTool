@@ -163,6 +163,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _onlyProblems;
     [ObservableProperty] private bool _onlyUpdatable;
     [ObservableProperty] private bool _hasUpdateCheck;
+    [ObservableProperty] private int _updatableCount;
     [ObservableProperty] private bool _sortDescending;
     [ObservableProperty] private bool _hideIsolated;
     [ObservableProperty] private bool _showLabels = true;
@@ -1541,6 +1542,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             HasUpdateCheck = true;
             RefreshView();
             var updatable = _updateStates.Values.Count(state => state.Available);
+            UpdatableCount = updatable;
             var cachedText = cachedCount > 0 ? $"，{cachedCount} 个使用缓存" : string.Empty;
             StatusText = unresolved > 0
                 ? $"更新检查完成：{updatable} 个可更新{cachedText}，{unresolved} 个未识别项目（可先联网补全）"
@@ -2499,6 +2501,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _updateStates.Clear();
             _updateCheckCache.Clear();
             HasUpdateCheck = false;
+            UpdatableCount = 0;
             OnlyUpdatable = false;
             PackPath = scan.RootPath;
             PackPathDisplay = scan.RootPath;
@@ -2901,6 +2904,74 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ActivePage = "mods";
         IsOverviewMode = false;
         SelectedViewOption = ViewOption.All.First(option => option.Value == "graph");
+    }
+
+    [RelayCommand]
+    private async Task OpenHealthWizardAsync()
+    {
+        if (_scanResult is null || _graph is null)
+        {
+            StatusText = "请先扫描整合包。";
+            return;
+        }
+        var report = _services.Audit.Audit(_scanResult, _graph);
+        var action = await _dialogs.ShowHealthWizardAsync(report);
+        switch (action)
+        {
+            case HealthWizardAction.Missing:
+                EnterWorkspace();
+                ShowMissing = true;
+                IsMissingSectionExpanded = true;
+                break;
+            case HealthWizardAction.Conflict:
+                EnterWorkspace();
+                OnlyProblems = true;
+                SelectedStatusFilter = StatusFilterOption.All.First(option => option.Value == ModStatusFilter.Conflict);
+                break;
+            case HealthWizardAction.Backup:
+                await OpenBackupCenterAsync();
+                break;
+            case HealthWizardAction.Workspace:
+                EnterWorkspace();
+                ShowModList();
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenUpdateCenterAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个整合包。";
+            return;
+        }
+        if (!HasUpdateCheck)
+            await CheckUpdatesAsync();
+        if (!HasUpdateCheck) return;
+        OnlyUpdatable = true;
+        EnterWorkspace();
+        ShowModList();
+        StatusText = UpdatableCount == 0
+            ? "当前没有可更新的模组。"
+            : $"更新中心：{UpdatableCount} 个可更新，点「全选可更新」后批量升级。";
+    }
+
+    [RelayCommand]
+    private void SelectUpdatable()
+    {
+        _suppressCheckedSync = true;
+        _checkedNodeIds.Clear();
+        foreach (var item in NodeItems.Where(item => item.HasUpdateBadge))
+        {
+            item.IsChecked = true;
+            _checkedNodeIds.Add(item.Id);
+        }
+        _suppressCheckedSync = false;
+        UpdateCheckedState();
+        StatusText = _checkedNodeIds.Count == 0
+            ? "当前筛选没有可更新模组。"
+            : $"已勾选 {_checkedNodeIds.Count} 个可更新模组。";
     }
 
     [RelayCommand]
@@ -3483,6 +3554,37 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             StatusText = $"打开日志失败：{ex.Message}";
         }
+    }
+
+    [RelayCommand]
+    private async Task DiagnoseLaunchAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个实例。";
+            return;
+        }
+        var versions = Directory.GetParent(_scanResult.RootPath);
+        var gameRoot = versions?.Parent;
+        if (versions is null || gameRoot is null ||
+            !string.Equals(versions.Name, "versions", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = "当前目录不是 versions 实例，无法做启动诊断。";
+            return;
+        }
+
+        var findings = _services.Launcher.Diagnose(
+            gameRoot.FullName, new DirectoryInfo(_scanResult.RootPath).Name, _services.Settings.JavaPath);
+        var report = new DiagnosticReport
+        {
+            SourcePath = _scanResult.RootPath,
+            Summary = findings.Count == 0
+                ? "启动前检查通过。"
+                : $"启动前发现 {findings.Count} 项：错误 {findings.Count(f => f.Severity == DiagnosticSeverity.Error)} · " +
+                  $"警告 {findings.Count(f => f.Severity == DiagnosticSeverity.Warning)}",
+            Findings = findings.ToList(),
+        };
+        await _dialogs.ShowDiagnosticReportAsync(report);
     }
 
     [RelayCommand]

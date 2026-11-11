@@ -26,6 +26,8 @@ public sealed class ServerPackBuildResult
     public int CopiedMods { get; init; }
     public int SkippedMods { get; init; }
     public int CopiedConfigFiles { get; init; }
+    public string? ZipPath { get; init; }
+    public string? StartScriptPath { get; init; }
     public List<string> Failures { get; init; } = [];
 }
 
@@ -59,7 +61,9 @@ public sealed class ServerPackService
         string sourceRoot,
         string destination,
         bool includeConfigs,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool createZip = false,
+        int maximumRamMb = 4096)
     {
         if (string.IsNullOrWhiteSpace(sourceRoot) || !Directory.Exists(sourceRoot))
             throw new InvalidOperationException("整合包目录不存在。");
@@ -115,6 +119,8 @@ public sealed class ServerPackService
             }
         }
 
+        var startScript = WriteStartScript(sourceRoot, target, maximumRamMb);
+        var zipPath = createZip ? CreateZip(target) : null;
         var excluded = plan.Entries.Where(entry => !entry.Included).Select(entry => entry.FileName);
         File.WriteAllText(Path.Combine(target, "server-pack-plan.txt"),
             "PackDependencyTool server pack plan" + Environment.NewLine +
@@ -128,8 +134,59 @@ public sealed class ServerPackService
             CopiedMods = copied,
             SkippedMods = skipped,
             CopiedConfigFiles = configCopied,
+            ZipPath = zipPath,
+            StartScriptPath = startScript,
             Failures = failures,
         };
+    }
+
+    private static string? WriteStartScript(string sourceRoot, string target, int maximumRamMb)
+    {
+        foreach (var name in new[] { "start.bat", "start.sh", "run.bat", "run.sh" })
+        {
+            var source = Path.Combine(sourceRoot, name);
+            if (!File.Exists(source)) continue;
+            var destination = Path.Combine(target, name);
+            try
+            {
+                File.Copy(source, destination, overwrite: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+            return destination;
+        }
+
+        var script = Path.Combine(target, "start-server.bat");
+        try
+        {
+            File.WriteAllText(script,
+                "@echo off" + Environment.NewLine +
+                $"java -Xmx{Math.Clamp(maximumRamMb, 512, 65536)}M -jar server.jar nogui" + Environment.NewLine +
+                "pause" + Environment.NewLine);
+            return script;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static string? CreateZip(string target)
+    {
+        try
+        {
+            var zip = Path.TrimEndingDirectorySeparator(target) + ".zip";
+            if (File.Exists(zip)) File.Delete(zip);
+            System.IO.Compression.ZipFile.CreateFromDirectory(
+                target, zip, System.IO.Compression.CompressionLevel.Optimal, includeBaseDirectory: true);
+            return zip;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private static int CopyDirectory(string source, string destination, List<string> failures)

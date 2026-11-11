@@ -10,6 +10,55 @@ public sealed class MinecraftLaunchService
     public bool IsValidOfflineName(string name) =>
         name.Length is >= 3 and <= 16 && name.All(ch => char.IsAsciiLetterOrDigit(ch) || ch == '_');
 
+    public IReadOnlyList<PackDepTool.Core.Analysis.DiagnosticFinding> Diagnose(
+        string gameRoot, string versionName, string? javaPath = null)
+    {
+        var findings = new List<PackDepTool.Core.Analysis.DiagnosticFinding>();
+        var versionDir = Path.Combine(gameRoot, "versions", versionName);
+        void Add(PackDepTool.Core.Analysis.DiagnosticSeverity severity, string title, string message) =>
+            findings.Add(new PackDepTool.Core.Analysis.DiagnosticFinding
+            {
+                RuleId = "launch-preflight",
+                Severity = severity,
+                Title = title,
+                Message = message,
+                Evidence = versionDir,
+            });
+
+        if (!Directory.Exists(versionDir))
+            Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "实例目录不存在", versionDir);
+        else
+        {
+            var hasJson = File.Exists(Path.Combine(versionDir, versionName + ".json")) ||
+                          File.Exists(Path.Combine(versionDir, "version.json")) ||
+                          Directory.EnumerateFiles(versionDir, "*.json", SearchOption.TopDirectoryOnly).Any();
+            if (!hasJson)
+                Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "版本 JSON 缺失",
+                    "实例目录没有版本 JSON，CmlLib 无法构建启动参数。");
+            var hasJar = File.Exists(Path.Combine(versionDir, versionName + ".jar")) ||
+                         File.Exists(Path.Combine(versionDir, "version.jar"));
+            if (!hasJar)
+                Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Warning, "客户端 JAR 未在实例目录",
+                    "如果该版本依赖继承版本，可忽略；否则需要补全客户端 JAR。");
+        }
+
+        if (ResolveJavaPath(gameRoot, javaPath) is null)
+            Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "找不到 Java",
+                "请在 设置 → 离线登录 → Java 路径 指定 java.exe，或安装 JDK/JRE。");
+
+        var libraries = Path.Combine(gameRoot, "libraries");
+        if (!Directory.Exists(libraries) || !Directory.EnumerateFiles(libraries, "*", SearchOption.AllDirectories).Any())
+            Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "libraries 目录为空",
+                "启动前需要完整的 libraries；请先用启动器补全该实例。");
+
+        var assets = Path.Combine(gameRoot, "assets");
+        if (!Directory.Exists(assets))
+            Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "assets 目录缺失",
+                "启动前需要 assets；请先用启动器补全该实例。");
+
+        return findings;
+    }
+
     public async Task<Process> LaunchOfflineAsync(
         string gameRoot,
         string versionName,
@@ -22,6 +71,13 @@ public sealed class MinecraftLaunchService
             throw new InvalidOperationException("离线用户名需为 3–16 位字母、数字或下划线。");
         if (!Directory.Exists(gameRoot))
             throw new InvalidOperationException($"游戏目录不存在：{gameRoot}");
+
+        var blocking = Diagnose(gameRoot, versionName, javaPath)
+            .Where(finding => finding.Severity == PackDepTool.Core.Analysis.DiagnosticSeverity.Error)
+            .Select(finding => finding.Title + "：" + finding.Message)
+            .ToList();
+        if (blocking.Count > 0)
+            throw new InvalidOperationException(string.Join(Environment.NewLine, blocking));
 
         var path = new MinecraftPath(gameRoot);
         var launcher = new MinecraftLauncher(path);
@@ -42,7 +98,7 @@ public sealed class MinecraftLaunchService
         return process;
     }
 
-    private static string? ResolveJavaPath(string gameRoot, string? configured)
+    public static string? ResolveJavaPath(string gameRoot, string? configured)
     {
         if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured))
             return Path.GetFullPath(configured);

@@ -95,6 +95,7 @@ public sealed partial class ServerToolsViewModel : ObservableObject
     [ObservableProperty] private string _destination;
     [ObservableProperty] private string _javaPath = string.Empty;
     [ObservableProperty] private bool _includeConfigs = true;
+    [ObservableProperty] private bool _createZip = true;
     [ObservableProperty] private string _statusText = "准备生成服务端包";
     [ObservableProperty] private bool _isBusy;
 
@@ -138,8 +139,10 @@ public sealed partial class ServerToolsViewModel : ObservableObject
         try
         {
             var result = await Task.Run(() => _service.Build(
-                _plan, _packRoot, Destination, IncludeConfigs));
-            StatusText = $"已生成：{result.CopiedMods} 个模组，{result.CopiedConfigFiles} 个配置文件" +
+                _plan, _packRoot, Destination, IncludeConfigs,
+                maximumRamMb: 4096, createZip: CreateZip));
+            StatusText = $"已生成：{result.CopiedMods} 个模组，{result.CopiedConfigFiles} 个配置" +
+                         (result.ZipPath is not null ? $"，zip：{Path.GetFileName(result.ZipPath)}" : string.Empty) +
                          (result.Failures.Count > 0 ? $"，{result.Failures.Count} 个失败" : string.Empty);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)

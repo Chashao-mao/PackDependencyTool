@@ -89,6 +89,7 @@
                   <MenuItem Header="实例与启动">
                     <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
                     <MenuItem Header="启动当前实例" Command="{Binding LaunchCurrentInstanceCommand}" />
+                  <MenuItem Header="启动前诊断" Command="{Binding DiagnoseLaunchCommand}" />
                     <MenuItem Header="打开 latest.log" Command="{Binding OpenLatestLogCommand}" />
                   <MenuItem Header="实时日志窗口" Command="{Binding OpenLogTailCommand}" />
                     <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
@@ -123,6 +124,7 @@
                     <MenuItem Header="模组列表长图（含依赖线）…" Command="{Binding ExportModListPngCommand}" />
                   </MenuItem>
                   <MenuItem Header="分析与诊断">
+                    <MenuItem Header="一键体检向导…" Command="{Binding OpenHealthWizardCommand}" />
                     <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />
                     <MenuItem Header="崩溃日志诊断…" Command="{Binding DiagnoseCrashCommand}" />
                     <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
@@ -160,6 +162,8 @@
                     <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   </MenuItem>
                   <MenuItem Header="更新与维护">
+                    <MenuItem Header="更新中心" Command="{Binding OpenUpdateCenterCommand}" />
+                    <MenuItem Header="全选可更新" Command="{Binding SelectUpdatableCommand}" />
                     <MenuItem Header="检查程序更新" Command="{Binding CheckForUpdatesCommand}"
                               IsEnabled="{Binding !IsCheckingUpdates}" />
                     <MenuItem Header="打开程序更新页" Command="{Binding OpenUpdatePageCommand}" />
@@ -1250,6 +1254,8 @@
                           FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
                   <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
                           IsEnabled="{Binding HasGraph}" FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
+                  <Button Content="启动前诊断" Command="{Binding DiagnoseLaunchCommand}"
+                          IsEnabled="{Binding HasGraph}" FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
                   <Button Content="打开 latest.log" Command="{Binding OpenLatestLogCommand}"
                           FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
                   <Button Content="实时日志" Command="{Binding OpenLogTailCommand}"
@@ -1416,7 +1422,7 @@
               <WrapPanel>
                 <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
                         IsEnabled="{Binding HasGraph}" Classes="accent" FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
-                <Button Content="一键体检" Command="{Binding OpenPackToolsCommand}"
+                <Button Content="一键体检" Command="{Binding OpenHealthWizardCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
@@ -1425,6 +1431,8 @@
                 <Button Content="服务端工具" Command="{Binding OpenServerToolsCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="下载缺失依赖" Command="{Binding AutoCompleteDependenciesCommand}"
                         IsEnabled="{Binding HasMissingDependencies}"

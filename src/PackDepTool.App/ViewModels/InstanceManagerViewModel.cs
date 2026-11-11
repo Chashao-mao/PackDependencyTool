@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PackDepTool.Core.Scanning;
@@ -238,6 +240,112 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
             StatusText = $"打开目录失败：{ex.Message}";
+        }
+    }
+
+    public async Task CreateFromSelectedAsync(string name)
+    {
+        if (Selected is null || SelectedFolder is null || IsBusy) return;
+        if (!IsValidName(name))
+        {
+            StatusText = "实例名不能为空，且不能包含路径分隔符。";
+            return;
+        }
+        var target = Path.Combine(SelectedFolder.Path, name);
+        if (Directory.Exists(target))
+        {
+            StatusText = $"实例已存在：{name}";
+            return;
+        }
+
+        IsBusy = true;
+        StatusText = "正在创建实例…";
+        try
+        {
+            await Task.Run(() =>
+            {
+                CopyDirectory(Selected.Path, target);
+                RenameVersionJson(target, Selected.Name, name);
+            });
+            await ScanSelectedFolderAsync();
+            StatusText = $"已创建实例 {name}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            StatusText = $"创建实例失败：{ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    public async Task RenameSelectedAsync(string name)
+    {
+        if (Selected is null || SelectedFolder is null || IsBusy) return;
+        if (!IsValidName(name) || string.Equals(name, Selected.Name, StringComparison.OrdinalIgnoreCase))
+            return;
+        var target = Path.Combine(SelectedFolder.Path, name);
+        if (Directory.Exists(target))
+        {
+            StatusText = $"实例已存在：{name}";
+            return;
+        }
+
+        IsBusy = true;
+        StatusText = "正在重命名实例…";
+        try
+        {
+            Directory.Move(Selected.Path, target);
+            RenameVersionJson(target, Selected.Name, name);
+            await ScanSelectedFolderAsync();
+            StatusText = $"已重命名为 {name}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            StatusText = $"重命名失败：{ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private static bool IsValidName(string name) =>
+        !string.IsNullOrWhiteSpace(name) &&
+        name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 &&
+        !name.Contains('/') && !name.Contains('\\') &&
+        !name.StartsWith('.');
+
+    private static void RenameVersionJson(string folder, string oldName, string newName)
+    {
+        var oldJson = Path.Combine(folder, oldName + ".json");
+        var newJson = Path.Combine(folder, newName + ".json");
+        if (!File.Exists(oldJson))
+        {
+            var single = Directory.EnumerateFiles(folder, "*.json", SearchOption.TopDirectoryOnly)
+                .Take(2).ToList();
+            if (single.Count == 1) oldJson = single[0];
+            else return;
+        }
+        if (!string.Equals(oldJson, newJson, StringComparison.OrdinalIgnoreCase))
+            File.Move(oldJson, newJson, overwrite: false);
+
+        try
+        {
+            var text = File.ReadAllText(newJson);
+            if (JsonNode.Parse(text) is JsonObject root)
+            {
+                root["id"] = newName;
+                File.WriteAllText(newJson, root.ToJsonString(new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                }));
+            }
+        }
+        catch (JsonException)
+        {
+            // Keep the original version JSON; the folder name is still usable by launchers.
         }
     }
 
