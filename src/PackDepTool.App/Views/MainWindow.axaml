@@ -144,11 +144,15 @@
                     <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
                               IsEnabled="{Binding HasConfigBackup}" />
                   </MenuItem>
+                  <MenuItem Header="发布与基线">
+                    <MenuItem Header="创建发布基线…" Command="{Binding CreateVersionLockCommand}"
+                              ToolTip.Tip="记录当前模组版本和文件 SHA1，作为发布/对比基线；不会锁定或自动更新模组。" />
+                    <MenuItem Header="对比发布基线…" Command="{Binding CompareVersionLockCommand}"
+                              ToolTip.Tip="查看基线之后新增、移除、版本变化和文件内容变化的模组。" />
+                    <MenuItem Header="删除发布基线…" Command="{Binding DeleteVersionLockCommand}" />
+                  </MenuItem>
                   <MenuItem Header="版本与视图">
                     <MenuItem Header="对比上次模组列表…" Command="{Binding CompareModListHistoryCommand}" />
-                  <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
-                    <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
-                    <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
                     <Separator />
                     <MenuItem Header="复制当前视图状态" Command="{Binding CopyViewStateCommand}" />
                     <MenuItem Header="应用剪贴板视图状态" Command="{Binding ApplyViewStateCommand}" />

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Platform.Storage;
 using Avalonia.Interactivity;
+using PackDepTool.App.Services;
 
 namespace PackDepTool.App.Views;
 
@@ -43,6 +44,17 @@ public partial class ModListImportDialog : Window
         Close(text);
     }
 
+    private static bool IsHeader(string value)
+    {
+        var text = value.Trim();
+        return text.Equals("name", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("mod", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("modid", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("slug", StringComparison.OrdinalIgnoreCase) ||
+               text.Equals("模组", StringComparison.Ordinal) ||
+               text.Equals("名称", StringComparison.Ordinal);
+    }
+
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);
 
     private async void OnPickFileClick(object? sender, RoutedEventArgs e)
@@ -53,14 +65,26 @@ public partial class ModListImportDialog : Window
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("文本列表") { Patterns = ["*.txt", "*.csv", "*.list", "*.md"] },
+                new FilePickerFileType("模组列表（文本 / 表格）")
+                {
+                    Patterns = ["*.txt", "*.csv", "*.tsv", "*.xlsx", "*.list", "*.md"],
+                },
                 FilePickerFileTypes.All,
             ],
         });
         var file = files.FirstOrDefault();
         if (file is null) return;
-        await using var stream = await file.OpenReadAsync();
-        using var reader = new StreamReader(stream);
-        InputBox.Text = await reader.ReadToEndAsync();
+        var localPath = file.TryGetLocalPath();
+        if (localPath is null) return;
+        try
+        {
+            var entries = await ModListFileReader.ReadFirstColumnAsync(localPath);
+            InputBox.Text = string.Join(Environment.NewLine, entries
+                .Where(entry => !IsHeader(entry)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            InputBox.Text = $"# 读取失败：{ex.Message}";
+        }
     }
 }

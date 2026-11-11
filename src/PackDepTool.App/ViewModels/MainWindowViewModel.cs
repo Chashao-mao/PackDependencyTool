@@ -3032,8 +3032,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             new("备份中心", "查看修复快照、文件差异和 config 备份", "修复", string.Empty, OpenBackupCenterCommand),
             new("撤销上次修复", "恢复最近一次修复前快照", "修复", string.Empty, UndoLastBackupCommand),
             new("禁用管理", "启用或永久删除 .jar.disabled", "修复", string.Empty, OpenDisabledModsCommand),
-            new("锁定当前版本", "写入 packdep.lock.json", "版本", string.Empty, CreateVersionLockCommand),
-            new("对比版本锁定", "查看新增、移除和版本变化", "版本", string.Empty, CompareVersionLockCommand),
+            new("创建发布基线", "写入 packdep.lock.json，供发布后对比（不锁定更新）", "发布", string.Empty, CreateVersionLockCommand),
+            new("对比发布基线", "查看基线后的新增、移除、版本和文件变化", "发布", string.Empty, CompareVersionLockCommand),
             new("复制视图状态", "复制当前筛选和视图配置", "视图", string.Empty, CopyViewStateCommand),
             new("应用剪贴板视图状态", "恢复复制的筛选和视图配置", "视图", string.Empty, ApplyViewStateCommand),
             new("导出模组清单 Markdown", "导出可读的模组清单", "导出", string.Empty, ExportModListCommand),
@@ -3718,9 +3718,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 if (process.ExitCode != 0 && _scanResult is not null)
                 {
                     var log = Path.Combine(_scanResult.RootPath, ".packdep-launch.log");
-                    var detail = File.Exists(log)
-                        ? string.Join(Environment.NewLine, File.ReadLines(log).TakeLast(24))
-                        : "没有找到 .packdep-launch.log。";
+                    string detail;
+                    if (File.Exists(log))
+                    {
+                        var text = File.ReadAllText(log);
+                        var errorAt = text.LastIndexOf("STDERR:", StringComparison.Ordinal);
+                        detail = errorAt >= 0 ? text[errorAt..] : text;
+                        if (detail.Length > 1800) detail = "…" + detail[^1800..];
+                    }
+                    else detail = "没有找到 .packdep-launch.log。";
                     _ = _dialogs.ShowMessageAsync("游戏启动失败",
                         $"退出代码：{process.ExitCode}{Environment.NewLine}{Environment.NewLine}" +
                         $"诊断日志：{log}{Environment.NewLine}{Environment.NewLine}{detail}");

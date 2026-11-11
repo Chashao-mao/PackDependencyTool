@@ -117,7 +117,8 @@ public sealed class MinecraftLaunchService
             File.WriteAllText(Path.Combine(instanceRoot, ".packdep-launch.log"),
                 $"Java: {java}{Environment.NewLine}" +
                 $"WorkingDirectory: {process.StartInfo.WorkingDirectory}{Environment.NewLine}" +
-                $"Arguments: {process.StartInfo.Arguments}{Environment.NewLine}{Environment.NewLine}");
+                $"Command: {process.StartInfo.FileName} {process.StartInfo.Arguments}{Environment.NewLine}" +
+                $"{Environment.NewLine}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

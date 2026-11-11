@@ -43,6 +43,7 @@ public sealed class ModIconService
         var loaded = 0;
         foreach (var node in nodes)
         {
+            // Local cache takes precedence over the icon embedded in the JAR.
             var cached = TryReadCache(node);
             if (cached is null) continue;
             node.IconData = cached;
