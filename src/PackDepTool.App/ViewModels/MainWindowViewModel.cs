@@ -15,6 +15,7 @@ using PackDepTool.Core.Export;
 using PackDepTool.Core.Models;
 using PackDepTool.Core.Net;
 using PackDepTool.Core.Persistence;
+using PackDepTool.Core.Scanning;
 using PackDepTool.App.Views;
 
 namespace PackDepTool.App.ViewModels;
@@ -98,6 +99,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _packPathDisplay = "尚未选择整合包";
     [ObservableProperty] private string _packName = "未选择整合包";
     [ObservableProperty] private string _profileSummary = "等待扫描";
+    public ObservableCollection<MinecraftInstanceInfo> Instances { get; } = [];
+    [ObservableProperty] private MinecraftInstanceInfo? _selectedInstance;
+    [ObservableProperty] private bool _isLoadingInstances;
+    [ObservableProperty] private string _instancesRootText = "尚未定位 versions 目录";
 
     public string LaunchMemoryText
     {
@@ -2949,6 +2954,53 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ActivePage = string.IsNullOrWhiteSpace(page) ? "home" : page.Trim().ToLowerInvariant();
         if (ActivePage == "home") IsOverviewMode = true;
         else if (ActivePage == "mods") IsOverviewMode = false;
+        if (ActivePage == "instances") _ = LoadInstancesAsync();
+    }
+
+    [RelayCommand]
+    private async Task LoadInstancesAsync()
+    {
+        if (IsLoadingInstances) return;
+        IsLoadingInstances = true;
+        try
+        {
+            var candidates = _services.Settings.VersionsDirectories
+                .Concat(new[] { _services.Settings.VersionsDirectory ?? string.Empty })
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (_scanResult is not null)
+            {
+                var currentVersions = Directory.GetParent(_scanResult.RootPath)?.FullName;
+                if (!string.IsNullOrWhiteSpace(currentVersions)) candidates.Insert(0, currentVersions);
+            }
+
+            var versions = candidates.FirstOrDefault(Directory.Exists);
+            var result = await _services.InstanceCatalog.ScanAsync(versions);
+            Instances.Clear();
+            foreach (var instance in result.Instances) Instances.Add(instance);
+            InstancesRootText = result.VersionsDirectory ?? "尚未定位 versions 目录";
+            SelectedInstance = Instances.FirstOrDefault(instance =>
+                string.Equals(instance.Path, _scanResult?.RootPath, StringComparison.OrdinalIgnoreCase));
+            StatusText = Instances.Count == 0
+                ? "没有找到实例；请先在实例管理中指定 versions 目录。"
+                : $"已列出 {Instances.Count} 个实例。";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            StatusText = $"读取实例列表失败：{ex.Message}";
+        }
+        finally
+        {
+            IsLoadingInstances = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenSelectedInstanceAsync()
+    {
+        if (SelectedInstance is null) return;
+        await OpenPathAsync(SelectedInstance.Path);
     }
 
     [RelayCommand]
