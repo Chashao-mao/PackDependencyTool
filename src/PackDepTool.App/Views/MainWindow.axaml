@@ -98,6 +98,9 @@
                   <Separator />
                   <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
                   <Separator />
+                  <MenuItem Header="复制当前视图状态" Command="{Binding CopyViewStateCommand}" />
+                  <MenuItem Header="应用剪贴板视图状态" Command="{Binding ApplyViewStateCommand}" />
+                  <Separator />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   <Separator />

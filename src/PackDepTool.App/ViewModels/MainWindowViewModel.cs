@@ -2704,6 +2704,107 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task CopyViewStateAsync()
+    {
+        var snapshot = new ViewStateSnapshot
+        {
+            Search = SearchText,
+            ShowRequires = ShowRequires,
+            ShowIncompatible = ShowIncompatible,
+            ShowOptional = ShowOptional,
+            ShowEmbedded = ShowEmbedded,
+            ShowRecommends = ShowRecommends,
+            ShowManual = ShowManual,
+            ShowFabric = ShowFabric,
+            ShowQuilt = ShowQuilt,
+            ShowForge = ShowForge,
+            ShowNeoForge = ShowNeoForge,
+            ShowUnknown = ShowUnknown,
+            OnlyProblems = OnlyProblems,
+            OnlyUpdatable = OnlyUpdatable,
+            HideIsolated = HideIsolated,
+            ShowLabels = ShowLabels,
+            FocusEdgesOnly = FocusEdgesOnly,
+            ShowUninstalledOptional = ShowUninstalledOptional,
+            ShowOptionalInReport = ShowOptionalInReport,
+            ShowMissing = ShowMissing,
+            StatusFilter = SelectedStatusFilter.Value.ToString(),
+            SideFilter = SelectedSideFilter.Value.ToString(),
+            SortOption = SelectedSortOption.Value.ToString(),
+            CategoryFilter = SelectedCategoryFilter.Value?.ToString() ?? string.Empty,
+            ViewOption = SelectedViewOption.Value,
+        };
+
+        try
+        {
+            await _dialogs.WriteClipboardTextAsync(ViewStateCodec.Encode(snapshot));
+            StatusText = "当前视图状态已复制，可发送给其他实例。";
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusText = $"复制视图状态失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyViewStateAsync()
+    {
+        var code = await _dialogs.ReadClipboardTextAsync();
+        var snapshot = ViewStateCodec.Decode(code);
+        if (snapshot is null)
+        {
+            StatusText = "剪贴板里没有有效的 PackDependencyTool 视图状态。";
+            return;
+        }
+
+        SearchText = snapshot.Search;
+        ShowRequires = snapshot.ShowRequires;
+        ShowIncompatible = snapshot.ShowIncompatible;
+        ShowOptional = snapshot.ShowOptional;
+        ShowEmbedded = snapshot.ShowEmbedded;
+        ShowRecommends = snapshot.ShowRecommends;
+        ShowManual = snapshot.ShowManual;
+        ShowFabric = snapshot.ShowFabric;
+        ShowQuilt = snapshot.ShowQuilt;
+        ShowForge = snapshot.ShowForge;
+        ShowNeoForge = snapshot.ShowNeoForge;
+        ShowUnknown = snapshot.ShowUnknown;
+        OnlyProblems = snapshot.OnlyProblems;
+        OnlyUpdatable = snapshot.OnlyUpdatable;
+        HideIsolated = snapshot.HideIsolated;
+        ShowLabels = snapshot.ShowLabels;
+        FocusEdgesOnly = snapshot.FocusEdgesOnly;
+        ShowUninstalledOptional = snapshot.ShowUninstalledOptional;
+        ShowOptionalInReport = snapshot.ShowOptionalInReport;
+        ShowMissing = snapshot.ShowMissing;
+        var statusFilter = Enum.TryParse<ModStatusFilter>(snapshot.StatusFilter, true, out var statusValue)
+            ? statusValue
+            : ModStatusFilter.All;
+        var sideFilter = Enum.TryParse<ModSideFilter>(snapshot.SideFilter, true, out var sideValue)
+            ? sideValue
+            : ModSideFilter.All;
+        var sortMode = Enum.TryParse<ModSortMode>(snapshot.SortOption, true, out var sortValue)
+            ? sortValue
+            : ModSortMode.Name;
+        ModCategory? category = null;
+        if (Enum.TryParse<ModCategory>(snapshot.CategoryFilter, true, out var categoryValue))
+            category = categoryValue;
+
+        SelectedStatusFilter = StatusFilterOption.All.FirstOrDefault(option => option.Value == statusFilter) ??
+                               StatusFilterOption.All[0];
+        SelectedSideFilter = SideFilterOption.All.FirstOrDefault(option => option.Value == sideFilter) ??
+                             SideFilterOption.All[0];
+        SelectedSortOption = ModSortOption.All.FirstOrDefault(option => option.Value == sortMode) ??
+                             ModSortOption.All[0];
+        SelectedCategoryFilter = CategoryFilterOption.All.FirstOrDefault(option => option.Value == category) ??
+                                 CategoryFilterOption.All[0];
+        SelectedViewOption = ViewOption.All.FirstOrDefault(option => option.Value == snapshot.ViewOption) ??
+                             ViewOption.All[0];
+        RefreshView();
+        StatusText = "已应用剪贴板中的视图状态。";
+    }
+
+    [RelayCommand]
     private async Task OpenBisectionAsync()
     {
         if (_graph is null) return;

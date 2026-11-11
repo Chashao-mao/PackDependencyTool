@@ -221,6 +221,25 @@ public sealed class DialogService : IDialogService
         await dialog.ShowDialog(Owner);
     }
 
+    public async Task<string?> ReadClipboardTextAsync()
+    {
+        if (Owner?.Clipboard is null) return null;
+        try
+        {
+            return await Owner.Clipboard.GetTextAsync();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    public async Task WriteClipboardTextAsync(string text)
+    {
+        if (Owner?.Clipboard is null) throw new InvalidOperationException("剪贴板不可用。");
+        await Owner.Clipboard.SetTextAsync(text);
+    }
+
     public async Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates)
     {
