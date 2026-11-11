@@ -34,8 +34,14 @@
               <TextBlock Grid.Row="1" Text="最大内存 (MB)" VerticalAlignment="Center" />
               <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding OfflineRamMb, Mode=TwoWay}"
                              Minimum="512" Maximum="65536" Increment="512" Width="160"
-                             HorizontalAlignment="Left" />
+                             HorizontalAlignment="Left" IsEnabled="{Binding !AutoMemory}" />
             </Grid>
+            <CheckBox Content="自动分配内存（按物理内存和模组数量）"
+                      IsChecked="{Binding AutoMemory, Mode=TwoWay}" FontSize="10" />
+            <CheckBox Content="调试模式启动（追加 Mixin/FML 调试参数）"
+                      IsChecked="{Binding DebugMode, Mode=TwoWay}" FontSize="10" />
+            <TextBlock Text="自动内存关闭后使用上面的最大内存；调试模式会明显降低性能。"
+                       Classes="caption" TextWrapping="Wrap" />
             <TextBlock Text="Java 路径（留空自动探测）" Classes="caption" />
             <TextBox Text="{Binding JavaPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      Watermark="例如 C:\Program Files\Java\jdk-21\bin\java.exe" />

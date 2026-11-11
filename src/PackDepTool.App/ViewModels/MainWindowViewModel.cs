@@ -3667,10 +3667,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             StatusText = $"正在构建启动参数：{versionName}…";
             var instanceRoot = Path.Combine(gameRoot, "versions", versionName);
+            var modCount = _graph?.Nodes.Count(node => !node.IsSynthetic) ?? 0;
+            var ramMb = _services.Settings.AutoMemory
+                ? MinecraftLaunchService.RecommendedRamMb(modCount)
+                : _services.Settings.OfflineRamMb;
             var process = await _services.Launcher.LaunchOfflineAsync(
                 gameRoot, versionName, _scanResult.Profile.McVersion, instanceRoot, username,
-                _services.Settings.OfflineRamMb, _services.Settings.JavaPath);
-            StatusText = $"已启动 {versionName}（离线身份 {username}，PID {process.Id}）。";
+                ramMb, _services.Settings.JavaPath, _services.Settings.DebugMode);
+            StatusText = $"已启动 {versionName}（{ramMb} MB" +
+                         (_services.Settings.DebugMode ? "，调试模式" : string.Empty) +
+                         $"，PID {process.Id}）。";
             StartGameMonitor(process);
         }
         catch (Exception ex)

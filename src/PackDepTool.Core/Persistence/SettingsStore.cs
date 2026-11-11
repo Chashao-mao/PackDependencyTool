@@ -52,6 +52,8 @@ public sealed class AppSettings
     // Offline launch identity. No Microsoft account/token is stored here.
     public string OfflineUsername { get; set; } = string.Empty;
     public int OfflineRamMb { get; set; } = 4096;
+    public bool AutoMemory { get; set; } = true;
+    public bool DebugMode { get; set; }
     public string? JavaPath { get; set; }
 
     public AppSettings Clone()
@@ -98,6 +100,8 @@ public sealed class AppSettings
         VersionsDirectories = [.. other.VersionsDirectories];
         OfflineUsername = other.OfflineUsername;
         OfflineRamMb = other.OfflineRamMb;
+        AutoMemory = other.AutoMemory;
+        DebugMode = other.DebugMode;
         JavaPath = other.JavaPath;
     }
 }

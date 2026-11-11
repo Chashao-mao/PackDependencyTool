@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using CmlLib.Core;
 using CmlLib.Core.Auth;
 using CmlLib.Core.ProcessBuilder;
@@ -85,6 +86,7 @@ public sealed class MinecraftLaunchService
         string offlineUsername,
         int maximumRamMb,
         string? javaPath = null,
+        bool debugMode = false,
         CancellationToken cancellationToken = default)
     {
         if (!IsValidOfflineName(offlineUsername))
@@ -101,18 +103,41 @@ public sealed class MinecraftLaunchService
 
         var path = new MinecraftPath(gameRoot);
         var launcher = new MinecraftLauncher(path);
-        var java = ResolveJavaPath(gameRoot, javaPath, mcVersion);
+        var java = ToWindowlessJava(ResolveJavaPath(gameRoot, javaPath, mcVersion));
         if (java is null)
             throw new InvalidOperationException(
                 "未找到可用的 java.exe。请在 设置 → 离线登录 → Java 路径 中指定。");
         EnsureChineseLanguage(instanceRoot);
+        EnsureChineseLanguage(gameRoot);
         var option = new MLaunchOption
         {
             Session = MSession.CreateOfflineSession(offlineUsername),
             MaximumRamMb = Math.Clamp(maximumRamMb, 512, 65536),
             JavaPath = java,
             ExtraGameArguments = [new MArgument(["--lang", "zh_cn"])],
+            // BasePath is the instance, while shared versions/libraries/assets stay at root.
+            // CmlLib derives the single --gameDir argument from BasePath.
+            Path = new MinecraftPath(gameRoot)
+            {
+                BasePath = instanceRoot,
+                Versions = Path.Combine(gameRoot, "versions"),
+                Library = Path.Combine(gameRoot, "libraries"),
+                Assets = Path.Combine(gameRoot, "assets"),
+                Runtime = Path.Combine(gameRoot, "runtime"),
+                Resource = Path.Combine(gameRoot, "resources"),
+            },
         };
+        if (debugMode)
+        {
+            option.ExtraJvmArguments =
+            [
+                new MArgument(["-Dmixin.debug.verbose=true"]),
+                new MArgument(["-Dmixin.debug.export=true"]),
+                new MArgument(["-Dmixin.debug.countInjections=true"]),
+                new MArgument(["-Dmixin.debug.verify=true"]),
+                new MArgument(["-Dfml.debug=true"]),
+            ];
+        }
         var process = await launcher.BuildProcessAsync(versionName, option)
             .AsTask()
             .WaitAsync(cancellationToken);
@@ -121,6 +146,7 @@ public sealed class MinecraftLaunchService
             File.WriteAllText(Path.Combine(instanceRoot, ".packdep-launch.log"),
                 $"Java: {java}{Environment.NewLine}" +
                 $"WorkingDirectory: {process.StartInfo.WorkingDirectory}{Environment.NewLine}" +
+                $"VersionMainClass: {ReadMainClass(gameRoot, versionName)}{Environment.NewLine}" +
                 $"Command: {process.StartInfo.FileName} {process.StartInfo.Arguments}{Environment.NewLine}" +
                 $"{Environment.NewLine}");
         }
@@ -166,6 +192,34 @@ public sealed class MinecraftLaunchService
         {
             // Launch can still proceed; the extra --lang argument also covers language.
         }
+    }
+
+    private static string ReadMainClass(string gameRoot, string versionName)
+    {
+        var directory = Path.Combine(gameRoot, "versions", versionName);
+        var json = Path.Combine(directory, versionName + ".json");
+        if (!File.Exists(json)) json = Path.Combine(directory, "version.json");
+        if (!File.Exists(json)) return "(version json not found)";
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(json));
+            return document.RootElement.TryGetProperty("mainClass", out var mainClass)
+                ? mainClass.GetString() ?? "(empty)"
+                : "(inherited)";
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return "(unreadable)";
+        }
+    }
+
+    public static int RecommendedRamMb(int modCount)
+    {
+        var totalMb = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / (1024 * 1024);
+        if (totalMb <= 0) totalMb = 8192;
+        var baseMb = totalMb >= 32768 ? 8192 : totalMb >= 16384 ? 4096 : totalMb >= 8192 ? 3072 : 2048;
+        var extra = Math.Min(2048, Math.Max(0, modCount) / 100 * 512);
+        return (int)Math.Clamp(baseMb + extra, 2048, Math.Max(2048, totalMb / 2));
     }
 
     private static string? ToWindowlessJava(string? java)
