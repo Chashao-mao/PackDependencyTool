@@ -14,21 +14,25 @@ public static class PackListExporter
         builder.AppendLine();
         builder.AppendLine($"- 加载器：{scan.Profile.DisplayLoader}");
         builder.AppendLine($"- Minecraft：{scan.Profile.McVersion}");
-        builder.AppendLine($"- 模组：{graph.Nodes.Count(node => !node.IsSynthetic)}");
+        var parentByChild = EmbeddedParents(graph);
+        var ordered = OrderedNodes(graph, parentByChild);
+        var embeddedCount = ordered.Count(node => parentByChild.ContainsKey(node.Id));
+        builder.AppendLine($"- 模组：{graph.Nodes.Count(node => !node.IsSynthetic)}（顶层 {ordered.Count - embeddedCount} · 内嵌 {embeddedCount}）");
         builder.AppendLine($"- 导出时间：{DateTime.Now:yyyy-MM-dd HH:mm}");
         builder.AppendLine();
-        builder.AppendLine("| 模组 | modId | 分类 | 版本 | 加载器 | 侧 | 状态 | 依赖 | 文件 |");
-        builder.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+        builder.AppendLine("| 层级 | 模组 | modId | 父模组 | 分类 | 版本 | 加载器 | 侧 | 状态 | 依赖 | 文件 |");
+        builder.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
         var outgoing = graph.Edges
             .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
-        foreach (var node in graph.Nodes
-                     .Where(node => !node.IsSynthetic)
-                     .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var node in ordered)
         {
+            var isEmbedded = parentByChild.TryGetValue(node.Id, out var parentId);
+            var parentName = isEmbedded ? graph.FindNode(parentId!)?.Name ?? parentId : string.Empty;
             builder.AppendLine(
-                $"| {Escape(node.Name)} | {Escape(node.Id)} | {Escape(ModCategoryText.Name(node.Category))} | " +
+                $"| {(isEmbedded ? "内嵌" : "顶层")} | {(isEmbedded ? "↳ " : string.Empty)}{Escape(node.Name)} | " +
+                $"{Escape(node.Id)} | {Escape(parentName)} | {Escape(ModCategoryText.Name(node.Category))} | " +
                 $"{Escape(node.DisplayVersion)} | " +
                 $"{Escape(GraphText.Loader(node.Loader))} | {Escape(GraphText.Side(node.Side) + (node.SideInferred ? "*" : string.Empty))} | " +
                 $"{Escape(GraphText.Status(node.Status))} | {Escape(DependencyText(outgoing.GetValueOrDefault(node.Id, [])))} | " +
@@ -70,8 +74,10 @@ public static class PackListExporter
     public static string ExportModListCsv(ScanResult scan, GraphDocument graph, string path)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("name,modId,chineseName,category,version,loader,side,sideInferred,status," +
+        builder.AppendLine("name,modId,chineseName,level,parentId,parentName,category,version,loader,side,sideInferred,status," +
                            "requires,optional,incompatible,embedded,recommends,file,curseforge,modrinth");
+        var parentByChild = EmbeddedParents(graph);
+        var ordered = OrderedNodes(graph, parentByChild);
         var outgoing = graph.Edges
             .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
@@ -79,13 +85,17 @@ public static class PackListExporter
             .GetValueOrDefault(id, [])
             .Where(edge => edge.Type == type)
             .Select(edge => edge.To));
-        foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic)
-                     .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var node in ordered)
         {
+            var isEmbedded = parentByChild.TryGetValue(node.Id, out var parentId);
+            var parentName = isEmbedded ? graph.FindNode(parentId!)?.Name ?? parentId : string.Empty;
             builder.AppendLine(string.Join(',',
                 Csv(node.Name),
                 Csv(node.Id),
                 Csv(node.NameZh ?? string.Empty),
+                Csv(isEmbedded ? "内嵌" : "顶层"),
+                Csv(parentId ?? string.Empty),
+                Csv(parentName),
                 Csv(ModCategoryText.Name(node.Category)),
                 Csv(node.DisplayVersion),
                 Csv(GraphText.Loader(node.Loader)),
@@ -102,7 +112,7 @@ public static class PackListExporter
                 Csv(node.ProjectIds.Modrinth)));
         }
 
-        WriteText(path, builder);
+        WriteText(path, builder, writeBom: true);
         return path;
     }
 
@@ -158,12 +168,55 @@ public static class PackListExporter
         return path;
     }
 
-    private static void WriteText(string path, StringBuilder builder)
+    private static void WriteText(string path, StringBuilder builder, bool writeBom = false)
     {
         var directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrWhiteSpace(directory))
             Directory.CreateDirectory(directory);
-        File.WriteAllText(path, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        File.WriteAllText(path, builder.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: writeBom));
+    }
+
+    private static Dictionary<string, string> EmbeddedParents(GraphDocument graph) =>
+        graph.Edges
+            .Where(edge => edge.Type == EdgeType.Embedded)
+            .GroupBy(edge => edge.To, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().From,
+                StringComparer.OrdinalIgnoreCase);
+
+    private static List<ModNode> OrderedNodes(
+        GraphDocument graph,
+        IReadOnlyDictionary<string, string> parentByChild)
+    {
+        var nodes = graph.Nodes.Where(node => !node.IsSynthetic).ToList();
+        var byId = nodes.ToDictionary(node => node.Id, StringComparer.OrdinalIgnoreCase);
+        var emitted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ordered = new List<ModNode>();
+
+        void Add(ModNode node)
+        {
+            if (emitted.Add(node.Id)) ordered.Add(node);
+        }
+
+        foreach (var parent in nodes
+                     .Where(node => !parentByChild.ContainsKey(node.Id))
+                     .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase))
+        {
+            Add(parent);
+            foreach (var edge in graph.Edges
+                         .Where(edge => edge.Type == EdgeType.Embedded &&
+                                        string.Equals(edge.From, parent.Id, StringComparison.OrdinalIgnoreCase))
+                         .OrderBy(edge => byId.GetValueOrDefault(edge.To)?.Name ?? edge.To,
+                             StringComparer.CurrentCultureIgnoreCase))
+            {
+                if (byId.TryGetValue(edge.To, out var child)) Add(child);
+            }
+        }
+
+        foreach (var node in nodes
+                     .Where(node => !emitted.Contains(node.Id))
+                     .OrderBy(node => node.Name, StringComparer.CurrentCultureIgnoreCase))
+            Add(node);
+        return ordered;
     }
 
     private static string Escape(string value) =>
@@ -184,8 +237,9 @@ public static class PackListExporter
         return parts.Count == 0 ? "无依赖" : string.Join("; ", parts);
     }
 
-    private static string Csv(string value)
+    private static string Csv(string? value)
     {
+        value ??= string.Empty;
         if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n'))
             return value;
         return "\"" + value.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";

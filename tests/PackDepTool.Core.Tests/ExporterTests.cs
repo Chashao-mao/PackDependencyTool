@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Export;
 using PackDepTool.Core.Models;
 using Xunit;
@@ -90,6 +91,46 @@ public sealed class ExporterTests
         Assert.Contains("\"line1\nline2, with comma\"", edges);
         Assert.Contains("e1", edges);
         Assert.Contains("e2", edges);
+    }
+
+    [Fact]
+    public void ModListExportsEmbeddedHierarchyAndUtf8Bom()
+    {
+        using var temp = new TempDir();
+        var graph = new GraphDocument
+        {
+            Meta = new GraphMeta { PackName = "Hierarchy", McVersion = "1.21.1", Loader = "neoforge" },
+            Nodes =
+            [
+                new ModNode { Id = "parent", Name = "Parent", Version = "1.0", FilePath = "mods/parent.jar" },
+                new ModNode { Id = "child", Name = "Child", Version = "2.0", IsEmbedded = true, FilePath = "mods/parent.jar" },
+            ],
+            Edges =
+            [
+                new DependencyEdge { Id = "embedded", From = "parent", To = "child", Type = EdgeType.Embedded },
+            ],
+        };
+        var scan = new ScanResult
+        {
+            RootPath = temp.Path,
+            Profile = new PackProfile { PackName = "Hierarchy", McVersion = "1.21.1", Loader = LoaderKind.NeoForge },
+        };
+
+        var mdPath = temp.Combine("modlist.md");
+        PackListExporter.ExportModListMarkdown(scan, graph, mdPath);
+        var markdown = File.ReadAllText(mdPath);
+        Assert.Contains("顶层 1 · 内嵌 1", markdown);
+        Assert.Contains("| 层级 |", markdown);
+        Assert.Contains("| 内嵌 | ↳ Child", markdown);
+        Assert.Contains("| Parent |", markdown);
+
+        var csvPath = temp.Combine("modlist.csv");
+        PackListExporter.ExportModListCsv(scan, graph, csvPath);
+        var bytes = File.ReadAllBytes(csvPath);
+        Assert.Equal([0xEF, 0xBB, 0xBF], bytes[..3]);
+        var csv = File.ReadAllText(csvPath);
+        Assert.Contains("level,parentId,parentName", csv);
+        Assert.Contains("内嵌,parent,Parent", csv);
     }
 
     [Fact]
