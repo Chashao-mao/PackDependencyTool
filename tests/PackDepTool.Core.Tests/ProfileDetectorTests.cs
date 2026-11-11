@@ -73,6 +73,30 @@ public sealed class ProfileDetectorTests
     }
 
     [Fact]
+    public async Task DetectsPclVersionJsonWithNeoForgeVersion()
+    {
+        using var temp = new TempDir();
+        var folderName = Path.GetFileName(temp.Path);
+        await File.WriteAllTextAsync(Path.Combine(temp.Path, folderName + ".json"), """
+        {
+          "id": "1.21.1-neoforge-21.1.93",
+          "inheritsFrom": "1.21.1",
+          "libraries": [
+            { "name": "net.neoforged:neoforge:21.1.93" }
+          ]
+        }
+        """);
+
+        var profile = new PackProfileDetector().Detect(temp.Path);
+
+        Assert.Equal("1.21.1", profile.McVersion);
+        Assert.Equal(LoaderKind.NeoForge, profile.Loader);
+        Assert.Equal("21.1.93", profile.LoaderVersion);
+        Assert.False(profile.IsInferred);
+        Assert.EndsWith(".json", profile.DetectedFrom);
+    }
+
+    [Fact]
     public void InfersFromModMetadataWhenNoLauncherFileExists()
     {
         using var temp = new TempDir();

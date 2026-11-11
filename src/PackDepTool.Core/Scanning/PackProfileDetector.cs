@@ -18,7 +18,8 @@ public sealed class PackProfileDetector
         if (TryModrinth(packRoot, profile) ||
             TryPrism(packRoot, profile) ||
             TryCurseForgeInstance(packRoot, profile) ||
-            TryCurseForgeManifest(packRoot, profile))
+            TryCurseForgeManifest(packRoot, profile) ||
+            TryLauncherVersionJson(packRoot, profile))
         {
             return profile;
         }
@@ -232,6 +233,97 @@ public sealed class PackProfileDetector
             profile.Warnings.Add($"manifest.json 解析失败：{ex.Message}");
             return false;
         }
+    }
+
+    private static bool TryLauncherVersionJson(string root, PackProfile profile)
+    {
+        var candidates = new List<string>();
+        var versionJson = FindFile(root, "version.json");
+        if (versionJson is not null) candidates.Add(versionJson);
+        var folderName = SafeFolderName(root);
+        if (!string.IsNullOrWhiteSpace(folderName))
+        {
+            var named = FindFile(root, folderName + ".json");
+            if (named is not null && !candidates.Contains(named, StringComparer.OrdinalIgnoreCase))
+                candidates.Add(named);
+        }
+
+        foreach (var path in candidates)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(path));
+                var rootElement = doc.RootElement;
+                var id = rootElement.TryGetProperty("id", out var idValue) &&
+                         idValue.ValueKind == JsonValueKind.String
+                    ? idValue.GetString() ?? string.Empty
+                    : string.Empty;
+                var inherits = rootElement.TryGetProperty("inheritsFrom", out var inheritsValue) &&
+                               inheritsValue.ValueKind == JsonValueKind.String
+                    ? inheritsValue.GetString() ?? string.Empty
+                    : string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(inherits))
+                    profile.McVersion = inherits;
+                else
+                {
+                    var mc = ExtractMinecraftVersion(id);
+                    if (!string.IsNullOrWhiteSpace(mc)) profile.McVersion = mc;
+                }
+
+                ApplyLoaderToken(id, profile);
+                profile.LoaderVersion ??= ExtractLoaderVersion(id);
+
+                if (rootElement.TryGetProperty("libraries", out var libraries) &&
+                    libraries.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var library in libraries.EnumerateArray())
+                    {
+                        var name = library.TryGetProperty("name", out var nameValue) &&
+                                   nameValue.ValueKind == JsonValueKind.String
+                            ? nameValue.GetString() ?? string.Empty
+                            : string.Empty;
+                        if (name.Length == 0) continue;
+                        var parts = name.Split(':');
+                        if (parts.Length < 3) continue;
+                        var artifact = parts[1].ToLowerInvariant();
+                        var version = parts[^1];
+                        if (artifact is "neoforge" or "forge" or "fabric-loader" or "quilt-loader")
+                        {
+                            ApplyLoaderToken(artifact, profile);
+                            profile.LoaderVersion = version;
+                            break;
+                        }
+                    }
+                }
+
+                profile.DetectedFrom = Path.GetFileName(path);
+                profile.IsInferred = false;
+                if (profile.Loader != LoaderKind.Unknown || profile.McVersion != "unknown")
+                    return true;
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                profile.Warnings.Add($"{Path.GetFileName(path)} 解析失败：{ex.Message}");
+            }
+        }
+
+        return false;
+    }
+
+    private static string? ExtractMinecraftVersion(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        var lower = id.ToLowerInvariant();
+        var markers = new[] { "-neoforge", "-forge", "-fabric", "-quilt" };
+        foreach (var marker in markers)
+        {
+            var index = lower.IndexOf(marker, StringComparison.Ordinal);
+            if (index > 0) return id[..index].Trim('-', ' ');
+        }
+        return id.StartsWith("1.", StringComparison.Ordinal) && !lower.Contains("loader")
+            ? id
+            : null;
     }
 
     private static void InferFromMods(IReadOnlyList<ParsedMod> mods, PackProfile profile)

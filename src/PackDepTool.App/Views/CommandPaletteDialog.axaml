@@ -1,0 +1,53 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.CommandPaletteDialog"
+        x:DataType="vm:CommandPaletteViewModel"
+        Title="命令面板"
+        Width="720"
+        Height="520"
+        MinWidth="560"
+        MinHeight="360"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="18">
+    <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,12">
+      <TextBlock Text="命令面板" FontSize="18" FontWeight="SemiBold" />
+      <TextBox x:Name="PaletteSearch" Text="{Binding SearchText, Mode=TwoWay}"
+               Watermark="搜索命令，例如：扫描 / 诊断 / 备份 / 导出"
+               FontSize="13" Height="36" KeyDown="OnSearchKeyDown" />
+    </StackPanel>
+
+    <ListBox Grid.Row="1" ItemsSource="{Binding Items}"
+             SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+             DoubleTapped="OnItemDoubleTapped"
+             Background="Transparent">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:CommandPaletteItem">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="4,5">
+            <Border Classes="chip" Padding="6,1" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Category}" FontSize="9" />
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="1">
+              <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding Description}" FontSize="9.5"
+                         Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Border Grid.Column="2" Classes="chip" Padding="6,1" VerticalAlignment="Center">
+              <TextBlock Text="{Binding Shortcut}" FontSize="9"
+                         Foreground="{DynamicResource TextMuted}" />
+            </Border>
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+      <TextBlock Text="↑↓ 选择 · Enter 执行 · Esc 关闭" Classes="caption" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="执行" Classes="accent" Command="{Binding ExecuteCommand}" />
+    </Grid>
+  </Grid>
+</Window>

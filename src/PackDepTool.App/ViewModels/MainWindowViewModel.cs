@@ -251,7 +251,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string DataDirectory => _services.Paths.DataDirectory;
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
     public string NetworkStatusText => IsOffline ? "离线模式" : "联网可用";
-    public string VersionLabel => "v1.0.5";
+    public string VersionLabel => "v1.0.6";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => ShowMissing && HasMissingNodeItems;
@@ -2858,6 +2858,80 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void OpenOverview()
     {
         IsOverviewMode = true;
+    }
+
+    [RelayCommand]
+    private void ShowModList()
+    {
+        IsOverviewMode = false;
+        SelectedViewOption = ViewOption.All.First(option => option.Value == "list");
+    }
+
+    [RelayCommand]
+    private void ShowDependencyGraph()
+    {
+        if (_graph is null) return;
+        IsOverviewMode = false;
+        SelectedViewOption = ViewOption.All.First(option => option.Value == "graph");
+    }
+
+    [RelayCommand]
+    private async Task OpenCommandPaletteAsync()
+    {
+        var items = new List<CommandPaletteItem>
+        {
+            new("扫描当前整合包", "重新读取 mods 目录并更新依赖关系", "扫描", "F5", RescanCommand),
+            new("选择整合包", "打开实例管理或选择整合包目录", "实例", "Ctrl+O", OpenInstancesCommand),
+            new("返回概览", "回到大按钮开始页", "视图", string.Empty, OpenOverviewCommand),
+            new("进入模组列表", "打开筛选、依赖图和批量操作", "视图", string.Empty, ShowModListCommand),
+            new("打开依赖图", "查看正向/反向依赖关系", "视图", string.Empty, ShowDependencyGraphCommand),
+            new("一键体检", "运行整合包检查并查看报告", "诊断", string.Empty, OpenPackToolsCommand),
+            new("崩溃日志诊断", "分析 crash-report 或 latest.log", "诊断", string.Empty, DiagnoseCrashCommand),
+            new("JAR 冲突扫描", "检查重复类、资源覆盖和 Mixin 重叠", "诊断", string.Empty, ScanJarConflictsCommand),
+            new("性能归因", "解析 spark/性能日志", "诊断", string.Empty, AnalyzePerformanceCommand),
+            new("数据包扫描", "检查 datapacks JSON 与重复资源 ID", "诊断", string.Empty, ScanDataPacksCommand),
+            new("二分诊断", "按依赖闭包缩小问题模组", "诊断", string.Empty, OpenBisectionCommand),
+            new("服务端工具", "客户端模组筛选、生成服务端包、启动 Gate", "服务端", string.Empty, OpenServerToolsCommand),
+            new("备份中心", "查看修复快照、文件差异和 config 备份", "修复", string.Empty, OpenBackupCenterCommand),
+            new("撤销上次修复", "恢复最近一次修复前快照", "修复", string.Empty, UndoLastBackupCommand),
+            new("禁用管理", "启用或永久删除 .jar.disabled", "修复", string.Empty, OpenDisabledModsCommand),
+            new("锁定当前版本", "写入 packdep.lock.json", "版本", string.Empty, CreateVersionLockCommand),
+            new("对比版本锁定", "查看新增、移除和版本变化", "版本", string.Empty, CompareVersionLockCommand),
+            new("复制视图状态", "复制当前筛选和视图配置", "视图", string.Empty, CopyViewStateCommand),
+            new("应用剪贴板视图状态", "恢复复制的筛选和视图配置", "视图", string.Empty, ApplyViewStateCommand),
+            new("导出模组清单 Markdown", "导出可读的模组清单", "导出", string.Empty, ExportModListCommand),
+            new("导出模组清单 CSV", "导出带层级的 CSV", "导出", string.Empty, ExportModListCsvCommand),
+            new("打开整合包目录", "在资源管理器中打开当前实例", "文件", string.Empty, OpenPackFolderCommand),
+            new("设置", "打开程序设置", "设置", "Ctrl+Shift+S", OpenSettingsCommand),
+        };
+        await _dialogs.ShowCommandPaletteAsync(items);
+    }
+
+    [RelayCommand]
+    private void OpenMissingIssues()
+    {
+        EnterWorkspace();
+        ShowMissing = true;
+        IsMissingSectionExpanded = true;
+        StatusText = "已展开未安装的必需依赖。";
+    }
+
+    [RelayCommand]
+    private void OpenConflictIssues()
+    {
+        EnterWorkspace();
+        OnlyProblems = true;
+        SelectedStatusFilter = StatusFilterOption.All.First(option => option.Value == ModStatusFilter.Conflict);
+        StatusText = "已筛选冲突模组。";
+    }
+
+    [RelayCommand]
+    private void OpenAllIssues()
+    {
+        EnterWorkspace();
+        OnlyProblems = true;
+        SelectedStatusFilter = StatusFilterOption.All[0];
+        StatusText = "已进入问题视图。";
     }
 
     [RelayCommand]

@@ -221,6 +221,14 @@ public sealed class DialogService : IDialogService
         await dialog.ShowDialog(Owner);
     }
 
+    public async Task ShowCommandPaletteAsync(IReadOnlyList<CommandPaletteItem> items)
+    {
+        if (Owner is null) return;
+        var viewModel = new CommandPaletteViewModel(items);
+        var dialog = new CommandPaletteDialog { DataContext = viewModel };
+        await dialog.ShowDialog(Owner);
+    }
+
     public async Task<string?> ReadClipboardTextAsync()
     {
         if (Owner?.Clipboard is null) return null;

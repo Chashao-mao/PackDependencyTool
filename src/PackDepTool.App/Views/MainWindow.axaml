@@ -15,6 +15,7 @@
 
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenInstancesCommand}" />
+    <KeyBinding Gesture="Ctrl+K" Command="{Binding OpenCommandPaletteCommand}" />
     <KeyBinding Gesture="F5" Command="{Binding RescanCommand}" />
     <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportJsonCommand}" />
     <KeyBinding Gesture="Ctrl+R" Command="{Binding RelayoutCommand}" />
@@ -46,6 +47,7 @@
             <Button Content="操作 ▾" ToolTip.Tip="实例、获取内容、导出、诊断、修复、设置">
               <Button.Flyout>
                 <MenuFlyout>
+                  <MenuItem Header="命令面板…" Command="{Binding OpenCommandPaletteCommand}" />
                   <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
                   <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
                   <Separator />
@@ -1248,6 +1250,9 @@
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="下载缺失依赖" Command="{Binding AutoCompleteDependenciesCommand}"
+                        IsEnabled="{Binding HasMissingDependencies}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
               </WrapPanel>
             </StackPanel>
 
@@ -1257,6 +1262,8 @@
                   <TextBlock Text="缺失依赖" FontSize="10" Foreground="{DynamicResource TextMuted}" />
                   <TextBlock Text="{Binding MissingCount}" FontSize="24" FontWeight="SemiBold"
                              Foreground="{DynamicResource Danger}" />
+                  <Button Content="处理 →" Command="{Binding OpenMissingIssuesCommand}"
+                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Classes="card" Padding="14" CornerRadius="10">
@@ -1264,6 +1271,8 @@
                   <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource TextMuted}" />
                   <TextBlock Text="{Binding ConflictCount}" FontSize="24" FontWeight="SemiBold"
                              Foreground="{DynamicResource Warning}" />
+                  <Button Content="查看 →" Command="{Binding OpenConflictIssuesCommand}"
+                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
                 </StackPanel>
               </Border>
               <Border Grid.Column="2" Classes="card" Padding="14" CornerRadius="10">
@@ -1271,6 +1280,8 @@
                   <TextBlock Text="错误" FontSize="10" Foreground="{DynamicResource TextMuted}" />
                   <TextBlock Text="{Binding ErrorCount}" FontSize="24" FontWeight="SemiBold"
                              Foreground="{DynamicResource Danger}" />
+                  <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
+                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
                 </StackPanel>
               </Border>
               <Border Grid.Column="3" Classes="card" Padding="14" CornerRadius="10">
@@ -1278,6 +1289,8 @@
                   <TextBlock Text="提示" FontSize="10" Foreground="{DynamicResource TextMuted}" />
                   <TextBlock Text="{Binding InfoCount}" FontSize="24" FontWeight="SemiBold"
                              Foreground="{DynamicResource TextSecondary}" />
+                  <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
+                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
                 </StackPanel>
               </Border>
             </Grid>
