@@ -100,6 +100,8 @@ public sealed class InstanceCatalogService
                          result.VersionsDirectory, "*", SearchOption.TopDirectoryOnly))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var directoryName = Path.GetFileName(directory);
+                if (directoryName.StartsWith('.')) continue;
                 try
                 {
                     var name = Path.GetFileName(directory);

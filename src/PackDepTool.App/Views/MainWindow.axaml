@@ -56,8 +56,6 @@
         <StackPanel Grid.Row="2" Spacing="5">
           <TextBlock Text="{Binding PackPathDisplay}" FontSize="9" TextWrapping="Wrap"
                      Foreground="{DynamicResource TextMuted}" MaxHeight="45" />
-          <Button Content="扫描当前实例" Command="{Binding RescanCommand}" Classes="accent"
-                  FontSize="10" Padding="8,3" />
           <Button Content="设置" Command="{Binding OpenSettingsCommand}" FontSize="10" Padding="8,3" />
           <TextBlock Text="{Binding VersionLabel}" FontSize="9" HorizontalAlignment="Center"
                      Foreground="{DynamicResource TextMuted}" />
@@ -165,7 +163,6 @@
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
-            <Button Content="设置" Command="{Binding OpenSettingsCommand}" ToolTip.Tip="Ctrl+Shift+S" />
           </StackPanel>
         </Grid>
 
