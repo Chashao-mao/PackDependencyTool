@@ -107,6 +107,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _selectedInstanceLoaderFilter = "全部加载器";
     [ObservableProperty] private MinecraftInstanceInfo? _selectedInstance;
     [ObservableProperty] private bool _isLoadingInstances;
+    [ObservableProperty] private MinecraftInstanceInfo? _selectedHomeInstance;
+    private bool _suppressHomeInstanceChange;
     [ObservableProperty] private string _instancesRootText = "尚未定位 versions 目录";
 
     public string LaunchMemoryText
@@ -2546,6 +2548,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _services.SaveSettings();
 
             if (autoScan) await ScanAsync();
+            var status = StatusText;
+            await LoadInstancesAsync();
+            StatusText = status;
         }
         catch (Exception ex)
         {
@@ -2997,6 +3002,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             InstancesRootText = result.VersionsDirectory ?? "尚未定位 versions 目录";
             SelectedInstance = Instances.FirstOrDefault(instance =>
                 string.Equals(instance.Path, _scanResult?.RootPath, StringComparison.OrdinalIgnoreCase));
+            _suppressHomeInstanceChange = true;
+            SelectedHomeInstance = Instances.FirstOrDefault(instance =>
+                string.Equals(instance.Path, _scanResult?.RootPath, StringComparison.OrdinalIgnoreCase));
+            _suppressHomeInstanceChange = false;
             StatusText = Instances.Count == 0
                 ? "没有找到实例；请先在实例管理中指定 versions 目录。"
                 : $"已列出 {Instances.Count} 个实例。";
@@ -3026,6 +3035,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
                       instance.MinecraftVersion.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
                      (loader == "全部加载器" || instance.LoaderLabel == loader)))
             FilteredInstances.Add(instance);
+    }
+
+    partial void OnSelectedHomeInstanceChanged(MinecraftInstanceInfo? value)
+    {
+        if (_suppressHomeInstanceChange || value is null) return;
+        if (string.Equals(value.Path, _scanResult?.RootPath, StringComparison.OrdinalIgnoreCase)) return;
+        _ = OpenPathAsync(value.Path);
     }
 
     [RelayCommand]
