@@ -50,7 +50,7 @@ public sealed class MinecraftLaunchService
                     "启动会以无模组方式运行；请确认模组在实例目录的 mods 下，而不是游戏根目录。");
         }
 
-        var java = ResolveJavaPath(gameRoot, javaPath, mcVersion);
+        var java = ToWindowlessJava(ResolveJavaPath(gameRoot, javaPath, mcVersion));
         if (java is null)
             Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "找不到 Java",
                 "请在 设置 → 离线登录 → Java 路径 指定 java.exe，或安装 JDK/JRE。");
@@ -166,6 +166,13 @@ public sealed class MinecraftLaunchService
         {
             // Launch can still proceed; the extra --lang argument also covers language.
         }
+    }
+
+    private static string? ToWindowlessJava(string? java)
+    {
+        if (string.IsNullOrWhiteSpace(java)) return null;
+        var javaw = Path.Combine(Path.GetDirectoryName(java) ?? string.Empty, "javaw.exe");
+        return File.Exists(javaw) ? javaw : java;
     }
 
     public static string? ResolveJavaPath(string gameRoot, string? configured, string? mcVersion = null)

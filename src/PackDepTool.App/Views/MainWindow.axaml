@@ -1463,8 +1463,8 @@
                              VerticalAlignment="Center" Foreground="{DynamicResource Danger}" />
                   <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                     <TextBlock Text="缺失依赖" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="处理 →" Command="{Binding OpenMissingIssuesCommand}"
-                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                    <Button Content="处理 →" Command="{Binding OpenMissingIssuesCommand}" Classes="link"
+                            FontSize="9.5" HorizontalAlignment="Left" />
                   </StackPanel>
                 </Grid>
               </Border>
@@ -1474,8 +1474,8 @@
                              VerticalAlignment="Center" Foreground="{DynamicResource Warning}" />
                   <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                     <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="查看 →" Command="{Binding OpenConflictIssuesCommand}"
-                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                    <Button Content="查看 →" Command="{Binding OpenConflictIssuesCommand}" Classes="link"
+                            FontSize="9.5" HorizontalAlignment="Left" />
                   </StackPanel>
                 </Grid>
               </Border>
@@ -1485,8 +1485,8 @@
                              VerticalAlignment="Center" Foreground="{DynamicResource Danger}" />
                   <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                     <TextBlock Text="错误" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
-                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}" Classes="link"
+                            FontSize="9.5" HorizontalAlignment="Left" />
                   </StackPanel>
                 </Grid>
               </Border>
@@ -1496,8 +1496,8 @@
                              VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
                   <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
                     <TextBlock Text="提示" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
-                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}" Classes="link"
+                            FontSize="9.5" HorizontalAlignment="Left" />
                   </StackPanel>
                 </Grid>
               </Border>
