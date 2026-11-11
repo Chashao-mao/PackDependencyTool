@@ -18,8 +18,9 @@ public sealed class GraphAnalyzer
     {
         var issues = new List<AnalysisIssue>();
         var nodes = graph.Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
+        var hasSinytraConnector = nodes.Values.Any(IsSinytraConnector);
 
-        AnalyzeMissingAndVersions(graph, nodes, issues, rules);
+        AnalyzeMissingAndVersions(graph, nodes, issues, rules, hasSinytraConnector);
         AnalyzeConflicts(graph, nodes, issues, rules);
         AnalyzeMinecraftVersions(graph, profile, issues, rules);
         AnalyzeCycles(graph, nodes, issues);
@@ -31,7 +32,8 @@ public sealed class GraphAnalyzer
         GraphDocument graph,
         IReadOnlyDictionary<string, ModNode> nodes,
         List<AnalysisIssue> issues,
-        LocalRuleSet? rules)
+        LocalRuleSet? rules,
+        bool hasSinytraConnector)
     {
         foreach (var edge in graph.Edges)
         {
@@ -45,6 +47,12 @@ public sealed class GraphAnalyzer
             {
                 if (edge.Type == EdgeType.Requires)
                 {
+                    if (hasSinytraConnector && IsFabricApi(to.Id))
+                    {
+                        to.Status = ModStatus.Unknown;
+                        to.StatusReason = "由信雅互联（Sinytra Connector）提供";
+                        continue;
+                    }
                     if (rules?.IsMissingIgnored(from.Id, to.Id) == true)
                     {
                         to.Status = ModStatus.Unknown;
@@ -112,6 +120,20 @@ public sealed class GraphAnalyzer
                 to.StatusReason = $"需要 {edge.VersionRange}，已安装 {to.Version}";
             }
         }
+    }
+
+    private static bool IsSinytraConnector(ModNode node)
+    {
+        var id = node.Id.Replace("-", string.Empty).Replace("_", string.Empty);
+        return id.Contains("sinytra", StringComparison.OrdinalIgnoreCase) ||
+               id.Contains("connector", StringComparison.OrdinalIgnoreCase) ||
+               node.Name.Contains("信雅", StringComparison.Ordinal);
+    }
+
+    private static bool IsFabricApi(string id)
+    {
+        var normalized = id.Replace("-", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
+        return normalized is "fabricapi" or "fabric";
     }
 
     private static void AnalyzeConflicts(

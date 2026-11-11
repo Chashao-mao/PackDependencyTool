@@ -40,6 +40,14 @@ public sealed class MinecraftLaunchService
             if (!hasJar)
                 Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Warning, "客户端 JAR 未在实例目录",
                     "如果该版本依赖继承版本，可忽略；否则需要补全客户端 JAR。");
+
+            var modsDirectory = Path.Combine(versionDir, "mods");
+            var modCount = Directory.Exists(modsDirectory)
+                ? Directory.EnumerateFiles(modsDirectory, "*.jar", SearchOption.TopDirectoryOnly).Count()
+                : 0;
+            if (modCount == 0)
+                Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Warning, "实例 mods 为空",
+                    "启动会以无模组方式运行；请确认模组在实例目录的 mods 下，而不是游戏根目录。");
         }
 
         var java = ResolveJavaPath(gameRoot, javaPath, mcVersion);
