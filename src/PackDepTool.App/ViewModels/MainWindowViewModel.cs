@@ -2612,6 +2612,84 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task CreateVersionLockAsync()
+    {
+        if (_scanResult is null || _graph is null) return;
+        var path = _services.Locks.LockPath(_scanResult.RootPath);
+        if (File.Exists(path) && !await _dialogs.ConfirmAsync(
+                "覆盖版本锁定",
+                $"已存在 {VersionLockService.FileName}，用当前已安装版本覆盖它？"))
+            return;
+
+        var document = _services.Locks.Create(_scanResult, _graph);
+        _services.Locks.Save(_scanResult.RootPath, document);
+        StatusText = $"已锁定 {document.Mods.Count} 个模组版本。";
+        await _dialogs.ShowMessageAsync("版本已锁定",
+            $"已写入：{Environment.NewLine}{path}{Environment.NewLine}{Environment.NewLine}" +
+            $"共 {document.Mods.Count} 个已安装模组。");
+    }
+
+    [RelayCommand]
+    private async Task CompareVersionLockAsync()
+    {
+        if (_scanResult is null || _graph is null) return;
+        var document = _services.Locks.Load(_scanResult.RootPath);
+        if (document is null)
+        {
+            StatusText = "没有版本锁定文件，请先锁定当前版本。";
+            return;
+        }
+
+        var diff = _services.Locks.Compare(document, _graph);
+        var findings = diff.Entries
+            .Where(entry => entry.Kind != VersionLockDiffKind.Same)
+            .Select(entry => new DiagnosticFinding
+            {
+                RuleId = entry.Kind.ToString().ToLowerInvariant(),
+                Severity = entry.Kind switch
+                {
+                    VersionLockDiffKind.Removed => DiagnosticSeverity.Warning,
+                    VersionLockDiffKind.VersionChanged => DiagnosticSeverity.Warning,
+                    VersionLockDiffKind.FileChanged => DiagnosticSeverity.Warning,
+                    _ => DiagnosticSeverity.Info,
+                },
+                Title = entry.Kind switch
+                {
+                    VersionLockDiffKind.Added => "锁定后新增模组",
+                    VersionLockDiffKind.Removed => "锁定后移除模组",
+                    VersionLockDiffKind.VersionChanged => "锁定版本已变化",
+                    VersionLockDiffKind.FileChanged => "文件内容变化",
+                    _ => "变化",
+                },
+                Message = $"{entry.Name}（{entry.ModId}）",
+                Evidence = entry.Detail,
+                RelatedModIds = [entry.ModId],
+            })
+            .ToList();
+        var report = new DiagnosticReport
+        {
+            SourcePath = _services.Locks.LockPath(_scanResult.RootPath),
+            Summary = diff.ChangedCount == 0
+                ? "当前模组版本与锁定清单一致。"
+                : $"与锁定清单相比有 {diff.ChangedCount} 项变化。",
+            Findings = findings,
+        };
+        await _dialogs.ShowDiagnosticReportAsync(report);
+    }
+
+    [RelayCommand]
+    private async Task DeleteVersionLockAsync()
+    {
+        if (_scanResult is null) return;
+        var path = _services.Locks.LockPath(_scanResult.RootPath);
+        if (!File.Exists(path)) return;
+        if (!await _dialogs.ConfirmAsync("删除版本锁定", $"删除 {VersionLockService.FileName}？"))
+            return;
+        File.Delete(path);
+        StatusText = "已删除版本锁定。";
+    }
+
+    [RelayCommand]
     private async Task OpenServerToolsAsync()
     {
         if (_scanResult is null || _graph is null) return;

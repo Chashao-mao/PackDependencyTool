@@ -92,6 +92,10 @@
                   <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
                             IsEnabled="{Binding HasConfigBackup}" />
                   <Separator />
+                  <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
+                  <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
+                  <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
+                  <Separator />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   <Separator />
