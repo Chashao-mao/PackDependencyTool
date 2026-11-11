@@ -863,10 +863,20 @@
                   <Border IsVisible="{Binding HasDependencyRows}" BorderBrush="{DynamicResource CardBorder}"
                           BorderThickness="0,1,0,0" Padding="0,8,0,0">
                     <StackPanel Spacing="4">
-                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                        <TextBlock Text="依赖关系" FontSize="10.5" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="{Binding DependenciesToggleText}"
+                      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                        <StackPanel Spacing="1" VerticalAlignment="Center">
+                          <TextBlock Text="依赖关系" FontSize="10.5" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource TextSecondary}" />
+                          <TextBlock Text="{Binding DependencyStatusSummary}" FontSize="9"
+                                     Foreground="{DynamicResource TextMuted}"
+                                     IsVisible="{Binding HasDependencyStatus}" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="{Binding DependentsText}"
+                                Command="{Binding FocusDependentsCommand}"
+                                IsVisible="{Binding HasDependents}"
+                                FontSize="9" Padding="5,1" MinHeight="22"
+                                ToolTip.Tip="只看依赖它的已安装模组" />
+                        <Button Grid.Column="2" Content="{Binding DependenciesToggleText}"
                                 Command="{Binding ToggleDependenciesCommand}"
                                 FontSize="9" Padding="0" MinHeight="22" Width="42"
                                 HorizontalContentAlignment="Center" VerticalAlignment="Center" />

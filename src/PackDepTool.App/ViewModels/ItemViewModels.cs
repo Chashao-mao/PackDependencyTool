@@ -186,7 +186,8 @@ public sealed class DependencyRowViewModel
         string resultText,
         IBrush resultBrush,
         bool canLocate = false,
-        bool inactiveConflict = false)
+        bool inactiveConflict = false,
+        bool isSatisfied = true)
     {
         DirectionText = direction;
         var optionalState = edge.Type == EdgeType.Optional
@@ -203,6 +204,7 @@ public sealed class DependencyRowViewModel
         Note = edge.Note;
         ResultText = resultText;
         ResultBrush = resultBrush;
+        IsSatisfied = isSatisfied;
         IsManual = edge.ManualOverride;
         CanLocate = canLocate;
         (GroupTitle, GroupBrush, GroupOrder) = edge.Type switch
@@ -238,6 +240,7 @@ public sealed class DependencyRowViewModel
     public string RangeText { get; }
     public string ResultText { get; }
     public IBrush ResultBrush { get; }
+    public bool IsSatisfied { get; }
     public string? Note { get; }
     public bool HasNote => !string.IsNullOrWhiteSpace(Note);
     public bool IsManual { get; }

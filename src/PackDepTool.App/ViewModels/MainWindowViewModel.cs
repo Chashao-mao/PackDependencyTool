@@ -184,6 +184,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string? _selectedRecentPack;
     [ObservableProperty] private ViewOption _selectedViewOption = ViewOption.All[0];
     [ObservableProperty] private bool _hasDependencyRows;
+    [ObservableProperty] private bool _hasDependencyStatus;
+    [ObservableProperty] private string _dependencyStatusSummary = string.Empty;
+    [ObservableProperty] private bool _hasDependents;
+    [ObservableProperty] private string _dependentsText = string.Empty;
     [ObservableProperty] private bool _hasMissingDependencies;
     [ObservableProperty] private bool _isBasicInfoExpanded = true;
     [ObservableProperty] private bool _isDescriptionExpanded = true;
@@ -2013,6 +2017,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedDependencies.Clear();
         SelectedDependencyGroups.Clear();
         HasDependencyRows = false;
+        HasDependencyStatus = false;
+        DependencyStatusSummary = string.Empty;
+        HasDependents = false;
+        DependentsText = string.Empty;
         DetailIcon = null;
         HasDetailIcon = false;
         DetailInitial = "?";
@@ -2054,6 +2062,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedDependencies.Clear();
         SelectedDependencyGroups.Clear();
         HasDependencyRows = false;
+        HasDependencyStatus = false;
+        DependencyStatusSummary = string.Empty;
+        HasDependents = false;
+        DependentsText = string.Empty;
         DetailIcon = null;
         HasDetailIcon = false;
         DetailInitial = "?";
@@ -2195,7 +2207,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var other = _graph.FindNode(otherId);
             var dependencyTarget = outgoing ? other : node;
 
-            var (result, brush, order) = DescribeDependency(edge, dependencyTarget, outgoing);
+            var (result, brush, order, satisfied) = DescribeDependency(edge, dependencyTarget, outgoing);
             var inactiveConflict = edge.Type == EdgeType.Incompatible &&
                                    (dependencyTarget is null || dependencyTarget.IsSynthetic ||
                                     VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version) != true);
@@ -2208,7 +2220,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     result,
                     brush,
                     canLocate: other is not null && !other.IsSynthetic,
-                    inactiveConflict: inactiveConflict)));
+                    inactiveConflict: inactiveConflict,
+                    isSatisfied: satisfied)));
         }
 
         foreach (var row in rows.OrderBy(r => r.Order).ThenBy(r => r.Row.TargetName, StringComparer.CurrentCultureIgnoreCase))
@@ -2226,9 +2239,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         HasDependencyRows = SelectedDependencies.Count > 0;
+        HasDependencyStatus = HasDependencyRows;
+        var unsatisfied = SelectedDependencies.Count(row => !row.IsSatisfied);
+        DependencyStatusSummary = !HasDependencyRows
+            ? string.Empty
+            : unsatisfied == 0
+                ? "依赖已满足"
+                : $"未满足 {unsatisfied} 项";
+        var dependentCount = _graph is null
+            ? 0
+            : _graph.Edges.Count(edge =>
+                edge.Type != EdgeType.Manual &&
+                IsRelationEdgeVisible(edge.Type) &&
+                string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase));
+        HasDependents = dependentCount > 0;
+        DependentsText = $"反向 {dependentCount}";
     }
 
-    private static (string Text, IBrush Brush, int Order) DescribeDependency(
+    private static (string Text, IBrush Brush, int Order, bool Satisfied) DescribeDependency(
         DependencyEdge edge, ModNode? dependencyTarget, bool outgoing)
     {
         var order = edge.Type switch
@@ -2248,15 +2276,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
                            VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version) != false);
             return inRange
                 ? (outgoing ? "声明冲突" : "对方声明冲突",
-                    new SolidColorBrush(GraphPalette.Danger), order)
-                : ("声明冲突（当前版本不在范围）", new SolidColorBrush(GraphPalette.TextMuted), order);
+                    new SolidColorBrush(GraphPalette.Danger), order, false)
+                : ("声明冲突（当前版本不在范围）", new SolidColorBrush(GraphPalette.TextMuted), order, true);
         }
 
         if (dependencyTarget is null || dependencyTarget.IsSynthetic)
         {
             return edge.Type == EdgeType.Requires
-                ? ("未安装", new SolidColorBrush(GraphPalette.Danger), order)
-                : ("未安装（可选）", new SolidColorBrush(GraphPalette.TextMuted), order);
+                ? ("未安装", new SolidColorBrush(GraphPalette.Danger), order, false)
+                : ("未安装（可选）", new SolidColorBrush(GraphPalette.TextMuted), order, true);
         }
 
         var installed = dependencyTarget.DisplayVersion;
@@ -2266,10 +2294,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             var satisfied = VersionRange.Satisfies(edge.VersionRange, dependencyTarget.Version);
             if (satisfied == false)
-                return ($"版本不符（{prefix} {installed}）", new SolidColorBrush(GraphPalette.Warning), order);
+                return ($"版本不符（{prefix} {installed}）", new SolidColorBrush(GraphPalette.Warning), order, false);
         }
 
-        return ($"{prefix} {installed}", new SolidColorBrush(GraphPalette.Success), order);
+        return ($"{prefix} {installed}", new SolidColorBrush(GraphPalette.Success), order, true);
     }
 
     private static string BuildInitial(ModNode node)
@@ -2324,6 +2352,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedDependencies.Clear();
         SelectedDependencyGroups.Clear();
         HasDependencyRows = false;
+        HasDependencyStatus = false;
+        DependencyStatusSummary = string.Empty;
+        HasDependents = false;
+        DependentsText = string.Empty;
         DetailIcon = null;
         HasDetailIcon = false;
         DetailInitial = "?";
@@ -4887,6 +4919,37 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // search state.
         SearchText = string.Empty;
         RelationFocusTitle = $"只看 {node.Name} 的相关关系";
+        IsRelationFocus = true;
+        SelectedViewOption = ViewOption.All.First(option => option.Value == "graph");
+        RefreshView();
+    }
+
+    [RelayCommand]
+    private void FocusDependents()
+    {
+        if (_selectedNodeId is null || _graph is null) return;
+        var node = _graph.FindNode(_selectedNodeId);
+        if (node is null) return;
+
+        _relationFocusId = node.Id;
+        _relationFocusIds.Clear();
+        _relationFocusIds.Add(node.Id);
+        foreach (var edge in _graph.Edges)
+        {
+            if (!string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!IsRelationEdgeVisible(edge.Type)) continue;
+            var dependent = _graph.FindNode(edge.From);
+            if (dependent is not null) _relationFocusIds.Add(dependent.Id);
+        }
+
+        if (_relationFocusIds.Count <= 1)
+        {
+            StatusText = $"{node.Name} 没有反向依赖。";
+            return;
+        }
+
+        SearchText = string.Empty;
+        RelationFocusTitle = $"只看依赖 {node.Name} 的模组";
         IsRelationFocus = true;
         SelectedViewOption = ViewOption.All.First(option => option.Value == "graph");
         RefreshView();
