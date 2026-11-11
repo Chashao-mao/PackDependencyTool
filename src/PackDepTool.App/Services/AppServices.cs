@@ -143,7 +143,7 @@ public sealed class AppServices : IDisposable
     public static string BuildUserAgent(string? contact)
     {
         var suffix = string.IsNullOrWhiteSpace(contact) ? "local desktop app" : contact.Trim();
-        return $"PackDependencyTool/1.0.4 ({suffix})";
+        return $"PackDependencyTool/1.0.5 ({suffix})";
     }
 
     public void SaveSettings()
