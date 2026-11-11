@@ -795,6 +795,11 @@
                                    TextWrapping="Wrap" />
                         <TextBlock Text="{Binding DetailSubtitle}" FontSize="10.5" Classes="caption"
                                    TextWrapping="Wrap" />
+                        <Border Classes="chip" HorizontalAlignment="Left" Padding="6,1"
+                                IsVisible="{Binding HasRepairAdvice}">
+                          <TextBlock Text="{Binding RepairAdviceText}" FontSize="9"
+                                     Foreground="{Binding RepairAdviceBrush}" TextWrapping="Wrap" />
+                        </Border>
                         <WrapPanel Margin="0,2,0,0">
                           <Border Classes="chip" Padding="6,1" Margin="0,0,5,0">
                             <TextBlock Text="模组详情" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />

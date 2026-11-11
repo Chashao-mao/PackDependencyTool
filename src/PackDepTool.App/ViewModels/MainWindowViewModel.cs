@@ -153,6 +153,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty] private string _detailTitle = "未选择";
     [ObservableProperty] private string _detailSubtitle = "在图中点选节点或关系查看详情";
+    [ObservableProperty] private string _repairAdviceText = string.Empty;
+    [ObservableProperty] private IBrush _repairAdviceBrush = Brushes.Gray;
+    [ObservableProperty] private bool _hasRepairAdvice;
     [ObservableProperty] private bool _hasSelection;
     [ObservableProperty] private bool _isNodeSelected;
     [ObservableProperty] private bool _isEdgeSelected;
@@ -2004,6 +2007,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         DownloadSelectedLabel = "下载此模组";
         DetailTitle = "未选择";
         DetailSubtitle = "在图中点选节点或关系查看详情";
+        RepairAdviceText = string.Empty;
+        HasRepairAdvice = false;
         DetailRows.Clear();
         SelectedDependencies.Clear();
         SelectedDependencyGroups.Clear();
@@ -2042,6 +2047,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanDisableSelected = false;
         CanDeleteSelected = false;
         CanDownloadOptional = false;
+        HasRepairAdvice = false;
         DetailTitle = $"已选择 {nodeIds.Count} 个模组";
         DetailSubtitle = "框选结果 · 在左侧列表或图中选择单个节点查看详情";
         DetailRows.Clear();
@@ -2089,6 +2095,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanDeleteSelected = HasLocalJar(node);
         DownloadSelectedLabel = HasLocalJar(node) ? "更换版本" : "下载此模组";
         CanDownloadOptional = node.IsSynthetic && (node.IsOptionalDependency || node.IsRecommendedDependency);
+
+        if (CanDisableSelected && _graph is not null)
+        {
+            var advice = RepairAdvisor.AssessDisable(_graph, node);
+            RepairAdviceText = $"修复建议：{advice.Label} · {advice.Reason}";
+            RepairAdviceBrush = new SolidColorBrush(advice.Level switch
+            {
+                RepairLevel.Auto => GraphPalette.Success,
+                RepairLevel.Confirm => GraphPalette.Warning,
+                _ => GraphPalette.EdgeRequires,
+            });
+            HasRepairAdvice = true;
+        }
+        else
+        {
+            RepairAdviceText = string.Empty;
+            HasRepairAdvice = false;
+        }
 
         var displayName = !string.IsNullOrWhiteSpace(node.NameZh)
             ? node.NameZh!
@@ -2290,6 +2314,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CanDisableSelected = false;
         CanDeleteSelected = false;
         CanDownloadOptional = false;
+        HasRepairAdvice = false;
 
         var from = _graph?.FindNode(edge.From);
         var to = _graph?.FindNode(edge.To);
@@ -2738,12 +2763,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         var dependents = FindDependentMods([node]);
+        var repairAdvice = RepairAdvisor.AssessDisable(_graph, node);
         var dependentText = dependents.Count == 0
             ? string.Empty
             : $"{Environment.NewLine}{Environment.NewLine}以下已安装模组依赖它，将一并禁用：{Environment.NewLine}" +
               DescribeMods(dependents);
         if (!await _dialogs.ConfirmAsync(
                 dependents.Count == 0 ? "禁用模组" : "禁用模组及其依赖模组",
+                $"修复级别：{repairAdvice.Label} · {repairAdvice.Reason}{Environment.NewLine}{Environment.NewLine}" +
                 $"禁用 {node.Name}（{node.Id}）？{Environment.NewLine}{Environment.NewLine}" +
                 "将把 JAR 重命名为 .jar.disabled，之后可用「禁用管理」恢复。" + dependentText))
             return;
@@ -2808,8 +2835,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var deleteAdvice = RepairAdvisor.AssessDelete(_graph, node);
         if (!await _dialogs.ConfirmAsync(
                 "永久删除模组",
+                $"修复级别：{deleteAdvice.Label} · {deleteAdvice.Reason}{Environment.NewLine}{Environment.NewLine}" +
                 $"永久删除 {node.Name}（{node.Id}）？{Environment.NewLine}{Environment.NewLine}" +
                 "文件会直接从 mods 目录删除，无法恢复。",
                 "永久删除"))
@@ -4435,6 +4464,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 不会永久删除：文件会移到 .packdep-trash，可手动恢复。",
             _ => $"处理选中的 {nodes.Count} 个模组？",
         };
+        if (action is BatchModAction.Disable or BatchModAction.Delete)
+        {
+            var repairAdvice = action == BatchModAction.Delete
+                ? new RepairAssessment(RepairLevel.Confirm, "批量永久删除不可撤销")
+                : RepairAdvisor.AssessBatch(_graph, nodes);
+            confirm = $"修复级别：{repairAdvice.Label} · {repairAdvice.Reason}" +
+                      $"{Environment.NewLine}{Environment.NewLine}" + confirm;
+        }
         if (!await _dialogs.ConfirmAsync(title, confirm)) return;
 
         if (action == BatchModAction.Disable)
