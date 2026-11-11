@@ -70,6 +70,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoInstallUpdates = _settings.AutoInstallUpdates;
         OfflineUsername = _settings.OfflineUsername;
         OfflineRamMb = _settings.OfflineRamMb;
+        JavaPath = _settings.JavaPath ?? string.Empty;
 
         HasStoredKey = hasStoredKey;
         IsFromEnvironment = keys.IsFromEnvironment;
@@ -114,6 +115,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _autoInstallUpdates;
     [ObservableProperty] private string _offlineUsername = string.Empty;
     [ObservableProperty] private int _offlineRamMb = 4096;
+    [ObservableProperty] private string _javaPath = string.Empty;
 
     [ObservableProperty] private string _keyInput = string.Empty;
     [ObservableProperty] private string _keyStatusText = string.Empty;
@@ -152,6 +154,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.AutoInstallUpdates = AutoInstallUpdates && AutoDownloadUpdates;
         _settings.OfflineUsername = OfflineUsername.Trim();
         _settings.OfflineRamMb = Math.Clamp(OfflineRamMb, 512, 65536);
+        _settings.JavaPath = string.IsNullOrWhiteSpace(JavaPath) ? null : JavaPath.Trim();
         Completed?.Invoke(_settings);
     }
 

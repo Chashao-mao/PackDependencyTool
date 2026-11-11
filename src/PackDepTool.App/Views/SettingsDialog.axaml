@@ -36,6 +36,9 @@
                              Minimum="512" Maximum="65536" Increment="512" Width="160"
                              HorizontalAlignment="Left" />
             </Grid>
+            <TextBlock Text="Java 路径（留空自动探测）" Classes="caption" />
+            <TextBox Text="{Binding JavaPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Watermark="例如 C:\Program Files\Java\jdk-21\bin\java.exe" />
             <TextBlock Text="启动实例时使用此身份；启动器不会保存密码或正版 token。"
                        Classes="caption" TextWrapping="Wrap" />
           </StackPanel>

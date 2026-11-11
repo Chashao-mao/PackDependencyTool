@@ -106,6 +106,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasFileChanges;
     [ObservableProperty] private string _fileChangeText = string.Empty;
     [ObservableProperty] private bool _isOverviewMode = true;
+    [ObservableProperty] private string _activePage = "home";
+
+    public bool IsHomePage => string.Equals(ActivePage, "home", StringComparison.OrdinalIgnoreCase);
+    public bool IsInstancesPage => string.Equals(ActivePage, "instances", StringComparison.OrdinalIgnoreCase);
+    public bool IsModsPage => string.Equals(ActivePage, "mods", StringComparison.OrdinalIgnoreCase);
+    public bool IsDiagnosticsPage => string.Equals(ActivePage, "diagnostics", StringComparison.OrdinalIgnoreCase);
+    public bool IsServerPage => string.Equals(ActivePage, "server", StringComparison.OrdinalIgnoreCase);
+    public string ActivePageTitle => ActivePage switch
+    {
+        "instances" => "实例",
+        "mods" => "模组",
+        "diagnostics" => "诊断",
+        "server" => "服务端",
+        _ => "首页",
+    };
     [ObservableProperty] private bool _gameRunning;
     [ObservableProperty] private string _gameRunningText = string.Empty;
 
@@ -2857,14 +2872,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void Navigate(string? page)
+    {
+        ActivePage = string.IsNullOrWhiteSpace(page) ? "home" : page.Trim().ToLowerInvariant();
+        if (ActivePage == "home") IsOverviewMode = true;
+        else if (ActivePage == "mods") IsOverviewMode = false;
+    }
+
+    [RelayCommand]
     private void OpenOverview()
     {
+        ActivePage = "home";
         IsOverviewMode = true;
     }
 
     [RelayCommand]
     private void ShowModList()
     {
+        ActivePage = "mods";
         IsOverviewMode = false;
         SelectedViewOption = ViewOption.All.First(option => option.Value == "list");
     }
@@ -2873,6 +2898,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void ShowDependencyGraph()
     {
         if (_graph is null) return;
+        ActivePage = "mods";
         IsOverviewMode = false;
         SelectedViewOption = ViewOption.All.First(option => option.Value == "graph");
     }
@@ -2940,12 +2966,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void EnterWorkspace()
     {
+        ActivePage = "mods";
         IsOverviewMode = false;
         if (IsGraphView) SelectedViewOption = ViewOption.All.First(option => option.Value == "list");
     }
 
     partial void OnIsOverviewModeChanged(bool value) =>
         OnPropertyChanged(nameof(IsWorkspaceMode));
+
+    partial void OnActivePageChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsHomePage));
+        OnPropertyChanged(nameof(IsInstancesPage));
+        OnPropertyChanged(nameof(IsModsPage));
+        OnPropertyChanged(nameof(IsDiagnosticsPage));
+        OnPropertyChanged(nameof(IsServerPage));
+        OnPropertyChanged(nameof(ActivePageTitle));
+    }
 
     [RelayCommand]
     private async Task OpenBisectionAsync()
@@ -3467,7 +3504,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             StatusText = $"正在构建启动参数：{versionName}…";
             var process = await _services.Launcher.LaunchOfflineAsync(
-                gameRoot, versionName, username, _services.Settings.OfflineRamMb);
+                gameRoot, versionName, username, _services.Settings.OfflineRamMb,
+                _services.Settings.JavaPath);
             StatusText = $"已启动 {versionName}（离线身份 {username}，PID {process.Id}）。";
             StartGameMonitor(process);
         }

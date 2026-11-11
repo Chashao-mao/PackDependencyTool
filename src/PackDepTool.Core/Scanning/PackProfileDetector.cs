@@ -248,6 +248,19 @@ public sealed class PackProfileDetector
                 candidates.Add(named);
         }
 
+        try
+        {
+            foreach (var json in Directory.EnumerateFiles(root, "*.json", SearchOption.TopDirectoryOnly))
+            {
+                if (!candidates.Contains(json, StringComparer.OrdinalIgnoreCase))
+                    candidates.Add(json);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Keep the explicit candidates; discovery is best-effort.
+        }
+
         foreach (var path in candidates)
         {
             try
@@ -262,9 +275,15 @@ public sealed class PackProfileDetector
                                inheritsValue.ValueKind == JsonValueKind.String
                     ? inheritsValue.GetString() ?? string.Empty
                     : string.Empty;
+                var hasLibraries = rootElement.TryGetProperty("libraries", out _);
+                if (id.Length == 0 && inherits.Length == 0 && !hasLibraries) continue;
 
                 if (!string.IsNullOrWhiteSpace(inherits))
-                    profile.McVersion = inherits;
+                {
+                    ApplyLoaderToken(inherits, profile);
+                    profile.LoaderVersion ??= ExtractLoaderVersion(inherits);
+                    profile.McVersion = ExtractMinecraftVersion(inherits) ?? inherits;
+                }
                 else
                 {
                     var mc = ExtractMinecraftVersion(id);

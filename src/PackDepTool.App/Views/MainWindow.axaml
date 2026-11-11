@@ -22,7 +22,50 @@
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding OpenSettingsCommand}" />
   </Window.KeyBindings>
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid ColumnDefinitions="208,*">
+
+    <!-- ============================ Navigation ============================ -->
+    <Border Grid.Column="0" Background="{DynamicResource HeaderBackground}"
+            BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,1,0" Padding="10,12">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <StackPanel Spacing="2" Margin="4,0,4,18">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Border Width="28" Height="28" CornerRadius="6" ClipToBounds="True">
+              <Image Source="avares://PackDependencyTool/Assets/app.png" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Pack Dependency" FontSize="12" FontWeight="SemiBold" />
+              <TextBlock Text="Tool" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Spacing="3">
+          <Button Content="首页" Command="{Binding NavigateCommand}" CommandParameter="home"
+                  Classes="nav" Classes.active="{Binding IsHomePage}" FontSize="12" MinHeight="36" />
+          <Button Content="实例" Command="{Binding NavigateCommand}" CommandParameter="instances"
+                  Classes="nav" Classes.active="{Binding IsInstancesPage}" FontSize="12" MinHeight="36" />
+          <Button Content="模组" Command="{Binding NavigateCommand}" CommandParameter="mods"
+                  Classes="nav" Classes.active="{Binding IsModsPage}" FontSize="12" MinHeight="36" />
+          <Button Content="诊断" Command="{Binding NavigateCommand}" CommandParameter="diagnostics"
+                  Classes="nav" Classes.active="{Binding IsDiagnosticsPage}" FontSize="12" MinHeight="36" />
+          <Button Content="服务端" Command="{Binding NavigateCommand}" CommandParameter="server"
+                  Classes="nav" Classes.active="{Binding IsServerPage}" FontSize="12" MinHeight="36" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Spacing="5">
+          <TextBlock Text="{Binding PackPathDisplay}" FontSize="9" TextWrapping="Wrap"
+                     Foreground="{DynamicResource TextMuted}" MaxHeight="45" />
+          <Button Content="扫描当前实例" Command="{Binding RescanCommand}" Classes="accent"
+                  FontSize="10" Padding="8,3" />
+          <Button Content="设置" Command="{Binding OpenSettingsCommand}" FontSize="10" Padding="8,3" />
+          <TextBlock Text="{Binding VersionLabel}" FontSize="9" HorizontalAlignment="Center"
+                     Foreground="{DynamicResource TextMuted}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
 
     <!-- ============================ Header ============================ -->
     <Border Grid.Row="0"
@@ -32,14 +75,9 @@
             Padding="14,9,14,8">
       <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
         <Grid ColumnDefinitions="Auto,*,Auto">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <Border Width="30" Height="30" CornerRadius="6" ClipToBounds="True">
-              <Image Source="avares://PackDependencyTool/Assets/app.png" />
-            </Border>
-            <StackPanel VerticalAlignment="Center" Spacing="1">
-              <TextBlock Text="Pack Dependency Tool" FontSize="14" FontWeight="SemiBold" />
-              <TextBlock Text="Minecraft 模组关系管理器" Classes="caption" />
-            </StackPanel>
+          <StackPanel VerticalAlignment="Center" Spacing="1">
+            <TextBlock Text="{Binding ActivePageTitle}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="Pack Dependency Tool" Classes="caption" />
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -47,22 +85,28 @@
             <Button Content="操作 ▾" ToolTip.Tip="实例、获取内容、导出、诊断、修复、设置">
               <Button.Flyout>
                 <MenuFlyout>
-                  <MenuItem Header="命令面板…" Command="{Binding OpenCommandPaletteCommand}" />
-                  <MenuItem Header="启动当前实例" Command="{Binding LaunchCurrentInstanceCommand}" />
-                  <MenuItem Header="打开 latest.log" Command="{Binding OpenLatestLogCommand}" />
+                  <MenuItem Header="命令面板…" Command="{Binding OpenCommandPaletteCommand}" InputGesture="Ctrl+K" />
                   <Separator />
-                  <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
-                  <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
-                  <Separator />
-                  <MenuItem Header="补全在线资料…" Command="{Binding EnrichCommand}" />
-                  <MenuItem Header="下载缺失依赖…" Command="{Binding AutoCompleteDependenciesCommand}"
-                            IsEnabled="{Binding HasMissingDependencies}" />
-                  <MenuItem Header="下载模组…" Command="{Binding DownloadModsCommand}" />
-                  <MenuItem Header="下载整合包…" Command="{Binding DownloadModpackCommand}" />
-                  <MenuItem Header="导入本地整合包…" Command="{Binding ImportLocalModpackCommand}" />
-                  <MenuItem Header="游戏本体 / 加载器…" Command="{Binding OpenGameSetupCommand}" />
-                  <MenuItem Header="切换加载器…" Command="{Binding OpenLoaderSwitchCommand}" />
-                  <Separator />
+                  <MenuItem Header="实例与启动">
+                    <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
+                    <MenuItem Header="启动当前实例" Command="{Binding LaunchCurrentInstanceCommand}" />
+                    <MenuItem Header="打开 latest.log" Command="{Binding OpenLatestLogCommand}" />
+                    <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
+                    <Separator />
+                    <MenuItem Header="打开整合包目录" Command="{Binding OpenPackFolderCommand}" />
+                  </MenuItem>
+                  <MenuItem Header="获取内容">
+                    <MenuItem Header="补全在线资料…" Command="{Binding EnrichCommand}" />
+                    <MenuItem Header="下载缺失依赖…" Command="{Binding AutoCompleteDependenciesCommand}"
+                              IsEnabled="{Binding HasMissingDependencies}" />
+                    <Separator />
+                    <MenuItem Header="下载模组…" Command="{Binding DownloadModsCommand}" />
+                    <MenuItem Header="下载整合包…" Command="{Binding DownloadModpackCommand}" />
+                    <MenuItem Header="导入本地整合包…" Command="{Binding ImportLocalModpackCommand}" />
+                    <Separator />
+                    <MenuItem Header="游戏本体 / 加载器…" Command="{Binding OpenGameSetupCommand}" />
+                    <MenuItem Header="切换加载器…" Command="{Binding OpenLoaderSwitchCommand}" />
+                  </MenuItem>
                   <MenuItem Header="导出">
                     <MenuItem Header="JSON 图数据" Command="{Binding ExportJsonCommand}" />
                     <MenuItem Header="Graphviz DOT" Command="{Binding ExportDotCommand}" />
@@ -71,46 +115,53 @@
                     <MenuItem Header="关系图 PNG…" Command="{Binding ExportGraphPngCommand}" />
                     <MenuItem Header="Markdown 分析报告" Command="{Binding ExportReportCommand}" />
                     <MenuItem Header="整合包（.mrpack）" Command="{Binding ExportPclPackCommand}" />
+                    <Separator />
                     <MenuItem Header="模组清单 Markdown…" Command="{Binding ExportModListCommand}" />
                     <MenuItem Header="缺失依赖清单…" Command="{Binding ExportMissingCommand}" />
                     <MenuItem Header="模组清单 CSV…" Command="{Binding ExportModListCsvCommand}" />
                   </MenuItem>
-                  <Separator />
-                  <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />
-                  <MenuItem Header="崩溃日志诊断…" Command="{Binding DiagnoseCrashCommand}" />
-                  <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
-                  <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
-                  <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />
-                  <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
-                  <MenuItem Header="服务端工具…" Command="{Binding OpenServerToolsCommand}" />
-                  <Separator />
-                  <MenuItem Header="禁用管理…" Command="{Binding OpenDisabledModsCommand}" />
-                  <MenuItem Header="撤销上次修复" Command="{Binding UndoLastBackupCommand}"
-                            IsEnabled="{Binding HasBackup}" />
-                  <MenuItem Header="备份中心…" Command="{Binding OpenBackupCenterCommand}" />
-                  <MenuItem Header="备份 config…" Command="{Binding BackupConfigCommand}" />
-                  <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
-                            IsEnabled="{Binding HasConfigBackup}" />
-                  <Separator />
-                  <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
-                  <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
-                  <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
-                  <MenuItem Header="复制当前视图状态" Command="{Binding CopyViewStateCommand}" />
-                  <MenuItem Header="应用剪贴板视图状态" Command="{Binding ApplyViewStateCommand}" />
-                  <Separator />
-                  <MenuItem Header="面板">
-                    <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
-                    <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
+                  <MenuItem Header="分析与诊断">
+                    <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />
+                    <MenuItem Header="崩溃日志诊断…" Command="{Binding DiagnoseCrashCommand}" />
+                    <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
+                    <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
+                    <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />
+                    <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
+                    <Separator />
+                    <MenuItem Header="服务端工具…" Command="{Binding OpenServerToolsCommand}" />
                   </MenuItem>
-                  <MenuItem Header="重新布局" Command="{Binding RelayoutCommand}"
-                            IsVisible="{Binding IsGraphView}" />
-                  <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
-                  <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
-                  <MenuItem Header="打开整合包目录" Command="{Binding OpenPackFolderCommand}" />
-                  <Separator />
-                  <MenuItem Header="检查程序更新" Command="{Binding CheckForUpdatesCommand}"
-                            IsEnabled="{Binding !IsCheckingUpdates}" />
-                  <MenuItem Header="打开程序更新页" Command="{Binding OpenUpdatePageCommand}" />
+                  <MenuItem Header="修复与备份">
+                    <MenuItem Header="禁用管理…" Command="{Binding OpenDisabledModsCommand}" />
+                    <MenuItem Header="撤销上次修复" Command="{Binding UndoLastBackupCommand}"
+                              IsEnabled="{Binding HasBackup}" />
+                    <MenuItem Header="备份中心…" Command="{Binding OpenBackupCenterCommand}" />
+                    <Separator />
+                    <MenuItem Header="备份 config…" Command="{Binding BackupConfigCommand}" />
+                    <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
+                              IsEnabled="{Binding HasConfigBackup}" />
+                  </MenuItem>
+                  <MenuItem Header="版本与视图">
+                    <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
+                    <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
+                    <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
+                    <Separator />
+                    <MenuItem Header="复制当前视图状态" Command="{Binding CopyViewStateCommand}" />
+                    <MenuItem Header="应用剪贴板视图状态" Command="{Binding ApplyViewStateCommand}" />
+                    <Separator />
+                    <MenuItem Header="面板">
+                      <MenuItem Header="收起 / 显示左栏" Click="ToggleLeftPanel_Click" />
+                      <MenuItem Header="收起 / 显示右栏" Click="ToggleRightPanel_Click" />
+                    </MenuItem>
+                    <MenuItem Header="重新布局" Command="{Binding RelayoutCommand}"
+                              IsVisible="{Binding IsGraphView}" />
+                    <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
+                    <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
+                  </MenuItem>
+                  <MenuItem Header="更新与维护">
+                    <MenuItem Header="检查程序更新" Command="{Binding CheckForUpdatesCommand}"
+                              IsEnabled="{Binding !IsCheckingUpdates}" />
+                    <MenuItem Header="打开程序更新页" Command="{Binding OpenUpdatePageCommand}" />
+                  </MenuItem>
                 </MenuFlyout>
               </Button.Flyout>
             </Button>
@@ -139,7 +190,7 @@
 
     <!-- ============================ Main content ============================ -->
     <Grid Grid.Row="1">
-      <Grid x:Name="MainContentGrid" IsVisible="{Binding !IsOverviewMode}" Margin="10,10,10,6">
+      <Grid x:Name="MainContentGrid" IsVisible="{Binding IsModsPage}" Margin="10,10,10,6">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="250" MinWidth="180" MaxWidth="360" />
         <ColumnDefinition Width="5" />
@@ -1181,7 +1232,113 @@
       </Border>
       </Grid>
 
-      <Border IsVisible="{Binding IsOverviewMode}" Margin="10,10,10,6"
+      <Border IsVisible="{Binding IsInstancesPage}" Margin="10,10,10,6">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="16" Margin="24,26">
+            <TextBlock Text="实例" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="选择实例、启动游戏或管理目录。" Classes="caption" />
+            <Border Classes="card" Padding="18" CornerRadius="12">
+              <StackPanel Spacing="8">
+                <TextBlock Text="当前实例" Classes="section" />
+                <TextBlock Text="{Binding PackPathDisplay}" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ProfileSummary}" FontSize="14" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Accent}" />
+                <TextBlock Text="{Binding CountSummary}" Classes="caption" />
+                <WrapPanel Margin="0,6,0,0">
+                  <Button Content="打开实例管理…" Command="{Binding OpenInstancesCommand}" Classes="accent"
+                          FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
+                  <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
+                          IsEnabled="{Binding HasGraph}" FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
+                  <Button Content="打开 latest.log" Command="{Binding OpenLatestLogCommand}"
+                          FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
+                  <Button Content="重新扫描" Command="{Binding RescanCommand}"
+                          FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Classes="card" Padding="18" CornerRadius="12">
+              <StackPanel Spacing="8">
+                <TextBlock Text="最近使用" Classes="section" />
+                <ComboBox ItemsSource="{Binding RecentPacks}"
+                          SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
+                          HorizontalAlignment="Stretch" Height="34" FontSize="11"
+                          PlaceholderText="选择最近整合包">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <TextBlock Text="{Binding}" FontSize="10.5" TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border IsVisible="{Binding IsDiagnosticsPage}" Margin="10,10,10,6">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="16" Margin="24,26">
+            <TextBlock Text="诊断" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="从日志、冲突或性能数据开始，不需要先进入模组列表。" Classes="caption" />
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+              <Border Classes="card" Padding="18" CornerRadius="12">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="崩溃日志诊断" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Text="分析 crash-report / latest.log，给出证据和相关模组。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="开始诊断" Command="{Binding DiagnoseCrashCommand}" Classes="accent" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="card" Padding="18" CornerRadius="12">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="JAR 冲突扫描" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Text="重复类、资源覆盖、Mixin 目标重叠。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="开始扫描" Command="{Binding ScanJarConflictsCommand}" Classes="accent" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Row="1" Classes="card" Padding="18" CornerRadius="12">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="性能归因" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Text="解析 spark/性能日志中的热点、TPS 和 MSPT。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="分析性能" Command="{Binding AnalyzePerformanceCommand}" Classes="accent" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Row="1" Grid.Column="1" Classes="card" Padding="18" CornerRadius="12">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="二分诊断" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Text="按依赖闭包分组，缩小问题模组范围。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="打开二分" Command="{Binding OpenBisectionCommand}" Classes="accent" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <Border Classes="card" Padding="18" CornerRadius="12">
+              <StackPanel Spacing="7">
+                <TextBlock Text="数据包扫描" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock Text="检查 recipes / loot_tables / quests 的 JSON 与重复 ID。" Classes="caption" TextWrapping="Wrap" />
+                <Button Content="扫描数据包" Command="{Binding ScanDataPacksCommand}" HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border IsVisible="{Binding IsServerPage}" Margin="10,10,10,6">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel MaxWidth="980" HorizontalAlignment="Center" Spacing="16" Margin="24,26">
+            <TextBlock Text="服务端" FontSize="28" FontWeight="SemiBold" />
+            <TextBlock Text="筛选客户端模组、生成服务端包并检查启动前 Gate。" Classes="caption" />
+            <Border Classes="card" Padding="18" CornerRadius="12">
+              <StackPanel Spacing="8">
+                <TextBlock Text="服务端工具" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding CountSummary}" Classes="caption" />
+                <Button Content="打开服务端工具…" Command="{Binding OpenServerToolsCommand}" Classes="accent"
+                        FontSize="12" Padding="14,8" MinHeight="38" HorizontalAlignment="Left" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border IsVisible="{Binding IsHomePage}" Margin="10,10,10,6"
               Background="{DynamicResource AppBackground}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel MaxWidth="1040" HorizontalAlignment="Center" Spacing="18" Margin="24,28,24,24">
@@ -1255,7 +1412,7 @@
               <TextBlock Text="常用操作" FontSize="15" FontWeight="SemiBold" />
               <WrapPanel>
                 <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
-                        Classes="accent" FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                        IsEnabled="{Binding HasGraph}" Classes="accent" FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="一键体检" Command="{Binding OpenPackToolsCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"
@@ -1344,5 +1501,6 @@
         </StackPanel>
       </Grid>
     </Border>
+    </Grid>
   </Grid>
 </Window>
