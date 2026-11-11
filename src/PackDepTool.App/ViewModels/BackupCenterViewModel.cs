@@ -1,9 +1,22 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PackDepTool.Core.Models;
 using PackDepTool.Core.Persistence;
 
 namespace PackDepTool.App.ViewModels;
+
+public sealed class ModListHistoryItem
+{
+    public ModListHistoryItem(ModListSnapshot snapshot)
+    {
+        Snapshot = snapshot;
+        Display = $"{snapshot.CapturedAt.ToLocalTime():MM-dd HH:mm} · {snapshot.Mods.Count} 个模组";
+    }
+
+    public ModListSnapshot Snapshot { get; }
+    public string Display { get; }
+}
 
 public sealed class BackupCenterResult
 {
@@ -16,26 +29,40 @@ public sealed partial class BackupCenterViewModel : ObservableObject
     private readonly PackBackupService _service;
     private readonly string _packRoot;
     private readonly Func<string, string, Task<bool>> _confirm;
+    private readonly ModListHistoryService _history;
+    private readonly ScanResult? _scan;
+    private readonly GraphDocument? _graph;
 
     public BackupCenterViewModel(
         PackBackupService service,
         string packRoot,
-        Func<string, string, Task<bool>> confirm)
+        Func<string, string, Task<bool>> confirm,
+        ModListHistoryService? history = null,
+        ScanResult? scan = null,
+        GraphDocument? graph = null)
     {
         _service = service;
         _packRoot = packRoot;
         _confirm = confirm;
+        _history = history ?? new ModListHistoryService();
+        _scan = scan;
+        _graph = graph;
         Refresh();
+        RefreshHistory();
     }
 
     public ObservableCollection<PackBackupInfo> Backups { get; } = [];
     public ObservableCollection<PackBackupDiffEntry> Diff { get; } = [];
+    public ObservableCollection<ModListHistoryItem> HistorySnapshots { get; } = [];
+    public ObservableCollection<ModListChange> HistoryChanges { get; } = [];
 
     [ObservableProperty] private PackBackupInfo? _selected;
     [ObservableProperty] private string _summaryText = "选择一个快照查看差异";
     [ObservableProperty] private string _statusText = string.Empty;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _canRestore;
+    [ObservableProperty] private ModListHistoryItem? _selectedHistory;
+    [ObservableProperty] private string _historySummary = "选择历史快照查看与当前模组的差异";
 
     public event Action<BackupCenterResult?>? Completed;
 
@@ -50,6 +77,36 @@ public sealed partial class BackupCenterViewModel : ObservableObject
     }
 
     public bool HasBackups => Backups.Count > 0;
+
+    private void RefreshHistory()
+    {
+        var selectedTime = SelectedHistory?.Snapshot.CapturedAt;
+        HistorySnapshots.Clear();
+        foreach (var item in _history.List(_packRoot))
+            HistorySnapshots.Add(new ModListHistoryItem(item.Snapshot));
+        SelectedHistory = HistorySnapshots.FirstOrDefault(item => item.Snapshot.CapturedAt == selectedTime)
+                          ?? HistorySnapshots.FirstOrDefault();
+        OnPropertyChanged(nameof(HasHistory));
+    }
+
+    public bool HasHistory => HistorySnapshots.Count > 0;
+
+    partial void OnSelectedHistoryChanged(ModListHistoryItem? value)
+    {
+        HistoryChanges.Clear();
+        if (value is null || _scan is null || _graph is null)
+        {
+            HistorySummary = value is null ? "选择历史快照查看与当前模组的差异" : "重新扫描后才能对比当前列表";
+            return;
+        }
+
+        var current = _history.Capture(_scan, _graph);
+        var changes = _history.Compare(value.Snapshot, current);
+        foreach (var change in changes) HistoryChanges.Add(change);
+        HistorySummary = changes.Count == 0
+            ? "当前模组列表与该快照一致"
+            : $"与 {value.Snapshot.CapturedAt.ToLocalTime():MM-dd HH:mm} 相比，{changes.Count} 项变化";
+    }
 
     partial void OnSelectedChanged(PackBackupInfo? value)
     {

@@ -11,7 +11,7 @@ public sealed class MinecraftLaunchService
         name.Length is >= 3 and <= 16 && name.All(ch => char.IsAsciiLetterOrDigit(ch) || ch == '_');
 
     public IReadOnlyList<PackDepTool.Core.Analysis.DiagnosticFinding> Diagnose(
-        string gameRoot, string versionName, string? javaPath = null)
+        string gameRoot, string versionName, string? javaPath = null, string? mcVersion = null)
     {
         var findings = new List<PackDepTool.Core.Analysis.DiagnosticFinding>();
         var versionDir = Path.Combine(gameRoot, "versions", versionName);
@@ -42,9 +42,19 @@ public sealed class MinecraftLaunchService
                     "如果该版本依赖继承版本，可忽略；否则需要补全客户端 JAR。");
         }
 
-        if (ResolveJavaPath(gameRoot, javaPath) is null)
+        var java = ResolveJavaPath(gameRoot, javaPath, mcVersion);
+        if (java is null)
             Add(PackDepTool.Core.Analysis.DiagnosticSeverity.Error, "找不到 Java",
                 "请在 设置 → 离线登录 → Java 路径 指定 java.exe，或安装 JDK/JRE。");
+        else
+        {
+            var required = RequiredJavaMajor(mcVersion);
+            var actual = GetJavaMajor(java);
+            Add(actual == required ? PackDepTool.Core.Analysis.DiagnosticSeverity.Info
+                    : PackDepTool.Core.Analysis.DiagnosticSeverity.Warning,
+                "Java 版本",
+                $"{java}（检测到 Java {actual}，该 MC 版本建议 Java {required}）");
+        }
 
         var libraries = Path.Combine(gameRoot, "libraries");
         if (!Directory.Exists(libraries) || !Directory.EnumerateFiles(libraries, "*", SearchOption.AllDirectories).Any())
@@ -62,6 +72,7 @@ public sealed class MinecraftLaunchService
     public async Task<Process> LaunchOfflineAsync(
         string gameRoot,
         string versionName,
+        string mcVersion,
         string instanceRoot,
         string offlineUsername,
         int maximumRamMb,
@@ -73,7 +84,7 @@ public sealed class MinecraftLaunchService
         if (!Directory.Exists(gameRoot))
             throw new InvalidOperationException($"游戏目录不存在：{gameRoot}");
 
-        var blocking = Diagnose(gameRoot, versionName, javaPath)
+        var blocking = Diagnose(gameRoot, versionName, javaPath, mcVersion)
             .Where(finding => finding.Severity == PackDepTool.Core.Analysis.DiagnosticSeverity.Error)
             .Select(finding => finding.Title + "：" + finding.Message)
             .ToList();
@@ -82,7 +93,7 @@ public sealed class MinecraftLaunchService
 
         var path = new MinecraftPath(gameRoot);
         var launcher = new MinecraftLauncher(path);
-        var java = ResolveJavaPath(gameRoot, javaPath);
+        var java = ResolveJavaPath(gameRoot, javaPath, mcVersion);
         if (java is null)
             throw new InvalidOperationException(
                 "未找到可用的 java.exe。请在 设置 → 离线登录 → Java 路径 中指定。");
@@ -101,7 +112,36 @@ public sealed class MinecraftLaunchService
         var process = await launcher.BuildProcessAsync(versionName, option)
             .AsTask()
             .WaitAsync(cancellationToken);
+        try
+        {
+            File.WriteAllText(Path.Combine(instanceRoot, ".packdep-launch.log"),
+                $"Java: {java}{Environment.NewLine}" +
+                $"WorkingDirectory: {process.StartInfo.WorkingDirectory}{Environment.NewLine}" +
+                $"Arguments: {process.StartInfo.Arguments}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Launch can continue even if the diagnostic log cannot be written.
+        }
+
+        process.StartInfo.RedirectStandardError = true;
+        process.StartInfo.RedirectStandardOutput = true;
         process.Start();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var stderr = await process.StandardError.ReadToEndAsync();
+                var stdout = await process.StandardOutput.ReadToEndAsync();
+                await File.AppendAllTextAsync(Path.Combine(instanceRoot, ".packdep-launch.log"),
+                    "STDOUT:" + Environment.NewLine + stdout + Environment.NewLine +
+                    "STDERR:" + Environment.NewLine + stderr);
+            }
+            catch (Exception ex) when (ex is IOException or InvalidOperationException)
+            {
+                // Process output is best-effort diagnostic data.
+            }
+        });
         return process;
     }
 
@@ -123,7 +163,7 @@ public sealed class MinecraftLaunchService
         }
     }
 
-    public static string? ResolveJavaPath(string gameRoot, string? configured)
+    public static string? ResolveJavaPath(string gameRoot, string? configured, string? mcVersion = null)
     {
         if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured))
             return Path.GetFullPath(configured);
@@ -154,11 +194,28 @@ public sealed class MinecraftLaunchService
             AddCandidate(candidates, Path.Combine(entry.Trim(), "java.exe"));
 
         if (candidates.Count == 0) return null;
-        return candidates
+        var required = RequiredJavaMajor(mcVersion);
+        var inspected = candidates
             .Select(path => (Path: path, Major: GetJavaMajor(path)))
-            .OrderByDescending(item => item.Major)
-            .ThenBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
-            .First().Path;
+            .Where(item => item.Major > 0)
+            .ToList();
+        if (inspected.Count == 0) return candidates[0];
+        var exact = inspected.FirstOrDefault(item => item.Major == required);
+        if (exact.Path is not null) return exact.Path;
+        var newer = inspected.Where(item => item.Major >= required)
+            .OrderBy(item => item.Major).FirstOrDefault();
+        return newer.Path ?? inspected.OrderByDescending(item => item.Major).First().Path;
+    }
+
+    public static int RequiredJavaMajor(string? mcVersion)
+    {
+        if (string.IsNullOrWhiteSpace(mcVersion) ||
+            !Version.TryParse(mcVersion.Split('-')[0], out var version))
+            return 21;
+        if (version >= new Version(1, 20, 5)) return 21;
+        if (version >= new Version(1, 18)) return 17;
+        if (version >= new Version(1, 17)) return 16;
+        return 8;
     }
 
     private static void AddCandidate(List<string> candidates, string path)

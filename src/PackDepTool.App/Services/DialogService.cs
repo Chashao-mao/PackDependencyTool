@@ -177,7 +177,8 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<InstanceManagerResult?>(Owner);
     }
 
-    public async Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot)
+    public async Task<BackupCenterResult?> ShowBackupCenterAsync(
+        string packRoot, ScanResult? scan = null, GraphDocument? graph = null)
     {
         if (Owner is null) return null;
 
@@ -185,7 +186,8 @@ public sealed class DialogService : IDialogService
         var viewModel = new BackupCenterViewModel(
             new PackBackupService(),
             packRoot,
-            (title, message) => MessageDialog.ShowAsync(dialog!, title, message, "继续", "取消"));
+            (title, message) => MessageDialog.ShowAsync(dialog!, title, message, "继续", "取消"),
+            new ModListHistoryService(), scan, graph);
         dialog = new BackupCenterDialog { DataContext = viewModel };
         return await dialog.ShowDialog<BackupCenterResult?>(Owner);
     }

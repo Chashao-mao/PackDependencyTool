@@ -2907,6 +2907,43 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task CompareModListHistoryAsync()
+    {
+        if (_scanResult is null || _graph is null) return;
+        var current = _services.ModListHistory.Capture(_scanResult, _graph);
+        var previous = _services.ModListHistory.List(_scanResult.RootPath)
+            .FirstOrDefault(item => !string.Equals(
+                item.Snapshot.Fingerprint, current.Fingerprint, StringComparison.OrdinalIgnoreCase));
+        if (previous.Snapshot is null)
+        {
+            StatusText = "还没有可对比的历史模组列表。";
+            return;
+        }
+
+        var changes = _services.ModListHistory.Compare(previous.Snapshot, current);
+        var report = new DiagnosticReport
+        {
+            SourcePath = _scanResult.RootPath,
+            Summary = changes.Count == 0
+                ? "当前模组列表与上次快照一致。"
+                : $"与 {previous.Snapshot.CapturedAt.ToLocalTime():MM-dd HH:mm} 的模组列表相比，{changes.Count} 项变化。",
+            Findings = changes.Select(change => new DiagnosticFinding
+            {
+                RuleId = change.Kind.ToString().ToLowerInvariant(),
+                Severity = change.Kind == ModListChangeKind.Removed
+                    ? DiagnosticSeverity.Warning
+                    : DiagnosticSeverity.Info,
+                Title = change.KindText,
+                Message = $"{change.Name}（{change.ModId}）",
+                Evidence = string.Join(" → ", new[] { change.Before, change.After }
+                    .Where(value => !string.IsNullOrWhiteSpace(value))),
+                RelatedModIds = [change.ModId],
+            }).ToList(),
+        };
+        await _dialogs.ShowDiagnosticReportAsync(report);
+    }
+
+    [RelayCommand]
     private async Task OpenHealthWizardAsync()
     {
         if (_scanResult is null || _graph is null)
@@ -3131,7 +3168,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private async Task OpenBackupCenterAsync()
     {
         if (_scanResult is null) return;
-        var result = await _dialogs.ShowBackupCenterAsync(_scanResult.RootPath);
+        var result = await _dialogs.ShowBackupCenterAsync(_scanResult.RootPath, _scanResult, _graph);
         if (result?.NeedsRescan == true)
             await ScanAsync();
         else
@@ -3580,7 +3617,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         var findings = _services.Launcher.Diagnose(
-            gameRoot.FullName, new DirectoryInfo(_scanResult.RootPath).Name, _services.Settings.JavaPath);
+            gameRoot.FullName, new DirectoryInfo(_scanResult.RootPath).Name,
+            _services.Settings.JavaPath, _scanResult.Profile.McVersion);
         var report = new DiagnosticReport
         {
             SourcePath = _scanResult.RootPath,
@@ -3630,8 +3668,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = $"正在构建启动参数：{versionName}…";
             var instanceRoot = Path.Combine(gameRoot, "versions", versionName);
             var process = await _services.Launcher.LaunchOfflineAsync(
-                gameRoot, versionName, instanceRoot, username, _services.Settings.OfflineRamMb,
-                _services.Settings.JavaPath);
+                gameRoot, versionName, _scanResult.Profile.McVersion, instanceRoot, username,
+                _services.Settings.OfflineRamMb, _services.Settings.JavaPath);
             StatusText = $"已启动 {versionName}（离线身份 {username}，PID {process.Id}）。";
             StartGameMonitor(process);
         }
@@ -3677,6 +3715,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 GameRunning = false;
                 GameRunningText = "游戏已退出";
                 StatusText = $"游戏进程已退出（代码 {process.ExitCode}）。";
+                if (process.ExitCode != 0 && _scanResult is not null)
+                {
+                    var log = Path.Combine(_scanResult.RootPath, ".packdep-launch.log");
+                    var detail = File.Exists(log)
+                        ? string.Join(Environment.NewLine, File.ReadLines(log).TakeLast(24))
+                        : "没有找到 .packdep-launch.log。";
+                    _ = _dialogs.ShowMessageAsync("游戏启动失败",
+                        $"退出代码：{process.ExitCode}{Environment.NewLine}{Environment.NewLine}" +
+                        $"诊断日志：{log}{Environment.NewLine}{Environment.NewLine}{detail}");
+                }
                 _gameProcess = null;
                 return;
             }
@@ -3801,13 +3849,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var project = await _services.Resolver.ResolveAsync(node);
             if (project is null)
             {
-                var hits = await _services.Downloader.SearchAsync(
-                    DownloadSource.Modrinth, DownloadProjectType.Mod, clean);
-                project = hits.FirstOrDefault();
-            }
-            if (project is null)
-            {
-                failed.Add(clean);
+                failed.Add($"{clean}（未找到精确项目；可写 slug、项目 URL 或配置 CurseForge API Key）");
                 continue;
             }
 
@@ -3816,7 +3858,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var version = versions.FirstOrDefault(item => item.IsCompatible);
             if (version is null)
             {
-                failed.Add($"{clean}（无兼容版本）");
+                var available = versions
+                    .SelectMany(item => item.GameVersions.Select(game => $"{game}/{string.Join("/", item.Loaders)}"))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(4)
+                    .ToList();
+                failed.Add(available.Count == 0
+                    ? $"{clean}（项目没有可用文件）"
+                    : $"{clean}（无兼容版本；该项目有 {string.Join("、", available)}）");
                 continue;
             }
 
@@ -4096,6 +4145,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         ApplyTranslations();
         _services.Categories.Classify(_graph);
+        _services.ModListHistory.Save(_scanResult.RootPath,
+            _services.ModListHistory.Capture(_scanResult, _graph));
         RefreshAnalysis();
         RefreshCategoryChips();
         EnsurePositions();
@@ -4137,6 +4188,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             ApplyTranslations();
             _services.Categories.Classify(_graph);
+            _services.ModListHistory.Save(scan.RootPath,
+                _services.ModListHistory.Capture(scan, _graph));
             RefreshAnalysis();
             RefreshCategoryChips();
             EnsurePositions();

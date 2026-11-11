@@ -51,24 +51,68 @@
       </Border>
 
       <Border Grid.Column="1" Classes="card" Padding="14">
-        <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
-          <TextBlock Grid.Row="0" Text="文件差异" Classes="section" />
-          <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Classes="caption" TextWrapping="Wrap" />
-          <ListBox Grid.Row="2" ItemsSource="{Binding Diff}" Background="Transparent">
-            <ListBox.ItemTemplate>
-              <DataTemplate x:DataType="persistence:PackBackupDiffEntry">
-                <Grid ColumnDefinitions="*,Auto" Margin="2,3">
-                  <TextBlock Text="{Binding RelativePath}" FontSize="10.5"
-                             TextTrimming="CharacterEllipsis" />
-                  <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="10"
-                             Foreground="{DynamicResource TextSecondary}" Margin="8,0,0,0" />
-                </Grid>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-          <TextBlock Grid.Row="3" Text="{Binding StatusText}" Classes="caption"
-                     TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
-        </Grid>
+        <TabControl>
+          <TabItem Header="文件差异">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+              <TextBlock Grid.Row="0" Text="文件差异" Classes="section" />
+              <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Classes="caption" TextWrapping="Wrap" />
+              <ListBox Grid.Row="2" ItemsSource="{Binding Diff}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="persistence:PackBackupDiffEntry">
+                    <Grid ColumnDefinitions="*,Auto" Margin="2,3">
+                      <TextBlock Text="{Binding RelativePath}" FontSize="10.5"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="10"
+                                 Foreground="{DynamicResource TextSecondary}" Margin="8,0,0,0" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Grid.Row="3" Text="{Binding StatusText}" Classes="caption"
+                         TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="模组列表历史">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
+              <TextBlock Grid.Row="0" Text="与当前模组列表对比" Classes="section" />
+              <ComboBox Grid.Row="1" ItemsSource="{Binding HistorySnapshots}"
+                        SelectedItem="{Binding SelectedHistory, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch" FontSize="10.5">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ModListHistoryItem">
+                    <TextBlock Text="{Binding Display}" FontSize="10.5" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Grid.Row="2" Text="{Binding HistorySummary}" Classes="caption"
+                         TextWrapping="Wrap" />
+              <ListBox Grid.Row="3" ItemsSource="{Binding HistoryChanges}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="persistence:ModListChange">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="2,3">
+                      <TextBlock Text="{Binding KindText}" FontSize="10" Width="46"
+                                 Foreground="{DynamicResource Accent}" />
+                      <StackPanel Grid.Column="1" Spacing="1">
+                        <TextBlock Text="{Binding Name}" FontSize="10.5" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ModId}" FontSize="9"
+                                   Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="1" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding Before}" FontSize="9"
+                                   Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding After}" FontSize="9"
+                                   Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Right" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Grid.Row="4" Text="每次扫描会自动记录模组列表；这里只对比，不修改文件。"
+                         Classes="caption" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
+            </Grid>
+          </TabItem>
+        </TabControl>
       </Border>
     </Grid>
 

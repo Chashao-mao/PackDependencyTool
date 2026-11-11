@@ -24,7 +24,7 @@ public interface IDialogService
     Task<InstanceManagerResult?> ShowInstanceManagerAsync(
         IReadOnlyList<string> versionsDirectories, string? lastVersionsDirectory);
 
-    Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot);
+    Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot, ScanResult? scan = null, GraphDocument? graph = null);
     Task ShowDiagnosticReportAsync(DiagnosticReport report);
     Task ShowServerToolsAsync(string packRoot, GraphDocument graph);
     Task ShowBisectionAsync(GraphDocument graph);

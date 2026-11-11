@@ -145,7 +145,8 @@
                               IsEnabled="{Binding HasConfigBackup}" />
                   </MenuItem>
                   <MenuItem Header="版本与视图">
-                    <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
+                    <MenuItem Header="对比上次模组列表…" Command="{Binding CompareModListHistoryCommand}" />
+                  <MenuItem Header="锁定当前版本…" Command="{Binding CreateVersionLockCommand}" />
                     <MenuItem Header="对比版本锁定…" Command="{Binding CompareVersionLockCommand}" />
                     <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
                     <Separator />
@@ -1359,13 +1360,13 @@
               Background="{DynamicResource AppBackground}">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <StackPanel MaxWidth="1040" HorizontalAlignment="Center" Spacing="18" Margin="24,28,24,24">
-            <StackPanel Spacing="6">
+            <StackPanel Spacing="6" IsVisible="{Binding !HasGraph}">
               <TextBlock Text="开始使用" FontSize="28" FontWeight="SemiBold" />
               <TextBlock Text="选择一个整合包，先做体检，再进入模组列表处理问题。"
                          FontSize="13" Foreground="{DynamicResource TextSecondary}" />
             </StackPanel>
 
-            <Grid ColumnDefinitions="1.15*,*" ColumnSpacing="14">
+            <Grid ColumnDefinitions="1.15*,*" ColumnSpacing="14" IsVisible="{Binding !HasGraph}">
               <Border Classes="card" Padding="20" CornerRadius="12">
                 <StackPanel Spacing="9">
                   <TextBlock Text="① 打开整合包" FontSize="18" FontWeight="SemiBold" />
@@ -1440,6 +1441,8 @@
                 <Button Content="服务端工具" Command="{Binding OpenServerToolsCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="对比上次模组列表" Command="{Binding CompareModListHistoryCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
                 <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
                         FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
