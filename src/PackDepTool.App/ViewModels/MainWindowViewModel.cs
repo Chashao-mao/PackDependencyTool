@@ -2704,6 +2704,38 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task AnalyzePerformanceAsync()
+    {
+        if (_scanResult is null) return;
+
+        var path = CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+            path = await _dialogs.PickOpenFileAsync(
+                "选择 spark 报告或日志", ["txt", "log"], "性能日志");
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText = "没有找到可分析的性能日志。";
+            return;
+        }
+
+        try
+        {
+            var text = await File.ReadAllTextAsync(path);
+            if (text.Length > 4 * 1024 * 1024)
+                text = text[..(4 * 1024 * 1024)];
+            var report = PerformanceAttributionAnalyzer.Analyze(text, path, _graph);
+            StatusText = report.Findings.Count == 0
+                ? "性能归因完成：没有识别到采样数据。"
+                : $"性能归因完成：{report.Findings.Count} 条线索。";
+            await _dialogs.ShowDiagnosticReportAsync(report);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"读取性能日志失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task CopyViewStateAsync()
     {
         var snapshot = new ViewStateSnapshot

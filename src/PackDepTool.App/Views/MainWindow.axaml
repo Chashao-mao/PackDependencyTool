@@ -97,6 +97,7 @@
                   <MenuItem Header="删除版本锁定…" Command="{Binding DeleteVersionLockCommand}" />
                   <Separator />
                   <MenuItem Header="二分诊断…" Command="{Binding OpenBisectionCommand}" />
+                  <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
                   <Separator />
                   <MenuItem Header="复制当前视图状态" Command="{Binding CopyViewStateCommand}" />
                   <MenuItem Header="应用剪贴板视图状态" Command="{Binding ApplyViewStateCommand}" />
