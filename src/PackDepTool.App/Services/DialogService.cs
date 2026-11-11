@@ -190,6 +190,15 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<BackupCenterResult?>(Owner);
     }
 
+    public async Task ShowDiagnosticReportAsync(DiagnosticReport report)
+    {
+        if (Owner is null) return;
+
+        var viewModel = new DiagnosticReportViewModel(report);
+        var dialog = new DiagnosticReportDialog { DataContext = viewModel };
+        await dialog.ShowDialog(Owner);
+    }
+
     public async Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates)
     {

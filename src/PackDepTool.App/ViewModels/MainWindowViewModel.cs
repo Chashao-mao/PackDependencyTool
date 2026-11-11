@@ -2580,6 +2580,41 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task DiagnoseCrashAsync()
+    {
+        if (_scanResult is null) return;
+
+        var logs = CrashLogAnalyzer.Discover(_scanResult.RootPath);
+        var path = logs.FirstOrDefault()?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            path = await _dialogs.PickOpenFileAsync(
+                "选择崩溃报告或日志", ["txt", "log"], "日志文件");
+        }
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            StatusText = "没有找到可分析的崩溃报告或日志。";
+            return;
+        }
+
+        try
+        {
+            var text = await File.ReadAllTextAsync(path);
+            if (text.Length > 4 * 1024 * 1024)
+                text = text[..(4 * 1024 * 1024)];
+            var report = CrashLogAnalyzer.Analyze(text, path, _graph);
+            StatusText = report.Findings.Count == 0
+                ? "日志诊断完成：没有识别到确定性崩溃模式。"
+                : $"日志诊断完成：{report.Findings.Count} 条线索。";
+            await _dialogs.ShowDiagnosticReportAsync(report);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"读取日志失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task OpenBackupCenterAsync()
     {
         if (_scanResult is null) return;

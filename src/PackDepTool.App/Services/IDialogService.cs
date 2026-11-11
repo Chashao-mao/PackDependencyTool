@@ -25,6 +25,7 @@ public interface IDialogService
         IReadOnlyList<string> versionsDirectories, string? lastVersionsDirectory);
 
     Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot);
+    Task ShowDiagnosticReportAsync(DiagnosticReport report);
     Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates);
 

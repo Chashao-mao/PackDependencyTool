@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.DiagnosticReportDialog"
+        x:DataType="vm:DiagnosticReportViewModel"
+        Title="日志诊断"
+        Width="820"
+        Height="640"
+        MinWidth="680"
+        MinHeight="500"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
+      <TextBlock Text="日志诊断" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding SourceText}" Classes="caption" TextTrimming="CharacterEllipsis" />
+      <TextBlock Text="{Binding Summary}" FontSize="11.5" FontWeight="SemiBold"
+                 Foreground="{DynamicResource Accent}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl ItemsSource="{Binding Findings}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:DiagnosticFindingItem">
+            <Border Classes="card" Padding="12" Margin="0,0,0,8">
+              <StackPanel Spacing="5">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                  <Border Classes="chip" Padding="6,1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding SeverityText}" FontSize="9.5"
+                               Foreground="{Binding SeverityBrush}" />
+                  </Border>
+                  <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="13"
+                             FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Grid.Column="2" Text="{Binding ConfidenceText}" FontSize="9"
+                             Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                </Grid>
+                <TextBlock Text="{Binding Message}" FontSize="10.5" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextSecondary}" />
+                <TextBlock Text="{Binding RelatedText}" FontSize="9.5"
+                           Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" />
+                <Border Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="8">
+                  <TextBlock Text="{Binding Evidence}" FontFamily="Consolas" FontSize="9.5"
+                             TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+                </Border>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="诊断只基于日志文本，不代表启动验证；没有匹配项时不会猜测。"
+                 Classes="caption" TextWrapping="Wrap" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="关闭" Command="{Binding CloseCommand}" />
+    </Grid>
+  </Grid>
+</Window>
