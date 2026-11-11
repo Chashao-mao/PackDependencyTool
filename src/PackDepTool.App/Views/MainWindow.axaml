@@ -42,6 +42,8 @@
         </StackPanel>
 
         <StackPanel Grid.Row="1" Spacing="3">
+          <TextBlock Text="工作空间" FontSize="9" Margin="10,0,0,3"
+                     Foreground="{DynamicResource TextMuted}" />
           <Button Content="首页" Command="{Binding NavigateCommand}" CommandParameter="home"
                   Classes="nav" Classes.active="{Binding IsHomePage}" FontSize="12" MinHeight="36" />
           <Button Content="实例" Command="{Binding NavigateCommand}" CommandParameter="instances"
@@ -1271,7 +1273,7 @@
 
             <Grid ColumnDefinitions="1.35*,*" ColumnSpacing="12">
               <Border Classes="card" Padding="12" CornerRadius="10">
-                <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
                   <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="1">
                       <TextBlock Text="实例列表" Classes="section" />
@@ -1282,11 +1284,18 @@
                     <Button Grid.Column="1" Content="刷新" Command="{Binding LoadInstancesCommand}"
                             FontSize="10" VerticalAlignment="Center" />
                   </Grid>
-                  <TextBlock Grid.Row="1" Text="{Binding Instances.Count, StringFormat='共 {0} 个实例'}"
+                  <Grid Grid.Row="1" ColumnDefinitions="*,150" ColumnSpacing="8">
+                    <TextBox Text="{Binding InstanceSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Watermark="搜索实例名 / MC 版本" FontSize="10.5" Height="30" />
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding InstanceLoaderFilters}"
+                              SelectedItem="{Binding SelectedInstanceLoaderFilter, Mode=TwoWay}"
+                              FontSize="10" Height="30" />
+                  </Grid>
+                  <TextBlock Grid.Row="2" Text="{Binding FilteredInstances.Count, StringFormat='显示 {0} 个实例'}"
                              Classes="caption" />
-                  <ListBox Grid.Row="2" ItemsSource="{Binding Instances}"
+                  <ListBox Grid.Row="3" ItemsSource="{Binding FilteredInstances}"
                            SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
-                           Background="Transparent" Height="420">
+                           Background="Transparent" Height="360">
                     <ListBox.ItemTemplate>
                       <DataTemplate x:DataType="scanning:MinecraftInstanceInfo">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,6">
@@ -1302,7 +1311,7 @@
                       </DataTemplate>
                     </ListBox.ItemTemplate>
                   </ListBox>
-                  <WrapPanel Grid.Row="3">
+                  <WrapPanel Grid.Row="4">
                     <Button Content="打开选中实例" Command="{Binding OpenSelectedInstanceCommand}"
                             Classes="accent" FontSize="11" Padding="12,6" Margin="0,0,8,4" />
                     <Button Content="实例管理…" Command="{Binding OpenInstancesCommand}"
@@ -1398,59 +1407,105 @@
 
       <Border IsVisible="{Binding IsDiagnosticsPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="14" Margin="24,22,24,24">
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
-              <Border Classes="card" Padding="18" CornerRadius="12">
-                <StackPanel Spacing="7">
-                  <TextBlock Text="崩溃日志诊断" FontSize="16" FontWeight="SemiBold" />
-                  <TextBlock Text="分析 crash-report / latest.log，给出证据和相关模组。" Classes="caption" TextWrapping="Wrap" />
-                  <Button Content="开始诊断" Command="{Binding DiagnoseCrashCommand}" Classes="accent" HorizontalAlignment="Left" />
+          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="12" Margin="24,22,24,24">
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+              <Border Classes="card" Padding="14,10" CornerRadius="9">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding MissingCount}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Danger}" />
+                  <TextBlock Text="缺失依赖" Classes="caption" />
                 </StackPanel>
               </Border>
-              <Border Grid.Column="1" Classes="card" Padding="18" CornerRadius="12">
-                <StackPanel Spacing="7">
-                  <TextBlock Text="JAR 冲突扫描" FontSize="16" FontWeight="SemiBold" />
-                  <TextBlock Text="重复类、资源覆盖、Mixin 目标重叠。" Classes="caption" TextWrapping="Wrap" />
-                  <Button Content="开始扫描" Command="{Binding ScanJarConflictsCommand}" Classes="accent" HorizontalAlignment="Left" />
+              <Border Grid.Column="1" Classes="card" Padding="14,10" CornerRadius="9">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding ConflictCount}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Warning}" />
+                  <TextBlock Text="版本 / JAR 冲突" Classes="caption" />
                 </StackPanel>
               </Border>
-              <Border Grid.Row="1" Classes="card" Padding="18" CornerRadius="12">
-                <StackPanel Spacing="7">
-                  <TextBlock Text="性能归因" FontSize="16" FontWeight="SemiBold" />
-                  <TextBlock Text="解析 spark/性能日志中的热点、TPS 和 MSPT。" Classes="caption" TextWrapping="Wrap" />
-                  <Button Content="分析性能" Command="{Binding AnalyzePerformanceCommand}" Classes="accent" HorizontalAlignment="Left" />
+              <Border Grid.Column="2" Classes="card" Padding="14,10" CornerRadius="9">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding ErrorCount}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Danger}" />
+                  <TextBlock Text="错误" Classes="caption" />
                 </StackPanel>
               </Border>
-              <Border Grid.Row="1" Grid.Column="1" Classes="card" Padding="18" CornerRadius="12">
-                <StackPanel Spacing="7">
-                  <TextBlock Text="二分诊断" FontSize="16" FontWeight="SemiBold" />
-                  <TextBlock Text="按依赖闭包分组，缩小问题模组范围。" Classes="caption" TextWrapping="Wrap" />
-                  <Button Content="打开二分" Command="{Binding OpenBisectionCommand}" Classes="accent" HorizontalAlignment="Left" />
+              <Border Grid.Column="3" Classes="card" Padding="14,10" CornerRadius="9">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding InfoCount}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" />
+                  <TextBlock Text="提示" Classes="caption" />
                 </StackPanel>
               </Border>
             </Grid>
-            <Border Classes="card" Padding="18" CornerRadius="12">
-              <StackPanel Spacing="7">
-                <TextBlock Text="数据包扫描" FontSize="16" FontWeight="SemiBold" />
-                <TextBlock Text="检查 recipes / loot_tables / quests 的 JSON 与重复 ID。" Classes="caption" TextWrapping="Wrap" />
-                <Button Content="扫描数据包" Command="{Binding ScanDataPacksCommand}" HorizontalAlignment="Left" />
-              </StackPanel>
-            </Border>
+            <TextBlock Text="日志与崩溃" Classes="section" Margin="0,4,0,0" />
+            <Grid ColumnDefinitions="1.2*,*" ColumnSpacing="10">
+              <Border Classes="card" Padding="16" CornerRadius="10">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="崩溃日志诊断" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="读取 crash-report / latest.log / hs_err，抽取事实、证据、修复步骤和来源。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="选择日志并诊断" Command="{Binding DiagnoseCrashCommand}" Classes="accent" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="10">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="JAR 冲突扫描" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="重复类、资源覆盖和 Mixin 目标重叠。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="开始扫描" Command="{Binding ScanJarConflictsCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <TextBlock Text="性能与定位" Classes="section" Margin="0,4,0,0" />
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+              <Border Classes="card" Padding="16" CornerRadius="10">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="性能归因" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="解析 spark / 性能日志中的 TPS、MSPT 和热点。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="分析性能" Command="{Binding AnalyzePerformanceCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="10">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="二分诊断" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="按依赖闭包分组，逐步缩小问题模组范围。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="打开二分" Command="{Binding OpenBisectionCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="2" Classes="card" Padding="16" CornerRadius="10">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="数据包扫描" FontSize="15" FontWeight="SemiBold" />
+                  <TextBlock Text="检查 recipes / loot_tables / quests 的 JSON 和重复 ID。" Classes="caption" TextWrapping="Wrap" />
+                  <Button Content="扫描数据包" Command="{Binding ScanDataPacksCommand}" HorizontalAlignment="Left" />
+                </StackPanel>
+              </Border>
+            </Grid>
+            <TextBlock Text="诊断只基于当前实例的日志和文件；没有匹配项时不会猜测。" Classes="caption" />
           </StackPanel>
         </ScrollViewer>
       </Border>
 
       <Border IsVisible="{Binding IsServerPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="14" Margin="24,22,24,24">
-            <Border Classes="card" Padding="18" CornerRadius="12">
-              <StackPanel Spacing="8">
-                <TextBlock Text="服务端工具" FontSize="16" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding CountSummary}" Classes="caption" />
-                <Button Content="打开服务端工具…" Command="{Binding OpenServerToolsCommand}" Classes="accent"
-                        FontSize="12" Padding="14,8" MinHeight="38" HorizontalAlignment="Left" />
-              </StackPanel>
-            </Border>
+          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="12" Margin="24,22,24,24">
+            <Grid ColumnDefinitions="1.35*,*" ColumnSpacing="12">
+              <Border Classes="card" Padding="18" CornerRadius="10">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="服务端包" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding CountSummary}" Classes="caption" />
+                  <TextBlock Text="从当前实例筛选服务端可用模组，复制 config / defaultconfigs / scripts，并生成启动脚本与 zip。" Classes="caption" TextWrapping="Wrap" />
+                  <WrapPanel Margin="0,4,0,0">
+                    <Button Content="打开服务端工具…" Command="{Binding OpenServerToolsCommand}" Classes="accent" FontSize="11" Padding="14,7" Margin="0,0,8,4" />
+                    <Button Content="重新扫描实例" Command="{Binding RescanCommand}" FontSize="11" Padding="12,7" Margin="0,0,8,4" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="card" Padding="18" CornerRadius="10">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="部署流程" Classes="section" />
+                  <TextBlock Text="1. 扫描当前实例，确认客户端/服务端侧分类" Classes="caption" TextWrapping="Wrap" />
+                  <TextBlock Text="2. 在服务端工具中取消客户端专用模组" Classes="caption" TextWrapping="Wrap" />
+                  <TextBlock Text="3. 选择是否复制配置，生成服务端目录" Classes="caption" TextWrapping="Wrap" />
+                  <TextBlock Text="4. 生成 start-server.bat 并打包 zip" Classes="caption" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding StatusText}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" MaxHeight="34" />
+                </StackPanel>
+              </Border>
+            </Grid>
           </StackPanel>
         </ScrollViewer>
       </Border>

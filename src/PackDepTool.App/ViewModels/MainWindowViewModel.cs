@@ -100,6 +100,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _packName = "未选择整合包";
     [ObservableProperty] private string _profileSummary = "等待扫描";
     public ObservableCollection<MinecraftInstanceInfo> Instances { get; } = [];
+    public ObservableCollection<MinecraftInstanceInfo> FilteredInstances { get; } = [];
+    public IReadOnlyList<string> InstanceLoaderFilters { get; } =
+        ["全部加载器", "NeoForge", "Forge", "Fabric", "Quilt", "原版 / 未知"];
+    [ObservableProperty] private string _instanceSearchText = string.Empty;
+    [ObservableProperty] private string _selectedInstanceLoaderFilter = "全部加载器";
     [ObservableProperty] private MinecraftInstanceInfo? _selectedInstance;
     [ObservableProperty] private bool _isLoadingInstances;
     [ObservableProperty] private string _instancesRootText = "尚未定位 versions 目录";
@@ -2988,6 +2993,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var result = await _services.InstanceCatalog.ScanAsync(versions);
             Instances.Clear();
             foreach (var instance in result.Instances) Instances.Add(instance);
+            ApplyInstanceFilter();
             InstancesRootText = result.VersionsDirectory ?? "尚未定位 versions 目录";
             SelectedInstance = Instances.FirstOrDefault(instance =>
                 string.Equals(instance.Path, _scanResult?.RootPath, StringComparison.OrdinalIgnoreCase));
@@ -3003,6 +3009,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             IsLoadingInstances = false;
         }
+    }
+
+    partial void OnInstanceSearchTextChanged(string value) => ApplyInstanceFilter();
+
+    partial void OnSelectedInstanceLoaderFilterChanged(string value) => ApplyInstanceFilter();
+
+    private void ApplyInstanceFilter()
+    {
+        var search = InstanceSearchText.Trim();
+        var loader = SelectedInstanceLoaderFilter;
+        FilteredInstances.Clear();
+        foreach (var instance in Instances.Where(instance =>
+                     (search.Length == 0 ||
+                      instance.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                      instance.MinecraftVersion.Contains(search, StringComparison.OrdinalIgnoreCase)) &&
+                     (loader == "全部加载器" || instance.LoaderLabel == loader)))
+            FilteredInstances.Add(instance);
     }
 
     [RelayCommand]
