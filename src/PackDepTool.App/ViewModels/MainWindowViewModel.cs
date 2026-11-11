@@ -3778,6 +3778,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var preview = string.Join(Environment.NewLine, queries.Take(20)
+            .Select((query, index) => $"{index + 1}. {query}"));
+        if (queries.Count > 20) preview += $"{Environment.NewLine}… 还有 {queries.Count - 20} 个";
+        if (!await _dialogs.ConfirmAsync(
+                $"确认导入 {queries.Count} 个模组",
+                $"将添加到当前实例的 mods 目录，并下载当前 MC/加载器兼容版本：{Environment.NewLine}{Environment.NewLine}{preview}",
+                "开始解析并下载", "返回修改"))
+            return;
+
         var queued = 0;
         var failed = new List<string>();
         StatusText = $"正在解析 {queries.Count} 个模组…";

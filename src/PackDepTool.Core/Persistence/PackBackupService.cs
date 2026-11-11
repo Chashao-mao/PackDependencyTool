@@ -179,6 +179,7 @@ public sealed class PackBackupService
             CreatedAt = DateTimeOffset.UtcNow,
             Files = entries,
         });
+        WriteModList(directory, operation, entries);
         return new PackBackupInfo
         {
             Id = id,
@@ -229,6 +230,7 @@ public sealed class PackBackupService
             CreatedAt = DateTimeOffset.UtcNow,
             Files = entries,
         });
+        WriteModList(directory, operation, entries);
         return new PackBackupInfo
         {
             Id = id,
@@ -364,6 +366,31 @@ public sealed class PackBackupService
     {
         if (System.IO.Directory.Exists(snapshot.Directory))
             System.IO.Directory.Delete(snapshot.Directory, recursive: true);
+    }
+
+    private static void WriteModList(
+        string directory,
+        string operation,
+        IReadOnlyCollection<PackBackupEntry> entries)
+    {
+        try
+        {
+            var lines = new List<string>
+            {
+                $"# {operation}",
+                $"# {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}",
+                "# 备份包含的模组 / 配置文件",
+                "# path\tsize",
+            };
+            lines.AddRange(entries.Select(entry =>
+                $"{entry.RelativePath}\t{entry.Length}" +
+                (entry.DeleteOnRestore ? "\t（撤销时删除）" : string.Empty)));
+            File.WriteAllLines(Path.Combine(directory, "mods.txt"), lines);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The snapshot itself remains valid even if the readable list cannot be written.
+        }
     }
 
     private static void WriteManifest(string directory, PackBackupManifest manifest)

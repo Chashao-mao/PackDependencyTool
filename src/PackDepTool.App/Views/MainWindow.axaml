@@ -819,8 +819,16 @@
                       ToolTip.Tip="收起右栏（可从顶部「面板」恢复）" />
             </Grid>
           </Border>
-          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                        HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Grid.Row="1" IsVisible="{Binding !HasSelection}"
+                      VerticalAlignment="Center" HorizontalAlignment="Center"
+                      Spacing="8" Margin="20">
+            <TextBlock Text="尚未选择模组" FontSize="15" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="从中间列表点选一个模组，这里会显示依赖、状态和操作。"
+                       Classes="caption" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="240" />
+          </StackPanel>
+          <ScrollViewer Grid.Row="1" IsVisible="{Binding HasSelection}"
+                        VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <TabControl>
           <TabItem Header="详情">
             <Grid RowDefinitions="*,Auto" Margin="10,8,10,8" RowSpacing="8">

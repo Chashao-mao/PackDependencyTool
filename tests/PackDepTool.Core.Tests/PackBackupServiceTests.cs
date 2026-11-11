@@ -21,6 +21,9 @@ public sealed class PackBackupServiceTests
             temp.Path, "测试禁用", [first, second]);
         Assert.NotNull(snapshot);
         Assert.Equal(2, snapshot!.FileCount);
+        var modList = Path.Combine(snapshot.Directory, "mods.txt");
+        Assert.True(File.Exists(modList));
+        Assert.Contains("first.jar", File.ReadAllText(modList));
 
         File.Move(first, first + ".disabled");
         File.Delete(second);

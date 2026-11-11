@@ -128,18 +128,14 @@ public sealed class MinecraftLaunchService
         if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured))
             return Path.GetFullPath(configured);
 
+        var candidates = new List<string>();
         var javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
         if (!string.IsNullOrWhiteSpace(javaHome))
-        {
-            var candidate = Path.Combine(javaHome, "bin", "java.exe");
-            if (File.Exists(candidate)) return candidate;
-        }
+            AddCandidate(candidates, Path.Combine(javaHome, "bin", "java.exe"));
 
         foreach (var runtime in SafeEnumerateDirectories(Path.Combine(gameRoot, "runtime")))
-        {
-            var candidate = SafeFindJava(runtime);
-            if (candidate is not null) return candidate;
-        }
+            foreach (var java in SafeEnumerateJava(runtime))
+                AddCandidate(candidates, java);
 
         foreach (var root in new[]
                  {
@@ -150,20 +146,65 @@ public sealed class MinecraftLaunchService
                  })
         {
             foreach (var directory in SafeEnumerateDirectories(root))
-            {
-                var candidate = Path.Combine(directory, "bin", "java.exe");
-                if (File.Exists(candidate)) return candidate;
-            }
+                AddCandidate(candidates, Path.Combine(directory, "bin", "java.exe"));
         }
 
         var pathVariable = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
         foreach (var entry in pathVariable.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            var candidate = Path.Combine(entry.Trim(), "java.exe");
-            if (File.Exists(candidate)) return candidate;
-        }
+            AddCandidate(candidates, Path.Combine(entry.Trim(), "java.exe"));
 
-        return null;
+        if (candidates.Count == 0) return null;
+        return candidates
+            .Select(path => (Path: path, Major: GetJavaMajor(path)))
+            .OrderByDescending(item => item.Major)
+            .ThenBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
+            .First().Path;
+    }
+
+    private static void AddCandidate(List<string> candidates, string path)
+    {
+        if (File.Exists(path) && !candidates.Contains(path, StringComparer.OrdinalIgnoreCase))
+            candidates.Add(path);
+    }
+
+    private static IEnumerable<string> SafeEnumerateJava(string directory)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(directory, "java.exe", SearchOption.AllDirectories)
+                .Take(8).ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static int GetJavaMajor(string javaPath)
+    {
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = javaPath,
+                Arguments = "-version",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
+            if (process is null) return 0;
+            var text = process.StandardError.ReadToEnd() + process.StandardOutput.ReadToEnd();
+            process.WaitForExit(2000);
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"version ""([0-9]+)(?:\.([0-9]+))?");
+            if (!match.Success) return 0;
+            var major = int.Parse(match.Groups[1].Value);
+            return major == 1 && int.TryParse(match.Groups[2].Value, out var legacy) ? legacy : major;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return 0;
+        }
     }
 
     private static IEnumerable<string> SafeEnumerateDirectories(string root)
