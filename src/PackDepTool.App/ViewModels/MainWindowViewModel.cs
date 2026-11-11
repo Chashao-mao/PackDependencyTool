@@ -105,6 +105,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _hasConfigBackup;
     [ObservableProperty] private bool _hasFileChanges;
     [ObservableProperty] private string _fileChangeText = string.Empty;
+    [ObservableProperty] private bool _isOverviewMode = true;
+
+    public bool IsWorkspaceMode => !IsOverviewMode;
     [ObservableProperty] private string _updateStatusText = string.Empty;
     [ObservableProperty] private bool _isCheckingUpdates;
     private string? _lastUpdateUrl;
@@ -2850,6 +2853,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RefreshView();
         StatusText = "已应用剪贴板中的视图状态。";
     }
+
+    [RelayCommand]
+    private void OpenOverview()
+    {
+        IsOverviewMode = true;
+    }
+
+    [RelayCommand]
+    private void EnterWorkspace()
+    {
+        IsOverviewMode = false;
+        if (IsGraphView) SelectedViewOption = ViewOption.All.First(option => option.Value == "list");
+    }
+
+    partial void OnIsOverviewModeChanged(bool value) =>
+        OnPropertyChanged(nameof(IsWorkspaceMode));
 
     [RelayCommand]
     private async Task OpenBisectionAsync()

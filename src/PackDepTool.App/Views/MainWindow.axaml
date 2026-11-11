@@ -47,6 +47,7 @@
               <Button.Flyout>
                 <MenuFlyout>
                   <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
+                  <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
                   <Separator />
                   <MenuItem Header="补全在线资料…" Command="{Binding EnrichCommand}" />
                   <MenuItem Header="下载缺失依赖…" Command="{Binding AutoCompleteDependenciesCommand}"
@@ -132,7 +133,8 @@
     </Border>
 
     <!-- ============================ Main content ============================ -->
-    <Grid Grid.Row="1" x:Name="MainContentGrid" Margin="10,10,10,6">
+    <Grid Grid.Row="1">
+      <Grid x:Name="MainContentGrid" IsVisible="{Binding !IsOverviewMode}" Margin="10,10,10,6">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="250" MinWidth="180" MaxWidth="360" />
         <ColumnDefinition Width="5" />
@@ -1171,6 +1173,119 @@
           </TabControl>
           </ScrollViewer>
         </Grid>
+      </Border>
+      </Grid>
+
+      <Border IsVisible="{Binding IsOverviewMode}" Margin="10,10,10,6"
+              Background="{DynamicResource AppBackground}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel MaxWidth="1040" HorizontalAlignment="Center" Spacing="18" Margin="24,28,24,24">
+            <StackPanel Spacing="6">
+              <TextBlock Text="开始使用" FontSize="28" FontWeight="SemiBold" />
+              <TextBlock Text="选择一个整合包，先做体检，再进入模组列表处理问题。"
+                         FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="1.15*,*" ColumnSpacing="14">
+              <Border Classes="card" Padding="20" CornerRadius="12">
+                <StackPanel Spacing="9">
+                  <TextBlock Text="① 打开整合包" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="选择包含 mods 文件夹的实例目录，或直接把文件夹拖进窗口。"
+                             FontSize="11" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+                  <Button Content="选择整合包…" Command="{Binding OpenInstancesCommand}"
+                          Classes="accent" FontSize="13" Padding="16,8" MinHeight="38"
+                          HorizontalAlignment="Left" Margin="0,4,0,0" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="card" Padding="20" CornerRadius="12">
+                <StackPanel Spacing="9">
+                  <TextBlock Text="最近使用" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="选择后会自动扫描当前实例。" FontSize="11"
+                             Foreground="{DynamicResource TextSecondary}" />
+                  <ComboBox ItemsSource="{Binding RecentPacks}"
+                            SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
+                            HorizontalAlignment="Stretch" Height="34" FontSize="11"
+                            PlaceholderText="选择最近整合包">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="x:String">
+                        <TextBlock Text="{Binding}" FontSize="10.5" TextTrimming="CharacterEllipsis" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBlock Text="{Binding PackPathDisplay}" FontSize="10"
+                             Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Border Classes="card" Padding="18" CornerRadius="12" IsVisible="{Binding HasGraph}">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="当前整合包" FontSize="13" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding ProfileSummary}" FontSize="15" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Accent}" />
+                  <TextBlock Text="{Binding CountSummary}" FontSize="11"
+                             Foreground="{DynamicResource TextSecondary}" />
+                  <TextBlock Text="{Binding StatusText}" FontSize="10.5"
+                             Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="进入模组列表 →" Command="{Binding EnterWorkspaceCommand}"
+                        Classes="accent" FontSize="12" Padding="14,7" MinHeight="36"
+                        VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+
+            <StackPanel Spacing="8">
+              <TextBlock Text="常用操作" FontSize="15" FontWeight="SemiBold" />
+              <WrapPanel>
+                <Button Content="一键体检" Command="{Binding OpenPackToolsCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="冲突扫描" Command="{Binding ScanJarConflictsCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="服务端工具" Command="{Binding OpenServerToolsCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+                <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                        FontSize="12" Padding="14,9" MinHeight="40" Margin="0,0,8,8" />
+              </WrapPanel>
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10" IsVisible="{Binding HasGraph}">
+              <Border Classes="card" Padding="14" CornerRadius="10">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="缺失依赖" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                  <TextBlock Text="{Binding MissingCount}" FontSize="24" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Danger}" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="card" Padding="14" CornerRadius="10">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                  <TextBlock Text="{Binding ConflictCount}" FontSize="24" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Warning}" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="2" Classes="card" Padding="14" CornerRadius="10">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="错误" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                  <TextBlock Text="{Binding ErrorCount}" FontSize="24" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Danger}" />
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="3" Classes="card" Padding="14" CornerRadius="10">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="提示" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                  <TextBlock Text="{Binding InfoCount}" FontSize="24" FontWeight="SemiBold"
+                             Foreground="{DynamicResource TextSecondary}" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <TextBlock Text="进入模组列表后，可继续使用筛选、依赖图、批量修复和版本锁定。"
+                       Classes="caption" HorizontalAlignment="Center" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
       </Border>
     </Grid>
 
