@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:services="using:PackDepTool.App.Services"
         x:Class="PackDepTool.App.Views.ModListImportDialog"
         Title="导入模组列表"
         Width="720"
@@ -30,7 +31,27 @@
             <TextBlock Text="解析预览" Classes="section" />
             <TextBlock x:Name="CountText" Text="0 条" Classes="caption" />
           </StackPanel>
-          <ListBox Grid.Row="1" x:Name="PreviewList" Background="Transparent" FontSize="10.5" />
+          <ListBox Grid.Row="1" x:Name="PreviewList" Background="Transparent" FontSize="10.5">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="services:ModImportQuery">
+                <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                        BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,2">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Border Classes="chip" Padding="6,1" VerticalAlignment="Top">
+                      <TextBlock Text="{Binding Platform}" FontSize="9" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="{Binding Value}" FontSize="11" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Raw}" FontSize="9" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource TextMuted}" MaxHeight="46"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
         </Grid>
       </Border>
     </Grid>
@@ -38,6 +59,7 @@
       <TextBlock Text="会解析为当前实例兼容版本，并加入下载队列。"
                  Classes="caption" VerticalAlignment="Center" />
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="格式示例" Click="OnFormatHelpClick" />
         <Button Content="选择文件…" Click="OnPickFileClick" />
         <Button Content="取消" Click="OnCancelClick" />
         <Button Content="导入并下载" Classes="accent" Click="OnImportClick" />

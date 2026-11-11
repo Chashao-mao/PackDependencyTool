@@ -246,6 +246,12 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<HealthWizardAction>(Owner);
     }
 
+    public async Task<List<ModInstallCandidate>?> ShowInstallListAsync(InstallListViewModel viewModel)
+    {
+        if (Owner is null) return null;
+        return await InstallListDialog.ShowAsync(Owner, viewModel);
+    }
+
     public async Task<string?> ShowModListImportAsync()
     {
         if (Owner is null) return null;

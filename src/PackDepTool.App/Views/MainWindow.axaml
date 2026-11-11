@@ -1456,46 +1456,54 @@
               </WrapPanel>
             </StackPanel>
 
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10" IsVisible="{Binding HasGraph}">
-              <Border Classes="card" Padding="14" CornerRadius="10">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="缺失依赖" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                  <TextBlock Text="{Binding MissingCount}" FontSize="24" FontWeight="SemiBold"
-                             Foreground="{DynamicResource Danger}" />
-                  <Button Content="处理 →" Command="{Binding OpenMissingIssuesCommand}"
-                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
-                </StackPanel>
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8" IsVisible="{Binding HasGraph}">
+              <Border Classes="card" Padding="12,8" CornerRadius="8">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <TextBlock Text="{Binding MissingCount}" FontSize="21" FontWeight="SemiBold"
+                             VerticalAlignment="Center" Foreground="{DynamicResource Danger}" />
+                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="缺失依赖" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                    <Button Content="处理 →" Command="{Binding OpenMissingIssuesCommand}"
+                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                  </StackPanel>
+                </Grid>
               </Border>
-              <Border Grid.Column="1" Classes="card" Padding="14" CornerRadius="10">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                  <TextBlock Text="{Binding ConflictCount}" FontSize="24" FontWeight="SemiBold"
-                             Foreground="{DynamicResource Warning}" />
-                  <Button Content="查看 →" Command="{Binding OpenConflictIssuesCommand}"
-                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
-                </StackPanel>
+              <Border Grid.Column="1" Classes="card" Padding="12,8" CornerRadius="8">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <TextBlock Text="{Binding ConflictCount}" FontSize="21" FontWeight="SemiBold"
+                             VerticalAlignment="Center" Foreground="{DynamicResource Warning}" />
+                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="冲突" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                    <Button Content="查看 →" Command="{Binding OpenConflictIssuesCommand}"
+                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                  </StackPanel>
+                </Grid>
               </Border>
-              <Border Grid.Column="2" Classes="card" Padding="14" CornerRadius="10">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="错误" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                  <TextBlock Text="{Binding ErrorCount}" FontSize="24" FontWeight="SemiBold"
-                             Foreground="{DynamicResource Danger}" />
-                  <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
-                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
-                </StackPanel>
+              <Border Grid.Column="2" Classes="card" Padding="12,8" CornerRadius="8">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <TextBlock Text="{Binding ErrorCount}" FontSize="21" FontWeight="SemiBold"
+                             VerticalAlignment="Center" Foreground="{DynamicResource Danger}" />
+                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="错误" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
+                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                  </StackPanel>
+                </Grid>
               </Border>
-              <Border Grid.Column="3" Classes="card" Padding="14" CornerRadius="10">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="提示" FontSize="10" Foreground="{DynamicResource TextMuted}" />
-                  <TextBlock Text="{Binding InfoCount}" FontSize="24" FontWeight="SemiBold"
-                             Foreground="{DynamicResource TextSecondary}" />
-                  <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
-                          FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="22" />
-                </StackPanel>
+              <Border Grid.Column="3" Classes="card" Padding="12,8" CornerRadius="8">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <TextBlock Text="{Binding InfoCount}" FontSize="21" FontWeight="SemiBold"
+                             VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}" />
+                  <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                    <TextBlock Text="提示" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+                    <Button Content="查看 →" Command="{Binding OpenAllIssuesCommand}"
+                            FontSize="9.5" Padding="0" HorizontalAlignment="Left" MinHeight="18" />
+                  </StackPanel>
+                </Grid>
               </Border>
             </Grid>
 
-            <TextBlock Text="进入模组列表后，可继续使用筛选、依赖图、批量修复和版本锁定。"
+            <TextBlock Text="进入模组列表后，可继续使用筛选、依赖图、批量修复和历史对比。"
                        Classes="caption" HorizontalAlignment="Center" TextWrapping="Wrap" />
           </StackPanel>
         </ScrollViewer>

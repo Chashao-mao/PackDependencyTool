@@ -19,15 +19,8 @@ public partial class ModListImportDialog : Window
     private void UpdatePreview()
     {
         if (PreviewList is null || CountText is null) return;
-        var entries = (InputBox.Text ?? string.Empty)
-            .Replace("\r\n", "\n")
-            .Split('\n')
-            .Select(line => line.Trim())
-            .Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Select(line => line.Split([',', ';'], StringSplitOptions.TrimEntries)[0])
-            .Where(line => line.Length > 0)
-            .ToList();
-        CountText.Text = $"{entries.Count} 条";
+        var entries = ModImportParser.ParseLines(InputBox.Text ?? string.Empty);
+        CountText.Text = $"{entries.Count} 条 · 确认后解析项目";
         PreviewList.ItemsSource = entries;
     }
 
@@ -53,6 +46,17 @@ public partial class ModListImportDialog : Window
                text.Equals("slug", StringComparison.OrdinalIgnoreCase) ||
                text.Equals("模组", StringComparison.Ordinal) ||
                text.Equals("名称", StringComparison.Ordinal);
+    }
+
+    private async void OnFormatHelpClick(object? sender, RoutedEventArgs e)
+    {
+        await MessageDialog.ShowAsync(this, "导入格式示例",
+            "文本（txt/md）：每行一个，可直接写 slug、名称或 URL\n" +
+            "jei\nmodrinth:sodium\nhttps://modrinth.com/mod/iris\n\n" +
+            "CSV / TSV：读第一列，可带表头\n" +
+            "name\njei\nsodium\n\n" +
+            "XLSX：读第一个工作表的第一列，表头 name/mod/modid/slug/模组/名称 会自动跳过。\n" +
+            "# 开头是注释；支持 Modrinth 和 CurseForge 项目 URL。");
     }
 
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(null);

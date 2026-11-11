@@ -3816,13 +3816,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var text = await _dialogs.ShowModListImportAsync();
         if (string.IsNullOrWhiteSpace(text)) return;
 
-        var queries = text.Replace("\r\n", "\n").Split('\n')
-            .Select(line => line.Trim())
-            .Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Select(line => line.Split([',', ';'], StringSplitOptions.TrimEntries)[0])
-            .Select(NormalizeModImportQuery)
-            .Where(line => line.Length > 0 && !line.Equals("name", StringComparison.OrdinalIgnoreCase) &&
-                           !line.Equals("mod", StringComparison.OrdinalIgnoreCase))
+        var queries = ModImportParser.ParseLines(text)
+            .Select(query => query.Value)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Take(100)
             .ToList();
@@ -3832,33 +3827,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var preview = string.Join(Environment.NewLine, queries.Take(20)
-            .Select((query, index) => $"{index + 1}. {query}"));
-        if (queries.Count > 20) preview += $"{Environment.NewLine}… 还有 {queries.Count - 20} 个";
-        if (!await _dialogs.ConfirmAsync(
-                $"确认导入 {queries.Count} 个模组",
-                $"将添加到当前实例的 mods 目录，并下载当前 MC/加载器兼容版本：{Environment.NewLine}{Environment.NewLine}{preview}",
-                "开始解析并下载", "返回修改"))
-            return;
-
-        var queued = 0;
-        var failed = new List<string>();
-        StatusText = $"正在解析 {queries.Count} 个模组…";
-        foreach (var query in queries)
+        async Task<ModInstallCandidate> ResolveAsync(string raw)
         {
-            var clean = query.StartsWith("modrinth:", StringComparison.OrdinalIgnoreCase)
-                ? query[9..]
-                : query.StartsWith("curseforge:", StringComparison.OrdinalIgnoreCase)
-                    ? query[11..]
-                    : query;
-            var node = new ModNode { Id = clean.Trim(), Name = clean.Trim(), Loader = _scanResult.Profile.Loader };
+            var parsed = ModImportParser.Parse(raw);
+            var candidate = new ModInstallCandidate(parsed.Value)
+            {
+                Platform = parsed.Platform,
+            };
+            var node = new ModNode
+            {
+                Id = parsed.Value,
+                Name = parsed.Value,
+                Loader = _scanResult.Profile.Loader,
+            };
             var project = await _services.Resolver.ResolveAsync(node);
             if (project is null)
             {
-                failed.Add($"{clean}（未找到精确项目；可写 slug、项目 URL 或配置 CurseForge API Key）");
-                continue;
+                candidate.StatusText = "未找到精确项目；可写 slug、项目 URL 或配置 CurseForge API Key";
+                candidate.CanDownload = false;
+                return candidate;
             }
 
+            candidate.Project = project;
+            candidate.DisplayName = project.Name;
+            candidate.Platform = project.Source == DownloadSource.CurseForge ? "CurseForge" : "Modrinth";
             var versions = await _services.Downloader.GetVersionsAsync(
                 project, _scanResult.Profile.McVersion, _scanResult.Profile.Loader);
             var version = versions.FirstOrDefault(item => item.IsCompatible);
@@ -3867,31 +3859,59 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 var available = versions
                     .SelectMany(item => item.GameVersions.Select(game => $"{game}/{string.Join("/", item.Loaders)}"))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Take(4)
+                    .Take(3)
                     .ToList();
-                failed.Add(available.Count == 0
-                    ? $"{clean}（项目没有可用文件）"
-                    : $"{clean}（无兼容版本；该项目有 {string.Join("、", available)}）");
-                continue;
+                candidate.StatusText = available.Count == 0
+                    ? "项目没有可用文件"
+                    : $"无兼容版本；项目有 {string.Join("、", available)}";
+                candidate.CanDownload = false;
+                return candidate;
             }
 
+            candidate.Version = version;
+            candidate.VersionText = version.VersionNumber;
+            candidate.StatusText = "可下载";
+            candidate.CanDownload = true;
+            return candidate;
+        }
+
+        StatusText = $"正在解析 {queries.Count} 个模组…";
+        var candidates = new List<ModInstallCandidate>();
+        foreach (var query in queries)
+            candidates.Add(await ResolveAsync(query));
+
+        var viewModel = new InstallListViewModel(candidates, ResolveAsync);
+        var selected = await _dialogs.ShowInstallListAsync(viewModel);
+        if (selected is null || selected.Count == 0)
+        {
+            StatusText = "未选择要下载的模组。";
+            return;
+        }
+
+        var queued = 0;
+        var failed = new List<string>();
+        foreach (var candidate in selected)
+        {
+            if (candidate.Version is null) continue;
             try
             {
-                var request = await _services.Downloader.CreateFileRequestAsync(version, _scanResult.ModsDirectory);
-                _services.DownloadQueue.Enqueue(request, version.ProjectName, version.VersionNumber);
+                var request = await _services.Downloader.CreateFileRequestAsync(
+                    candidate.Version, _scanResult.ModsDirectory);
+                _services.DownloadQueue.Enqueue(
+                    request, candidate.Version.ProjectName, candidate.Version.VersionNumber);
                 queued++;
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException)
             {
-                failed.Add($"{clean}（{ex.Message}）");
+                failed.Add($"{candidate.DisplayName}（{ex.Message}）");
             }
         }
 
-        StatusText = $"已加入下载队列 {queued} 个" +
-                     (failed.Count > 0 ? $"，{failed.Count} 个未解析" : string.Empty);
+        StatusText = $"安装列表已加入下载队列 {queued} 个" +
+                     (failed.Count > 0 ? $"，{failed.Count} 个失败" : string.Empty);
         if (failed.Count > 0)
             await _dialogs.ShowMessageAsync("导入模组列表",
-                $"已加入 {queued} 个。\n\n未解析：\n{string.Join("\n", failed.Take(15))}");
+                string.Join(Environment.NewLine, failed.Take(15)));
     }
 
     [RelayCommand]

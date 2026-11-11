@@ -103,11 +103,7 @@ public sealed class MinecraftLaunchService
             Session = MSession.CreateOfflineSession(offlineUsername),
             MaximumRamMb = Math.Clamp(maximumRamMb, 512, 65536),
             JavaPath = java,
-            ExtraGameArguments =
-            [
-                new MArgument(["--gameDir", instanceRoot]),
-                new MArgument(["--lang", "zh_cn"]),
-            ],
+            ExtraGameArguments = [new MArgument(["--lang", "zh_cn"])],
         };
         var process = await launcher.BuildProcessAsync(versionName, option)
             .AsTask()

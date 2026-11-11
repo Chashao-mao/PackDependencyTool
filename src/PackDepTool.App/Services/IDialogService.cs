@@ -31,6 +31,7 @@ public interface IDialogService
     Task ShowCommandPaletteAsync(IReadOnlyList<CommandPaletteItem> items);
     Task ShowLogTailAsync(string logPath);
     Task<string?> ShowModListImportAsync();
+    Task<List<ModInstallCandidate>?> ShowInstallListAsync(InstallListViewModel viewModel);
     Task<HealthWizardAction> ShowHealthWizardAsync(PackAuditReport report);
     Task<string?> ReadClipboardTextAsync();
     Task WriteClipboardTextAsync(string text);

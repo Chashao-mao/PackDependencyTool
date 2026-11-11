@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.InstallListDialog"
+        x:DataType="vm:InstallListViewModel"
+        Title="安装列表"
+        Width="760"
+        Height="620"
+        MinWidth="620"
+        MinHeight="440"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <StackPanel Spacing="3">
+        <TextBlock Text="安装列表" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding StatusText}" Classes="caption" />
+      </StackPanel>
+      <Button Grid.Column="1" Content="新增一行…" Click="OnAddClick" VerticalAlignment="Center" />
+    </Grid>
+
+    <Border Grid.Row="1" Classes="card" Padding="8">
+      <ListBox ItemsSource="{Binding Items}" Background="Transparent">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:ModInstallCandidate">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="2,4">
+              <CheckBox IsChecked="{Binding Include, Mode=TwoWay}"
+                        IsEnabled="{Binding CanDownload}" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis" />
+                  <Border Classes="chip" Padding="5,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Platform}" FontSize="9" />
+                  </Border>
+                </StackPanel>
+                <TextBlock Text="{Binding Query}" FontSize="9.5"
+                           Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding StatusText}" FontSize="9.5"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding VersionText}" FontSize="10.5"
+                         VerticalAlignment="Center" HorizontalAlignment="Right"
+                         Foreground="{DynamicResource TextSecondary}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+      <TextBlock Text="取消勾选可排除；未解析项默认不可下载。" Classes="caption"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="取消" Click="OnCancelClick" />
+        <Button Content="开始下载" Classes="accent" Click="OnDownloadClick" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
