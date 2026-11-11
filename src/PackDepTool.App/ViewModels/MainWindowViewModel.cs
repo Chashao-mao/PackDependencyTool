@@ -2555,6 +2555,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task OpenBackupCenterAsync()
+    {
+        if (_scanResult is null) return;
+        var result = await _dialogs.ShowBackupCenterAsync(_scanResult.RootPath);
+        if (result?.NeedsRescan == true)
+            await ScanAsync();
+        else
+            RefreshBackupState();
+    }
+
+    [RelayCommand]
     private async Task UndoLastBackupAsync()
     {
         if (_scanResult is null) return;

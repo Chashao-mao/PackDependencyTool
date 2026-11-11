@@ -23,6 +23,8 @@ public interface IDialogService
     Task<GameInstallResult?> ShowLoaderSwitchAsync(LoaderSwitchContext context);
     Task<InstanceManagerResult?> ShowInstanceManagerAsync(
         IReadOnlyList<string> versionsDirectories, string? lastVersionsDirectory);
+
+    Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot);
     Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates);
 

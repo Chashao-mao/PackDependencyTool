@@ -55,6 +55,40 @@ public sealed class PackBackupServiceTests
     }
 
     [Fact]
+    public void DiffReportsDisabledModifiedAndMissingFiles()
+    {
+        using var temp = new TempDir();
+        var mods = Path.Combine(temp.Path, "mods");
+        Directory.CreateDirectory(mods);
+        var disabled = Path.Combine(mods, "disabled.jar");
+        var modified = Path.Combine(mods, "modified.jar");
+        var missing = Path.Combine(mods, "missing.jar");
+        File.WriteAllText(disabled, "same");
+        File.WriteAllText(modified, "before");
+        File.WriteAllText(missing, "same");
+
+        var service = new PackBackupService();
+        var snapshot = service.CreateRepairSnapshot(
+            temp.Path, "差异测试", [disabled, modified, missing])!;
+
+        File.Move(disabled, disabled + ".disabled");
+        File.WriteAllText(modified, "after");
+        File.Delete(missing);
+
+        var diff = service.Diff(temp.Path, snapshot);
+        Assert.Equal(3, diff.ChangedCount);
+        Assert.Contains(diff.Entries,
+            entry => entry.RelativePath.EndsWith("disabled.jar") &&
+                     entry.State == PackBackupDiffState.Disabled);
+        Assert.Contains(diff.Entries,
+            entry => entry.RelativePath.EndsWith("modified.jar") &&
+                     entry.State == PackBackupDiffState.Modified);
+        Assert.Contains(diff.Entries,
+            entry => entry.RelativePath.EndsWith("missing.jar") &&
+                     entry.State == PackBackupDiffState.Missing);
+    }
+
+    [Fact]
     public void ConfigSnapshotCanBeRestored()
     {
         using var temp = new TempDir();

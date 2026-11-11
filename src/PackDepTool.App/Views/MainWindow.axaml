@@ -453,6 +453,9 @@
                 <Button Content="撤销修复" Command="{Binding UndoLastBackupCommand}"
                         IsEnabled="{Binding HasBackup}" FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="{Binding BackupSummary}" />
+                <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                        FontSize="10.5" Padding="9,3" MinHeight="28"
+                        ToolTip.Tip="查看修复/配置快照和文件差异" />
               </StackPanel>
             </Grid>
           </Border>

@@ -177,6 +177,19 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<InstanceManagerResult?>(Owner);
     }
 
+    public async Task<BackupCenterResult?> ShowBackupCenterAsync(string packRoot)
+    {
+        if (Owner is null) return null;
+
+        BackupCenterDialog? dialog = null;
+        var viewModel = new BackupCenterViewModel(
+            new PackBackupService(),
+            packRoot,
+            (title, message) => MessageDialog.ShowAsync(dialog!, title, message, "继续", "取消"));
+        dialog = new BackupCenterDialog { DataContext = viewModel };
+        return await dialog.ShowDialog<BackupCenterResult?>(Owner);
+    }
+
     public async Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(
         IReadOnlyList<PclGameDirectoryCandidate> candidates)
     {

@@ -1,4 +1,5 @@
 using PackDepTool.Core.Models;
+using System.Security.Cryptography;
 
 namespace PackDepTool.Core.Persistence;
 
@@ -21,6 +22,46 @@ public sealed class PackBackupRestoreResult
     public int RestoredFiles { get; init; }
     public int MissingFiles { get; init; }
     public IReadOnlyList<string> Warnings { get; init; } = [];
+}
+
+public enum PackBackupDiffState
+{
+    Unchanged,
+    Modified,
+    Disabled,
+    Missing,
+    Added,
+}
+
+public sealed class PackBackupDiffEntry
+{
+    public string RelativePath { get; init; } = string.Empty;
+    public PackBackupDiffState State { get; init; }
+    public string CurrentPath { get; init; } = string.Empty;
+
+    public string StateText => State switch
+    {
+        PackBackupDiffState.Unchanged => "未变化",
+        PackBackupDiffState.Modified => "已修改",
+        PackBackupDiffState.Disabled => "已禁用",
+        PackBackupDiffState.Missing => "已删除",
+        PackBackupDiffState.Added => "操作新增",
+        _ => "未知",
+    };
+}
+
+public sealed class PackBackupDiffResult
+{
+    public string SnapshotId { get; init; } = string.Empty;
+    public List<PackBackupDiffEntry> Entries { get; } = [];
+    public int ChangedCount => Entries.Count(entry =>
+        entry.State is not PackBackupDiffState.Unchanged);
+    public string Summary => ChangedCount == 0
+        ? "当前文件与快照一致"
+        : $"与快照相比：修改 {Entries.Count(e => e.State == PackBackupDiffState.Modified)} · " +
+          $"禁用 {Entries.Count(e => e.State == PackBackupDiffState.Disabled)} · " +
+          $"删除 {Entries.Count(e => e.State == PackBackupDiffState.Missing)} · " +
+          $"新增 {Entries.Count(e => e.State == PackBackupDiffState.Added)}";
 }
 
 /// <summary>
@@ -117,6 +158,7 @@ public sealed class PackBackupService
             {
                 RelativePath = relative,
                 Length = new FileInfo(file).Length,
+                Sha256 = HashFile(file),
             });
         }
 
@@ -175,6 +217,7 @@ public sealed class PackBackupService
             {
                 RelativePath = relative,
                 Length = new FileInfo(file).Length,
+                Sha256 = HashFile(file),
             });
         }
 
@@ -195,6 +238,59 @@ public sealed class PackBackupService
             FileCount = entries.Count,
             Directory = directory,
         };
+    }
+
+    public PackBackupDiffResult Diff(string packRoot, PackBackupInfo snapshot)
+    {
+        var root = Path.GetFullPath(packRoot);
+        var manifestPath = Path.Combine(snapshot.Directory, ManifestName);
+        var manifest = File.Exists(manifestPath)
+            ? JsonDefaults.Deserialize<PackBackupManifest>(File.ReadAllText(manifestPath))
+            : null;
+        if (manifest is null)
+            throw new InvalidOperationException("备份清单不存在或已损坏。");
+
+        var result = new PackBackupDiffResult { SnapshotId = snapshot.Id };
+        foreach (var entry in manifest.Files)
+        {
+            var current = Path.GetFullPath(Path.Combine(
+                root, entry.RelativePath.Replace('/', Path.DirectorySeparatorChar)));
+            if (!IsUnder(root, current)) continue;
+
+            var disabled = current + ".disabled";
+            PackBackupDiffState state;
+            if (entry.DeleteOnRestore)
+            {
+                state = File.Exists(current)
+                    ? PackBackupDiffState.Added
+                    : PackBackupDiffState.Unchanged;
+            }
+            else if (File.Exists(current))
+            {
+                var currentHash = HashFile(current);
+                state = string.IsNullOrWhiteSpace(entry.Sha256) ||
+                        string.Equals(entry.Sha256, currentHash, StringComparison.OrdinalIgnoreCase)
+                    ? PackBackupDiffState.Unchanged
+                    : PackBackupDiffState.Modified;
+            }
+            else if (File.Exists(disabled))
+            {
+                state = PackBackupDiffState.Disabled;
+            }
+            else
+            {
+                state = PackBackupDiffState.Missing;
+            }
+
+            result.Entries.Add(new PackBackupDiffEntry
+            {
+                RelativePath = entry.RelativePath,
+                State = state,
+                CurrentPath = File.Exists(disabled) ? disabled : current,
+            });
+        }
+
+        return result;
     }
 
     public PackBackupRestoreResult Restore(string packRoot, PackBackupInfo snapshot)
@@ -283,6 +379,12 @@ public sealed class PackBackupService
         return path.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static string HashFile(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream));
+    }
+
     private static string SafeName(string name)
     {
         var invalid = Path.GetInvalidFileNameChars();
@@ -303,6 +405,7 @@ public sealed class PackBackupService
     {
         public string RelativePath { get; set; } = string.Empty;
         public long Length { get; set; }
+        public string? Sha256 { get; set; }
         public bool DeleteOnRestore { get; set; }
     }
 }
