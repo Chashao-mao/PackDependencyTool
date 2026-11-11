@@ -232,6 +232,39 @@ public sealed class ScannerAndGraphTests
     }
 
     [Fact]
+    public void SelectsProviderMatchingDependencyVersion()
+    {
+        var scan = new ScanResult
+        {
+            RootPath = "C:/pack",
+            ModsDirectory = "C:/pack/mods",
+            Profile = new PackProfile { McVersion = "1.21.1", Loader = LoaderKind.NeoForge },
+        };
+        scan.Jars.Add(Jar("mods/old-provider.jar", new ParsedMod
+        {
+            ModId = "old-provider", Name = "Old Provider", Version = "1.0",
+            Loader = LoaderKind.NeoForge, Provides = ["api"],
+        }));
+        scan.Jars.Add(Jar("mods/new-provider.jar", new ParsedMod
+        {
+            ModId = "new-provider", Name = "New Provider", Version = "2.0",
+            Loader = LoaderKind.NeoForge, Provides = ["api"],
+        }));
+        scan.Jars.Add(Jar("mods/consumer.jar", new ParsedMod
+        {
+            ModId = "consumer", Name = "Consumer", Version = "1.0", Loader = LoaderKind.NeoForge,
+            Dependencies = [new ParsedDependency { ModId = "api", Type = EdgeType.Requires, VersionRange = "[2.0,)" }],
+        }));
+
+        var result = new DependencyGraphBuilder().Build(scan);
+        var edge = result.Graph.Edges.Single(item => item.From == "consumer");
+        Assert.Equal("new-provider", edge.To);
+        Assert.Contains(result.Issues, issue => issue.Kind == IssueKind.ParseWarning &&
+                                               issue.Title.Contains("多个模组提供"));
+        Assert.DoesNotContain(result.Issues, issue => issue.Kind == IssueKind.MissingDependency);
+    }
+
+    [Fact]
     public void DetectsCyclesAndDeduplicatesThem()
     {
         var graph = new GraphDocument

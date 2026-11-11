@@ -55,7 +55,7 @@ public sealed class DependencyGraphBuilder
 
         var issues = new List<AnalysisIssue>();
         var nodes = new Dictionary<string, ModNode>(StringComparer.OrdinalIgnoreCase);
-        var provides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var provides = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         var edgeKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var parentByJar = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -117,8 +117,10 @@ public sealed class DependencyGraphBuilder
 
                 foreach (var provided in node.Provides)
                 {
-                    if (!provides.ContainsKey(provided))
-                        provides[provided] = id;
+                    if (!provides.TryGetValue(provided, out var providerIds))
+                        provides[provided] = providerIds = [];
+                    if (!providerIds.Contains(id, StringComparer.OrdinalIgnoreCase))
+                        providerIds.Add(id);
                 }
 
                 parentByJar.TryAdd(jar.FilePath, []);
@@ -158,8 +160,31 @@ public sealed class DependencyGraphBuilder
                     }
 
                     var targetId = rawTarget;
-                    if (_options.ResolveProvides && !nodes.ContainsKey(targetId) && provides.TryGetValue(targetId, out var provider))
-                        targetId = provider;
+                    if (_options.ResolveProvides && !nodes.ContainsKey(targetId) &&
+                        provides.TryGetValue(targetId, out var providerIds))
+                    {
+                        var candidates = providerIds.Where(nodes.ContainsKey).ToList();
+                        var provider = candidates.FirstOrDefault(candidate =>
+                                           VersionRange.Satisfies(dependency.VersionRange, nodes[candidate].Version) == true) ??
+                                       candidates.FirstOrDefault();
+                        if (provider is not null)
+                        {
+                            targetId = provider;
+                            if (candidates.Count > 1)
+                            {
+                                issues.Add(new AnalysisIssue
+                                {
+                                    Severity = IssueSeverity.Warning,
+                                    Kind = IssueKind.ParseWarning,
+                                    Title = "多个模组提供同一依赖",
+                                    Message = $"依赖 {rawTarget} 有多个已安装提供者（{string.Join(", ", candidates)}），" +
+                                              $"已选择 {provider}。",
+                                    NodeId = provider,
+                                    RelatedNodeId = fromId,
+                                });
+                            }
+                        }
+                    }
 
                     if (dependency.Type == EdgeType.Incompatible && !nodes.ContainsKey(targetId))
                         continue; // Nothing installed to conflict with.
@@ -462,7 +487,7 @@ public sealed class DependencyGraphBuilder
     private static void ApplyAliases(
         LocalRuleSet rules,
         IReadOnlyDictionary<string, ModNode> nodes,
-        Dictionary<string, string> provides)
+        Dictionary<string, List<string>> provides)
     {
         foreach (var rule in rules.Rules.Where(rule => rule.Type == LocalRuleType.ProvideAlias))
         {
@@ -471,9 +496,13 @@ public sealed class DependencyGraphBuilder
             if (alias.Length == 0 || providerId.Length == 0) continue;
             if (string.Equals(alias, providerId, StringComparison.OrdinalIgnoreCase)) continue;
             if (!nodes.TryGetValue(providerId, out var provider)) continue;
-            if (provides.ContainsKey(alias)) continue;
+            if (provides.TryGetValue(alias, out var aliases) &&
+                aliases.Contains(providerId, StringComparer.OrdinalIgnoreCase))
+                continue;
 
-            provides[alias] = providerId;
+            if (!provides.TryGetValue(alias, out var aliasProviders))
+                provides[alias] = aliasProviders = [];
+            aliasProviders.Add(providerId);
             if (!provider.Provides.Contains(alias, StringComparer.OrdinalIgnoreCase))
                 provider.Provides.Add(alias);
         }
