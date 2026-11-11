@@ -450,6 +450,9 @@
                 <Button Content="诊断" Command="{Binding DiagnoseCrashCommand}"
                         FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="分析最新崩溃报告 / latest.log，提取异常链和线索" />
+                <Button Content="冲突扫描" Command="{Binding ScanJarConflictsCommand}"
+                        FontSize="10.5" Padding="9,3" MinHeight="28"
+                        ToolTip.Tip="扫描重复类、资源覆盖和 Mixin 目标重叠" />
                 <Button Content="禁用管理" Command="{Binding OpenDisabledModsCommand}"
                         FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="管理已禁用的 .jar.disabled，可批量启用或永久删除" />

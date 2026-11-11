@@ -219,10 +219,13 @@ public static class PackListExporter
         return ordered;
     }
 
-    private static string Escape(string value) =>
-        value.Replace("|", "\\|", StringComparison.Ordinal)
+    private static string Escape(string? value)
+    {
+        value ??= string.Empty;
+        return value.Replace("|", "\\|", StringComparison.Ordinal)
             .Replace("\r", " ", StringComparison.Ordinal)
             .Replace("\n", " ", StringComparison.Ordinal);
+    }
 
     private static string DependencyText(IReadOnlyList<DependencyEdge> edges)
     {

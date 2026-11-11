@@ -2580,6 +2580,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ScanJarConflictsAsync()
+    {
+        if (_scanResult is null) return;
+        StatusText = "正在扫描 JAR 内容冲突…";
+        try
+        {
+            var report = await new JarContentConflictAnalyzer().AnalyzeAsync(_scanResult);
+            StatusText = report.Findings.Count == 0
+                ? "内容冲突扫描完成：没有发现问题。"
+                : $"内容冲突扫描完成：{report.Findings.Count} 条线索。";
+            await _dialogs.ShowDiagnosticReportAsync(report);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "已取消内容冲突扫描。";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"内容冲突扫描失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task DiagnoseCrashAsync()
     {
         if (_scanResult is null) return;
