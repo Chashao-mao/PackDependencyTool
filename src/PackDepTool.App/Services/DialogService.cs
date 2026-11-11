@@ -229,6 +229,14 @@ public sealed class DialogService : IDialogService
         await dialog.ShowDialog(Owner);
     }
 
+    public async Task ShowLogTailAsync(string logPath)
+    {
+        if (Owner is null) return;
+        var viewModel = new LogTailViewModel(logPath);
+        var dialog = new LogTailDialog { DataContext = viewModel };
+        await dialog.ShowDialog(Owner);
+    }
+
     public async Task<string?> ReadClipboardTextAsync()
     {
         if (Owner?.Clipboard is null) return null;

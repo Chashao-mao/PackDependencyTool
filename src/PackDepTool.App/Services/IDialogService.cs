@@ -29,6 +29,7 @@ public interface IDialogService
     Task ShowServerToolsAsync(string packRoot, GraphDocument graph);
     Task ShowBisectionAsync(GraphDocument graph);
     Task ShowCommandPaletteAsync(IReadOnlyList<CommandPaletteItem> items);
+    Task ShowLogTailAsync(string logPath);
     Task<string?> ReadClipboardTextAsync();
     Task WriteClipboardTextAsync(string text);
     Task<PclGameDirectoryCandidate?> ShowPclDirectoryPickerAsync(

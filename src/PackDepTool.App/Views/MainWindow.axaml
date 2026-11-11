@@ -56,7 +56,8 @@
         <StackPanel Grid.Row="2" Spacing="5">
           <TextBlock Text="{Binding PackPathDisplay}" FontSize="9" TextWrapping="Wrap"
                      Foreground="{DynamicResource TextMuted}" MaxHeight="45" />
-          <Button Content="设置" Command="{Binding OpenSettingsCommand}" FontSize="10" Padding="8,3" />
+          <Button Content="⚙ 设置" Command="{Binding OpenSettingsCommand}" Classes="ghost"
+                  FontSize="10" Padding="8,3" HorizontalAlignment="Left" />
           <TextBlock Text="{Binding VersionLabel}" FontSize="9" HorizontalAlignment="Center"
                      Foreground="{DynamicResource TextMuted}" />
         </StackPanel>
@@ -89,6 +90,7 @@
                     <MenuItem Header="实例管理…" Command="{Binding OpenInstancesCommand}" />
                     <MenuItem Header="启动当前实例" Command="{Binding LaunchCurrentInstanceCommand}" />
                     <MenuItem Header="打开 latest.log" Command="{Binding OpenLatestLogCommand}" />
+                  <MenuItem Header="实时日志窗口" Command="{Binding OpenLogTailCommand}" />
                     <MenuItem Header="返回概览" Command="{Binding OpenOverviewCommand}" />
                     <Separator />
                     <MenuItem Header="打开整合包目录" Command="{Binding OpenPackFolderCommand}" />
@@ -1247,6 +1249,8 @@
                   <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
                           IsEnabled="{Binding HasGraph}" FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
                   <Button Content="打开 latest.log" Command="{Binding OpenLatestLogCommand}"
+                          FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
+                  <Button Content="实时日志" Command="{Binding OpenLogTailCommand}"
                           FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />
                   <Button Content="重新扫描" Command="{Binding RescanCommand}"
                           FontSize="12" Padding="14,8" MinHeight="38" Margin="0,0,8,8" />

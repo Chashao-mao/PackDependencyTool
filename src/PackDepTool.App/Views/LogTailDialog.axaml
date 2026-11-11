@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PackDepTool.App.ViewModels"
+        x:Class="PackDepTool.App.Views.LogTailDialog"
+        x:DataType="vm:LogTailViewModel"
+        Title="实时日志"
+        Width="860"
+        Height="620"
+        MinWidth="640"
+        MinHeight="420"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="18">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,10">
+      <TextBlock Text="实时日志" FontSize="18" FontWeight="SemiBold" />
+      <TextBlock Text="{Binding LogPath}" Classes="caption" TextTrimming="CharacterEllipsis" />
+    </StackPanel>
+    <Border Grid.Row="1" Classes="card" Padding="10">
+      <ScrollViewer x:Name="LogScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <TextBox Text="{Binding Content}" IsReadOnly="True" AcceptsReturn="True"
+                 TextWrapping="Wrap" FontFamily="Consolas" FontSize="10.5"
+                 Background="Transparent" BorderThickness="0" MinHeight="420" />
+      </ScrollViewer>
+    </Border>
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <TextBlock Text="{Binding StatusText}" Classes="caption" VerticalAlignment="Center" />
+        <CheckBox Content="自动滚动" IsChecked="{Binding IsAutoScroll}" FontSize="10" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="打开所在目录" Command="{Binding OpenFolderCommand}" />
+        <Button Content="关闭" Command="{Binding CloseCommand}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

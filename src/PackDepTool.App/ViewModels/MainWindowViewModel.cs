@@ -3441,6 +3441,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task OpenLogTailAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个实例。";
+            return;
+        }
+        var log = Path.Combine(_scanResult.RootPath, "logs", "latest.log");
+        if (!File.Exists(log))
+        {
+            StatusText = "当前实例还没有 logs/latest.log。";
+            return;
+        }
+        await _dialogs.ShowLogTailAsync(log);
+    }
+
+    [RelayCommand]
     private void OpenLatestLog()
     {
         if (_scanResult is null)
