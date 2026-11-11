@@ -28,6 +28,11 @@ public sealed class PackProfile
         LoaderKind.NeoForge => "NeoForge",
         _ => "unknown",
     };
+
+    public string DisplayLoaderWithVersion =>
+        string.IsNullOrWhiteSpace(LoaderVersion)
+            ? DisplayLoader
+            : $"{DisplayLoader} {LoaderVersion.Trim()}";
 }
 
 public sealed class ScanProgress

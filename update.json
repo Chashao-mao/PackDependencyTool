@@ -1,9 +1,9 @@
 {
-  "version": "1.0.4",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.4",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.4/PackDependencyTool.exe",
-  "sha256": "8127581bf099dc72b83d97bf2c24d15febdccd2dee46e1f0b729cca0af245e0b",
+  "version": "1.0.5",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.5",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.5/PackDependencyTool.exe",
+  "sha256": "53c1d4e1a6be71f7559b3a63e377dece2d901ed669bc7244c62230b52e72df73",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "1.0.4：实例管理与整合包打开合并、多 versions 目录、下载前置显示与连锁下载、兼容版本标红、禁用/删除孤立依赖处理、禁用管理入口前置、工具栏菜单精简。",
-  "publishedAt": "2026-10-25T08:11:07.931403+00:00"
+  "notes": "1.0.5：主界面重构（顶部操作菜单、三栏宽度与收起恢复、筛选折叠、批量条居中）、顶部显示检测到的加载器版本、修复快照/撤销/备份中心、崩溃与冲突诊断、性能归因、服务端工具、版本锁定、依赖与数据包扫描、视图状态分享。",
+  "publishedAt": "2026-11-11T07:20:00.000+00:00"
 }

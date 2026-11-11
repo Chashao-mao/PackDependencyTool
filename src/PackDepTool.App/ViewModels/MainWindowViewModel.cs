@@ -4523,7 +4523,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void UpdateProfileChips(PackProfile profile)
     {
-        var loader = string.IsNullOrWhiteSpace(profile.DisplayLoader) ? "unknown" : profile.DisplayLoader;
+        var loader = profile.DisplayLoaderWithVersion;
         ProfileSummary = $"{loader} · Minecraft {profile.McVersion}" + (profile.IsInferred ? "（推断）" : string.Empty);
         PackName = profile.PackName ?? PackName;
     }
