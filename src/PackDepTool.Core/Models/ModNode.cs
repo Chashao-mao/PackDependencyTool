@@ -32,6 +32,9 @@ public sealed class ModNode
     /// <summary>Chinese name embedded in the JAR's lang file; user overrides take priority.</summary>
     [JsonIgnore]
     public string? JarNameZh { get; set; }
+    /// <summary>Chinese name from the CFPA I18n resource pack.</summary>
+    [JsonIgnore]
+    public string? I18nNameZh { get; set; }
     /// <summary>Modrinth / CurseForge project logo URL (not persisted; used to fetch icons).</summary>
     [JsonIgnore]
     public string? IconUrl { get; set; }

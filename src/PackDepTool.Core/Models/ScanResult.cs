@@ -31,6 +31,8 @@ public sealed class ParsedMod
     public string Name { get; set; } = string.Empty;
     /// <summary>Chinese display name discovered in assets/*/lang/zh_cn.json.</summary>
     public string? LocalizedName { get; set; }
+    /// <summary>Chinese name from a CFPA I18n resource pack (lower priority than the JAR).</summary>
+    public string? I18nLocalizedName { get; set; }
     public string Version { get; set; } = "unknown";
     public LoaderKind Loader { get; set; } = LoaderKind.Unknown;
     public string? Description { get; set; }

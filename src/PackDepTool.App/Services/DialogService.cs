@@ -244,6 +244,12 @@ public sealed class DialogService : IDialogService
         return await dialog.ShowDialog<HealthWizardAction>(Owner);
     }
 
+    public async Task<string?> ShowModListImportAsync()
+    {
+        if (Owner is null) return null;
+        return await ModListImportDialog.ShowAsync(Owner);
+    }
+
     public async Task ShowLogTailAsync(string logPath)
     {
         if (Owner is null) return;

@@ -97,7 +97,8 @@ public sealed class DependencyGraphBuilder
                     Id = id,
                     Name = string.IsNullOrWhiteSpace(parsed.Name) ? id : parsed.Name,
                     JarNameZh = parsed.LocalizedName,
-                    NameZh = parsed.LocalizedName,
+                    I18nNameZh = parsed.I18nLocalizedName,
+                    NameZh = parsed.LocalizedName ?? parsed.I18nLocalizedName,
                     Version = string.IsNullOrWhiteSpace(parsed.Version) ? "unknown" : parsed.Version,
                     Loader = parsed.Loader,
                     McVersions = parsed.McVersions.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
@@ -527,7 +528,8 @@ public sealed class DependencyGraphBuilder
 
         // Dependencies are read from the scan result directly, so only merge display data.
         if (string.IsNullOrWhiteSpace(node.JarNameZh)) node.JarNameZh = parsed.LocalizedName;
-        if (string.IsNullOrWhiteSpace(node.NameZh)) node.NameZh = parsed.LocalizedName;
+        if (string.IsNullOrWhiteSpace(node.I18nNameZh)) node.I18nNameZh = parsed.I18nLocalizedName;
+        if (string.IsNullOrWhiteSpace(node.NameZh)) node.NameZh = parsed.LocalizedName ?? parsed.I18nLocalizedName;
         if (string.IsNullOrWhiteSpace(node.Description)) node.Description = parsed.Description;
         if (string.IsNullOrWhiteSpace(node.Authors)) node.Authors = parsed.Authors;
         if (node.IconData is null && parsed.IconData is not null) node.IconData = parsed.IconData;

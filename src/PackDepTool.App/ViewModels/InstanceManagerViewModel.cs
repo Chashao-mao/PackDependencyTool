@@ -15,6 +15,7 @@ public sealed class InstanceManagerResult
     public string? DirectPackPath { get; init; }
     public string? LaunchGameRoot { get; init; }
     public string? LaunchVersionName { get; init; }
+    public bool OpenGameSetup { get; init; }
 }
 
 public sealed partial class VersionsFolderItem : ObservableObject
@@ -221,6 +222,17 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
             VersionsDirectory = SelectedFolder.Path,
             VersionsDirectories = Folders.Select(folder => folder.Path).ToList(),
             InstancePath = Selected.EffectiveRoot,
+        });
+    }
+
+    [RelayCommand]
+    private void CreateNew()
+    {
+        Completed?.Invoke(new InstanceManagerResult
+        {
+            VersionsDirectory = SelectedFolder?.Path,
+            VersionsDirectories = Folders.Select(folder => folder.Path).ToList(),
+            OpenGameSetup = true,
         });
     }
 

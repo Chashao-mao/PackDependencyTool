@@ -102,6 +102,16 @@ public sealed class ModScanner
         result.Profile = _profileDetector.Detect(packRoot, parsedMods);
         result.Profile.PackName ??= Path.GetFileName(packRoot);
 
+        var i18nNames = I18nPackService.LoadNames(packRoot);
+        if (i18nNames.Count > 0)
+        {
+            foreach (var mod in parsedMods)
+            {
+                if (string.IsNullOrWhiteSpace(mod.LocalizedName))
+                    mod.I18nLocalizedName = I18nPackService.ResolveName(mod.ModId, i18nNames);
+            }
+        }
+
         foreach (var jar in result.Jars)
         {
             foreach (var warning in jar.Warnings)

@@ -39,14 +39,6 @@ public partial class InstanceManagerDialog : Window
     private void OnOpenSelectedClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
         _viewModel?.OpenSelected();
 
-    private async void OnCreateInstanceClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-    {
-        if (_viewModel?.Selected is not { } selected) return;
-        var name = await TextInputDialog.ShowAsync(this, "新建实例",
-            $"以 {selected.Name} 为模板复制，输入新实例名", selected.Name + "-copy");
-        if (!string.IsNullOrWhiteSpace(name)) await _viewModel.CreateFromSelectedAsync(name);
-    }
-
     private async void OnRenameInstanceClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (_viewModel?.Selected is not { } selected) return;

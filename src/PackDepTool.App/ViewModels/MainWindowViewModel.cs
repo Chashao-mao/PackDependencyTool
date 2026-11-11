@@ -2356,7 +2356,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             node.NameZh = _translationOverrides.TryGetValue(node.Id, out var custom) &&
                           !string.IsNullOrWhiteSpace(custom)
                 ? custom.Trim()
-                : node.JarNameZh;
+                : node.JarNameZh ?? node.I18nNameZh;
         }
     }
 
@@ -3482,6 +3482,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = $"实例目录已选择，但保存设置失败：{ex.Message}";
         }
 
+        if (result.OpenGameSetup)
+        {
+            await OpenGameSetupAsync();
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(result.LaunchVersionName) &&
             !string.IsNullOrWhiteSpace(result.LaunchGameRoot))
         {
@@ -3622,8 +3628,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             StatusText = $"正在构建启动参数：{versionName}…";
+            var instanceRoot = Path.Combine(gameRoot, "versions", versionName);
             var process = await _services.Launcher.LaunchOfflineAsync(
-                gameRoot, versionName, username, _services.Settings.OfflineRamMb,
+                gameRoot, versionName, instanceRoot, username, _services.Settings.OfflineRamMb,
                 _services.Settings.JavaPath);
             StatusText = $"已启动 {versionName}（离线身份 {username}，PID {process.Id}）。";
             StartGameMonitor(process);
@@ -3724,6 +3731,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    private static string NormalizeModImportQuery(string value)
+    {
+        var text = value.Trim();
+        foreach (var prefix in new[] { "modrinth:", "curseforge:" })
+        {
+            if (text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return text[prefix.Length..].Trim();
+        }
+        if (Uri.TryCreate(text, UriKind.Absolute, out var uri))
+        {
+            var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var marker = Array.FindIndex(segments, segment =>
+                segment.Equals("mod", StringComparison.OrdinalIgnoreCase) ||
+                segment.Equals("mc-mods", StringComparison.OrdinalIgnoreCase));
+            if (marker >= 0 && marker + 1 < segments.Length) return segments[marker + 1];
+        }
+        return text;
+    }
+
     [RelayCommand]
     private async Task ImportModListAsync()
     {
@@ -3733,25 +3759,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var file = await _dialogs.PickOpenFileAsync(
-            "选择模组列表", ["txt", "csv", "list"], "文本文件");
-        if (string.IsNullOrWhiteSpace(file)) return;
+        var text = await _dialogs.ShowModListImportAsync();
+        if (string.IsNullOrWhiteSpace(text)) return;
 
-        string[] lines;
-        try
-        {
-            lines = await File.ReadAllLinesAsync(file);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            StatusText = $"读取模组列表失败：{ex.Message}";
-            return;
-        }
-
-        var queries = lines
+        var queries = text.Replace("\r\n", "\n").Split('\n')
             .Select(line => line.Trim())
             .Where(line => line.Length > 0 && !line.StartsWith('#'))
-            .Select(line => line.Split(',', StringSplitOptions.TrimEntries)[0])
+            .Select(line => line.Split([',', ';'], StringSplitOptions.TrimEntries)[0])
+            .Select(NormalizeModImportQuery)
             .Where(line => line.Length > 0 && !line.Equals("name", StringComparison.OrdinalIgnoreCase) &&
                            !line.Equals("mod", StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -3775,6 +3790,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     : query;
             var node = new ModNode { Id = clean.Trim(), Name = clean.Trim(), Loader = _scanResult.Profile.Loader };
             var project = await _services.Resolver.ResolveAsync(node);
+            if (project is null)
+            {
+                var hits = await _services.Downloader.SearchAsync(
+                    DownloadSource.Modrinth, DownloadProjectType.Mod, clean);
+                project = hits.FirstOrDefault();
+            }
             if (project is null)
             {
                 failed.Add(clean);

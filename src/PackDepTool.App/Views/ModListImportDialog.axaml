@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PackDepTool.App.Views.ModListImportDialog"
+        Title="导入模组列表"
+        Width="720"
+        Height="560"
+        MinWidth="560"
+        MinHeight="420"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource PanelBackground}">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,10">
+      <TextBlock Text="导入模组列表" FontSize="18" FontWeight="SemiBold" />
+      <TextBlock Text="每行一个模组，可直接写 slug、名称、Modrinth/CurseForge URL；# 开头是注释。"
+                 Classes="caption" TextWrapping="Wrap" />
+    </StackPanel>
+    <Border Grid.Row="1" Classes="card" Padding="10">
+      <TextBox x:Name="InputBox" AcceptsReturn="True" AcceptsTab="True"
+               TextWrapping="NoWrap" FontFamily="Consolas" FontSize="11"
+               Watermark="jei&#10;modrinth:sodium&#10;https://modrinth.com/mod/iris&#10;# 以 # 开头是注释"
+               VerticalContentAlignment="Top" />
+    </Border>
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+      <TextBlock Text="会解析为当前实例兼容版本，并加入下载队列。"
+                 Classes="caption" VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button Content="选择文件…" Click="OnPickFileClick" />
+        <Button Content="取消" Click="OnCancelClick" />
+        <Button Content="导入并下载" Classes="accent" Click="OnImportClick" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

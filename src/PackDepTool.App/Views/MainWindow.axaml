@@ -1392,7 +1392,8 @@
             <Border Classes="card" Padding="18" CornerRadius="12" IsVisible="{Binding HasGraph}">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="4">
-                  <TextBlock Text="当前整合包" FontSize="13" FontWeight="SemiBold" />
+                  <TextBlock Text="当前实例" FontSize="13" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding PackName}" FontSize="14" FontWeight="SemiBold" />
                   <TextBlock Text="{Binding ProfileSummary}" FontSize="15" FontWeight="SemiBold"
                              Foreground="{DynamicResource Accent}" />
                   <TextBlock Text="{Binding CountSummary}" FontSize="11"

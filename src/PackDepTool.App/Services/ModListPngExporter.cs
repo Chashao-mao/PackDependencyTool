@@ -79,7 +79,23 @@ public static class ModListPngExporter
             canvas.DrawCircle(28, rowCenter, 5, fillPaint);
 
             canvas.DrawText((i + 1).ToString(), 48, rowCenter + 4, smallPaint);
-            canvas.DrawText(item.Initial, 78, rowCenter + 4, textPaint);
+            var iconRect = new SKRect(72, rowCenter - 13, 98, rowCenter + 13);
+            using (var jarIcon = model.IconData is { Length: > 0 } iconBytes
+                       ? SKBitmap.Decode(iconBytes)
+                       : null)
+            {
+                if (jarIcon is not null)
+                {
+                    canvas.Save();
+                    canvas.ClipRoundRect(new SKRoundRect(iconRect, 5));
+                    canvas.DrawBitmap(jarIcon, iconRect);
+                    canvas.Restore();
+                }
+                else
+                {
+                    canvas.DrawText(item.Initial, 78, rowCenter + 4, textPaint);
+                }
+            }
             canvas.DrawText(Trim(item.Name, 46), 108, rowCenter + 4, textPaint);
             canvas.DrawText(item.Subtitle, 108, rowCenter + 17, smallPaint);
             canvas.DrawText(item.LoaderText, 760, rowCenter + 4, smallPaint);

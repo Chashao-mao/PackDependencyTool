@@ -62,6 +62,7 @@ public sealed class MinecraftLaunchService
     public async Task<Process> LaunchOfflineAsync(
         string gameRoot,
         string versionName,
+        string instanceRoot,
         string offlineUsername,
         int maximumRamMb,
         string? javaPath = null,
@@ -85,17 +86,41 @@ public sealed class MinecraftLaunchService
         if (java is null)
             throw new InvalidOperationException(
                 "未找到可用的 java.exe。请在 设置 → 离线登录 → Java 路径 中指定。");
+        EnsureChineseLanguage(instanceRoot);
         var option = new MLaunchOption
         {
             Session = MSession.CreateOfflineSession(offlineUsername),
             MaximumRamMb = Math.Clamp(maximumRamMb, 512, 65536),
             JavaPath = java,
+            ExtraGameArguments =
+            [
+                new MArgument(["--gameDir", instanceRoot]),
+                new MArgument(["--lang", "zh_cn"]),
+            ],
         };
         var process = await launcher.BuildProcessAsync(versionName, option)
             .AsTask()
             .WaitAsync(cancellationToken);
         process.Start();
         return process;
+    }
+
+    private static void EnsureChineseLanguage(string instanceRoot)
+    {
+        var path = Path.Combine(instanceRoot, "options.txt");
+        try
+        {
+            var lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : [];
+            var index = lines.FindIndex(line => line.StartsWith("lang:", StringComparison.OrdinalIgnoreCase));
+            if (index >= 0) lines[index] = "lang:zh_cn";
+            else lines.Add("lang:zh_cn");
+            Directory.CreateDirectory(instanceRoot);
+            File.WriteAllLines(path, lines);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Launch can still proceed; the extra --lang argument also covers language.
+        }
     }
 
     public static string? ResolveJavaPath(string gameRoot, string? configured)
