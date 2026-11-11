@@ -55,6 +55,7 @@ public sealed class AppServices : IDisposable
         ModFiles = new ModFileManager();
         Backups = new PackBackupService();
         Locks = new VersionLockService();
+        FileChanges = new FileChangeMonitor();
         Resolver = new ModProjectResolver(modrinth, curseForge, keys);
         AutoCompleter = new DependencyAutoCompleter(Downloader, Resolver);
         Batch = new ModBatchService(Downloader, Resolver, ModFiles);
@@ -92,6 +93,7 @@ public sealed class AppServices : IDisposable
     public ModFileManager ModFiles { get; }
     public PackBackupService Backups { get; }
     public VersionLockService Locks { get; }
+    public FileChangeMonitor FileChanges { get; }
     public ModProjectResolver Resolver { get; }
     public DependencyAutoCompleter AutoCompleter { get; }
     public ModBatchService Batch { get; }
@@ -152,6 +154,7 @@ public sealed class AppServices : IDisposable
     public void Dispose()
     {
         DownloadQueue.Dispose();
+        FileChanges.Dispose();
         DownloadHttp.Dispose();
         Http.Dispose();
     }

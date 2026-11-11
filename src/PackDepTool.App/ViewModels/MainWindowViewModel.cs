@@ -81,7 +81,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         HideIsolated = services.Settings.HideIsolated;
         ShowLabels = services.Settings.ShowLabels;
         IsOffline = !services.Settings.NetworkEnabled;
+        services.FileChanges.Changed += OnFileChangesDetected;
     }
+
+    private void OnFileChangesDetected() => Dispatcher.UIThread.Post(() =>
+    {
+        if (_scanResult is null) return;
+        HasFileChanges = true;
+        FileChangeText = "检测到 mods/config 变化 · 点击重新扫描";
+        StatusText = "检测到文件变化，可点击状态栏「重新扫描」更新分析。";
+    });
 
     // ------------------------------------------------------------------ state
 
@@ -94,6 +103,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _backupSummary = "暂无修复快照";
     [ObservableProperty] private bool _hasBackup;
     [ObservableProperty] private bool _hasConfigBackup;
+    [ObservableProperty] private bool _hasFileChanges;
+    [ObservableProperty] private string _fileChangeText = string.Empty;
     [ObservableProperty] private string _updateStatusText = string.Empty;
     [ObservableProperty] private bool _isCheckingUpdates;
     private string? _lastUpdateUrl;
@@ -2478,6 +2489,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             RebuildGraph();
             await LayoutAsync(fit: true, cts.Token);
             RefreshBackupState();
+            _services.FileChanges.Watch(scan.RootPath);
+            HasFileChanges = false;
+            FileChangeText = string.Empty;
 
             StatusText = $"扫描完成：{scan.Jars.Count} 个 JAR · {_graph?.Nodes.Count ?? 0} 个模组 · {_graph?.Edges.Count ?? 0} 条关系";
         }

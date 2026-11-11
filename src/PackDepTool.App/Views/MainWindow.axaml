@@ -1199,6 +1199,9 @@
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
           <TextBlock Text="{Binding ProgressText}" Classes="caption" IsVisible="{Binding IsBusy}" />
+          <Button Content="检测到变化 · 重新扫描" Command="{Binding RescanCommand}"
+                  IsVisible="{Binding HasFileChanges}" FontSize="9.5" Padding="7,1" MinHeight="22"
+                  ToolTip.Tip="{Binding FileChangeText}" />
           <TextBlock Text="{Binding NetworkStatusText}" Classes="caption" />
           <TextBlock Text="{Binding VersionLabel}" Classes="caption" />
         </StackPanel>
