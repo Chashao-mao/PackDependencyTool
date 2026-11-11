@@ -53,6 +53,7 @@ public sealed class AppServices : IDisposable
         HistoryStore = new ModHistoryStore(paths);
         HistoryRecorder = new ModHistoryRecorder(HistoryStore);
         ModFiles = new ModFileManager();
+        Backups = new PackBackupService();
         Resolver = new ModProjectResolver(modrinth, curseForge, keys);
         AutoCompleter = new DependencyAutoCompleter(Downloader, Resolver);
         Batch = new ModBatchService(Downloader, Resolver, ModFiles);
@@ -88,6 +89,7 @@ public sealed class AppServices : IDisposable
     public ModHistoryStore HistoryStore { get; }
     public ModHistoryRecorder HistoryRecorder { get; }
     public ModFileManager ModFiles { get; }
+    public PackBackupService Backups { get; }
     public ModProjectResolver Resolver { get; }
     public DependencyAutoCompleter AutoCompleter { get; }
     public ModBatchService Batch { get; }

@@ -88,6 +88,10 @@
             <Button Content="更多 ▾">
               <Button.Flyout>
                 <MenuFlyout>
+                  <MenuItem Header="备份 config…" Command="{Binding BackupConfigCommand}" />
+                  <MenuItem Header="恢复最近 config 备份…" Command="{Binding RestoreLastConfigCommand}"
+                            IsEnabled="{Binding HasConfigBackup}" />
+                  <Separator />
                   <MenuItem Header="刷新在线图标" Command="{Binding RefreshOnlineIconsCommand}" />
                   <MenuItem Header="清空模组历史" Command="{Binding ClearHistoryCommand}" />
                   <Separator />
@@ -446,6 +450,9 @@
                 <Button Content="禁用管理" Command="{Binding OpenDisabledModsCommand}"
                         FontSize="10.5" Padding="9,3" MinHeight="28"
                         ToolTip.Tip="管理已禁用的 .jar.disabled，可批量启用或永久删除" />
+                <Button Content="撤销修复" Command="{Binding UndoLastBackupCommand}"
+                        IsEnabled="{Binding HasBackup}" FontSize="10.5" Padding="9,3" MinHeight="28"
+                        ToolTip.Tip="{Binding BackupSummary}" />
               </StackPanel>
             </Grid>
           </Border>

@@ -91,6 +91,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _profileSummary = "等待扫描";
     [ObservableProperty] private string _countSummary = "0 个模组 · 0 条关系";
     [ObservableProperty] private string _statusText = "就绪 · 选择一个整合包目录开始分析";
+    [ObservableProperty] private string _backupSummary = "暂无修复快照";
+    [ObservableProperty] private bool _hasBackup;
+    [ObservableProperty] private bool _hasConfigBackup;
     [ObservableProperty] private string _updateStatusText = string.Empty;
     [ObservableProperty] private bool _isCheckingUpdates;
     private string? _lastUpdateUrl;
@@ -906,8 +909,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 {
                     try
                     {
-                        _services.ModFiles.Disable(oldNode!, _scanResult.RootPath);
-                        StatusText = $"已下载同项目新版本并禁用旧版本，正在重新扫描…";
+                        if (!TryCreateRepairSnapshot("更换模组版本", [oldPath], [result.ModFilePath]))
+                        {
+                            StatusText = "新版本已下载，但修复前备份失败，未禁用旧版本。";
+                        }
+                        else
+                        {
+                            _services.ModFiles.Disable(oldNode!, _scanResult.RootPath);
+                            StatusText = $"已下载同项目新版本并禁用旧版本，正在重新扫描…";
+                        }
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
                     {
@@ -2410,6 +2420,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _positions.Clear();
             RebuildGraph();
             await LayoutAsync(fit: true, cts.Token);
+            RefreshBackupState();
 
             StatusText = $"扫描完成：{scan.Jars.Count} 个 JAR · {_graph?.Nodes.Count ?? 0} 个模组 · {_graph?.Edges.Count ?? 0} 条关系";
         }
@@ -2495,6 +2506,137 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? node.FilePath
             : Path.Combine(_scanResult.RootPath, node.FilePath.Replace('/', Path.DirectorySeparatorChar));
         return File.Exists(path) && path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void RefreshBackupState()
+    {
+        if (_scanResult is null)
+        {
+            HasBackup = false;
+            HasConfigBackup = false;
+            BackupSummary = "暂无修复快照";
+            return;
+        }
+
+        var snapshots = _services.Backups.List(_scanResult.RootPath);
+        var latest = snapshots.FirstOrDefault(item => item.Kind == "repair");
+        HasBackup = latest is not null;
+        HasConfigBackup = snapshots.Any(item => item.Kind == "config");
+        BackupSummary = latest is null
+            ? "暂无修复快照"
+            : $"可撤销：{latest.Operation} · {latest.Detail}";
+    }
+
+    private bool TryCreateRepairSnapshot(
+        string operation,
+        IEnumerable<string> paths,
+        IEnumerable<string>? createdFiles = null)
+    {
+        if (_scanResult is null) return false;
+        var files = paths.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var created = (createdFiles ?? [])
+            .Where(File.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (files.Count == 0 && created.Count == 0) return true;
+
+        try
+        {
+            _services.Backups.CreateRepairSnapshot(
+                _scanResult.RootPath, operation, files, created);
+            RefreshBackupState();
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"修复前备份失败，已取消操作：{ex.Message}";
+            return false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task UndoLastBackupAsync()
+    {
+        if (_scanResult is null) return;
+        var latest = _services.Backups.List(_scanResult.RootPath)
+            .FirstOrDefault(item => item.Kind == "repair");
+        if (latest is null)
+        {
+            StatusText = "没有可撤销的修复快照。";
+            return;
+        }
+
+        if (!await _dialogs.ConfirmAsync(
+                "撤销上次修复",
+                $"恢复「{latest.Operation}」之前的文件状态？{Environment.NewLine}{Environment.NewLine}" +
+                $"快照：{latest.Detail}{Environment.NewLine}当前文件会被快照覆盖。",
+                "撤销修复"))
+            return;
+
+        try
+        {
+            var result = _services.Backups.Restore(_scanResult.RootPath, latest);
+            StatusText = $"已撤销修复：恢复 {result.RestoredFiles} 个文件" +
+                         (result.MissingFiles > 0 ? $"，{result.MissingFiles} 个备份文件缺失" : string.Empty);
+            if (result.Warnings.Count > 0)
+                await _dialogs.ShowMessageAsync("撤销完成，但有提示",
+                    string.Join(Environment.NewLine, result.Warnings.Take(10)));
+            await ScanAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"撤销失败：{ex.Message}";
+            await _dialogs.ShowMessageAsync("撤销失败", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private async Task BackupConfigAsync()
+    {
+        if (_scanResult is null) return;
+        try
+        {
+            var info = _services.Backups.CreateConfigSnapshot(_scanResult.RootPath);
+            RefreshBackupState();
+            StatusText = info is null ? "没有可备份的 config 文件。" : $"已备份 config：{info.Detail}";
+            if (info is not null)
+                await _dialogs.ShowMessageAsync("配置已备份", $"备份位置：{Environment.NewLine}{info.Directory}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"配置备份失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task RestoreLastConfigAsync()
+    {
+        if (_scanResult is null) return;
+        var latest = _services.Backups.List(_scanResult.RootPath)
+            .FirstOrDefault(item => item.Kind == "config");
+        if (latest is null)
+        {
+            StatusText = "没有可恢复的 config 备份。";
+            return;
+        }
+
+        if (!await _dialogs.ConfirmAsync(
+                "恢复 config 备份",
+                $"恢复「{latest.Operation}」的 config？{Environment.NewLine}{Environment.NewLine}" +
+                $"快照：{latest.Detail}{Environment.NewLine}同名文件会被覆盖。",
+                "恢复配置"))
+            return;
+
+        try
+        {
+            var result = _services.Backups.Restore(_scanResult.RootPath, latest);
+            StatusText = $"已恢复 config：{result.RestoredFiles} 个文件";
+            await ScanAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"恢复配置失败：{ex.Message}";
+        }
     }
 
     /// <summary>Installed mods that require one of the roots, transitively.</summary>
@@ -2623,6 +2765,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 .GroupBy(target => target.Id, StringComparer.OrdinalIgnoreCase)
                 .Select(group => group.First())
                 .ToList();
+            var backupPaths = targets
+                .Select(target => _services.ModFiles.ResolveLocalFile(target, _scanResult.RootPath))
+                .Where(path => path is not null)
+                .Select(path => path!)
+                .ToList();
+            if (!TryCreateRepairSnapshot("禁用模组", backupPaths)) return;
+
             foreach (var target in targets)
                 _services.ModFiles.Disable(target, _scanResult.RootPath);
 
@@ -2689,6 +2838,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             var disabled = 0;
+            var backupPaths = new[] { path }
+                .Concat((disableDependents ? dependents : [])
+                    .Concat(disableOrphans ? orphanPrerequisites : [])
+                    .Select(extra => _services.ModFiles.ResolveLocalFile(extra, _scanResult.RootPath))
+                    .Where(extraPath => extraPath is not null)
+                    .Select(extraPath => extraPath!))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (!TryCreateRepairSnapshot("永久删除模组", backupPaths)) return;
+
             foreach (var extra in (disableDependents ? dependents : [])
                          .Concat(disableOrphans ? orphanPrerequisites : [])
                          .GroupBy(target => target.Id, StringComparer.OrdinalIgnoreCase)
@@ -4288,6 +4447,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (action is BatchModAction.Disable or BatchModAction.Delete)
         {
+            var backupNodes = action == BatchModAction.Disable ? disableNodes : nodes;
+            var backupPaths = backupNodes
+                .Select(node => _services.ModFiles.ResolveLocalFile(node, _scanResult.RootPath))
+                .Where(path => path is not null)
+                .Select(path => path!)
+                .ToList();
+            if (!TryCreateRepairSnapshot(title, backupPaths)) return;
+
             BatchModResult result;
             try
             {
