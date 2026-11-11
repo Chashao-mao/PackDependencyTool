@@ -97,6 +97,25 @@ public sealed class ProfileDetectorTests
     }
 
     [Fact]
+    public async Task DetectsPclClientVersionAndFmlArguments()
+    {
+        using var temp = new TempDir();
+        await File.WriteAllTextAsync(temp.Combine("version.json"), """
+        {
+          "clientVersion": "1.21.1",
+          "arguments": { "game": ["--fml.mcVersion", "1.21.1", "--fml.neoForgeVersion", "21.1.93"] }
+        }
+        """);
+
+        var profile = new PackProfileDetector().Detect(temp.Path);
+
+        Assert.Equal("1.21.1", profile.McVersion);
+        Assert.Equal(LoaderKind.NeoForge, profile.Loader);
+        Assert.Equal("21.1.93", profile.LoaderVersion);
+        Assert.False(profile.IsInferred);
+    }
+
+    [Fact]
     public void InfersFromModMetadataWhenNoLauncherFileExists()
     {
         using var temp = new TempDir();

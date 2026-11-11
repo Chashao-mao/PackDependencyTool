@@ -275,10 +275,20 @@ public sealed class PackProfileDetector
                                inheritsValue.ValueKind == JsonValueKind.String
                     ? inheritsValue.GetString() ?? string.Empty
                     : string.Empty;
+                var clientVersion = rootElement.TryGetProperty("clientVersion", out var clientValue) &&
+                                    clientValue.ValueKind == JsonValueKind.String
+                    ? clientValue.GetString() ?? string.Empty
+                    : string.Empty;
                 var hasLibraries = rootElement.TryGetProperty("libraries", out _);
-                if (id.Length == 0 && inherits.Length == 0 && !hasLibraries) continue;
+                var hasArguments = rootElement.TryGetProperty("arguments", out _);
+                var hasPatches = rootElement.TryGetProperty("patches", out _);
+                var hasVersionMarker = id.Length > 0 || inherits.Length > 0 || clientVersion.Length > 0 ||
+                                       hasLibraries || hasArguments || hasPatches;
+                if (!hasVersionMarker) continue;
 
-                if (!string.IsNullOrWhiteSpace(inherits))
+                if (!string.IsNullOrWhiteSpace(clientVersion))
+                    profile.McVersion = clientVersion;
+                else if (!string.IsNullOrWhiteSpace(inherits))
                 {
                     ApplyLoaderToken(inherits, profile);
                     profile.LoaderVersion ??= ExtractLoaderVersion(inherits);
@@ -292,6 +302,33 @@ public sealed class PackProfileDetector
 
                 ApplyLoaderToken(id, profile);
                 profile.LoaderVersion ??= ExtractLoaderVersion(id);
+
+                if (rootElement.TryGetProperty("arguments", out var arguments) &&
+                    arguments.ValueKind == JsonValueKind.Object &&
+                    arguments.TryGetProperty("game", out var gameArguments) &&
+                    gameArguments.ValueKind == JsonValueKind.Array)
+                {
+                    var values = gameArguments
+                        .EnumerateArray()
+                        .Where(item => item.ValueKind == JsonValueKind.String)
+                        .Select(item => item.GetString() ?? string.Empty)
+                        .ToList();
+                    for (var index = 0; index < values.Count; index++)
+                    {
+                        var value = values[index];
+                        if ((value is "--fml.mcVersion" or "--fml.minecraftVersion") &&
+                            index + 1 < values.Count)
+                        {
+                            profile.McVersion = values[index + 1];
+                        }
+                        else if ((value is "--fml.neoForgeVersion" or "--fml.forgeVersion" or
+                                  "--fml.loaderVersion") && index + 1 < values.Count)
+                        {
+                            ApplyLoaderToken(value, profile);
+                            profile.LoaderVersion = values[index + 1];
+                        }
+                    }
+                }
 
                 if (rootElement.TryGetProperty("libraries", out var libraries) &&
                     libraries.ValueKind == JsonValueKind.Array)
