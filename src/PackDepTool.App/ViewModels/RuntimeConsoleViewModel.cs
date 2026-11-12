@@ -125,6 +125,12 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
     private void SetLevel(string? level) => SelectedLevel = level ?? "全部等级";
 
     [RelayCommand]
+    private void ToggleCollapse() => CollapseStackTraces = !CollapseStackTraces;
+
+    [RelayCommand]
+    private void ToggleAutoScroll() => AutoScroll = !AutoScroll;
+
+    [RelayCommand]
     private void Analyze() => AnalyzeRequested?.Invoke();
 
     public void SetLogPath(string? path)
