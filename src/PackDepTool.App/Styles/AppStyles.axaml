@@ -186,8 +186,9 @@
     <Setter Property="CornerRadius" Value="5" />
   </Style>
   <Style Selector="ToggleButton.consoleChip:checked">
-    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+    <Setter Property="Background" Value="#142878D0" />
     <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    <Setter Property="BorderBrush" Value="#552878D0" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="Button.severity">
@@ -200,9 +201,21 @@
     <Setter Property="CornerRadius" Value="5" />
   </Style>
   <Style Selector="Button.severity.active">
-    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+    <Setter Property="Background" Value="#142878D0" />
     <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    <Setter Property="BorderBrush" Value="#552878D0" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.toolbar">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="7,3" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+  </Style>
+  <Style Selector="Button.toolbar:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource HoverOverlay}" />
   </Style>
 
   <!-- ============================== Inputs ============================== -->
