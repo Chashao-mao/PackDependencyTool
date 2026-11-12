@@ -1,9 +1,9 @@
 {
-  "version": "1.0.5",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.5",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.5/PackDependencyTool.exe",
-  "sha256": "53c1d4e1a6be71f7559b3a63e377dece2d901ed669bc7244c62230b52e72df73",
+  "version": "1.0.6",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.6",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.6/PackDependencyTool.exe",
+  "sha256": "bd44c22486c8a1899976d53c949d06bf64859724a840458e65bfe20db1aeefc1",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "1.0.5：主界面重构（顶部操作菜单、三栏宽度与收起恢复、筛选折叠、批量条居中）、顶部显示检测到的加载器版本、修复快照/撤销/备份中心、崩溃与冲突诊断、性能归因、服务端工具、版本锁定、依赖与数据包扫描、视图状态分享。",
-  "publishedAt": "2026-11-11T07:20:00.000+00:00"
+  "notes": "1.0.6：修复实例隔离与无模组启动，Java 版本匹配/javaw，自动内存与调试模式；实例管理统一；常驻日志与下载控制台；Crash Doctor、i18n、表格导入、服务端 mrpack、整合包合并、历史恢复与 UI 重构。",
+  "publishedAt": "2026-11-12T20:10:00.000+08:00"
 }
