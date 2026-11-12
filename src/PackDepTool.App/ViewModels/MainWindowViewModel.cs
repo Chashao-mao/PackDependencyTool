@@ -3980,6 +3980,44 @@ public sealed partial class MainWindowViewModel : ObservableObject
         return text;
     }
 
+    private void ShowQueueProgress(int expected)
+    {
+        var detail = new DownloadProgressViewModel("批量下载", $"{expected} 个模组 · 下载队列");
+        var window = DownloadProgressWindow.ShowFor(detail);
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        var lastSummary = string.Empty;
+        timer.Tick += (_, _) =>
+        {
+            var items = _services.DownloadQueue.Snapshot();
+            if (items.Count == 0) return;
+            var completed = items.Count(item => item.State == DownloadQueueState.Completed);
+            var failed = items.Count(item => item.State == DownloadQueueState.Failed);
+            var running = items.FirstOrDefault(item => item.State == DownloadQueueState.Running);
+            var terminal = items.All(item => item.State is DownloadQueueState.Completed or
+                DownloadQueueState.Failed or DownloadQueueState.Cancelled);
+            var summary = $"{completed + failed}/{items.Count} 已处理";
+            detail.Update(new DownloadProgress(
+                "下载队列", completed + failed, items.Count,
+                running is null ? summary : $"{running.Title} · {summary}",
+                Bytes: 0, TotalBytes: 0));
+            if (summary != lastSummary)
+            {
+                lastSummary = summary;
+                StatusText = $"下载队列：{summary}";
+            }
+            if (!terminal) return;
+            timer.Stop();
+            detail.Finish(failed == 0, $"完成 {completed} · 失败 {failed}");
+        };
+        timer.Start();
+        detail.CancelRequested += () =>
+        {
+            foreach (var item in _services.DownloadQueue.Snapshot()) _services.DownloadQueue.Cancel(item);
+            timer.Stop();
+        };
+        window.Closed += (_, _) => timer.Stop();
+    }
+
     [RelayCommand]
     private async Task ImportModListAsync()
     {
@@ -4085,6 +4123,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         StatusText = $"安装列表已加入下载队列 {queued} 个" +
                      (failed.Count > 0 ? $"，{failed.Count} 个失败" : string.Empty);
+        if (queued > 0) ShowQueueProgress(queued);
         if (failed.Count > 0)
             await _dialogs.ShowMessageAsync("导入模组列表",
                 string.Join(Environment.NewLine, failed.Take(15)));
