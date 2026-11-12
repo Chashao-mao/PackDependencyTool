@@ -175,6 +175,36 @@
     <Setter Property="MinHeight" Value="26" />
   </Style>
 
+  <!-- Console dock controls: flat toggles instead of default checkboxes. -->
+  <Style Selector="ToggleButton.consoleChip">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="7,3" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+    <Setter Property="CornerRadius" Value="5" />
+  </Style>
+  <Style Selector="ToggleButton.consoleChip:checked">
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+    <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.severity">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="7,3" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+    <Setter Property="CornerRadius" Value="5" />
+  </Style>
+  <Style Selector="Button.severity.active">
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+    <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
   <!-- ============================== Inputs ============================== -->
   <Style Selector="TextBox">
     <Setter Property="CornerRadius" Value="8" />

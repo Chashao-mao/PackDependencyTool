@@ -114,6 +114,18 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
     [ObservableProperty] private int _tabIndex;
 
     public string LogPath => _logPath ?? string.Empty;
+    public bool IsLevelAll => SelectedLevel == "全部等级";
+    public bool IsLevelInfo => SelectedLevel == "INFO";
+    public bool IsLevelWarn => SelectedLevel == "WARN";
+    public bool IsLevelError => SelectedLevel == "ERROR";
+
+    public event Action? AnalyzeRequested;
+
+    [RelayCommand]
+    private void SetLevel(string? level) => SelectedLevel = level ?? "全部等级";
+
+    [RelayCommand]
+    private void Analyze() => AnalyzeRequested?.Invoke();
 
     public void SetLogPath(string? path)
     {
@@ -300,7 +312,14 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
               $"{items.Count(item => item.State == DownloadQueueState.Failed)} 个失败";
     }
 
-    partial void OnSelectedLevelChanged(string value) => ApplyLogFilter();
+    partial void OnSelectedLevelChanged(string value)
+    {
+        ApplyLogFilter();
+        OnPropertyChanged(nameof(IsLevelAll));
+        OnPropertyChanged(nameof(IsLevelInfo));
+        OnPropertyChanged(nameof(IsLevelWarn));
+        OnPropertyChanged(nameof(IsLevelError));
+    }
     partial void OnSearchTextChanged(string value) => ApplyLogFilter();
     partial void OnCollapseStackTracesChanged(bool value) => ApplyLogFilter();
 

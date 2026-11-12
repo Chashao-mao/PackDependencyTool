@@ -75,6 +75,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _services = services;
         _dialogs = dialogs;
         RuntimeConsole = new RuntimeConsoleViewModel(services.DownloadQueue);
+        RuntimeConsole.AnalyzeRequested += () => _ = AnalyzeRuntimeLogAsync();
         ShowRequires = true;
         ShowIncompatible = true;
         ShowManual = services.Settings.ShowManual;
@@ -4021,6 +4022,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
             timer.Stop();
         };
         window.Closed += (_, _) => timer.Stop();
+    }
+
+    private async Task AnalyzeRuntimeLogAsync()
+    {
+        if (_scanResult is null) return;
+        var path = Path.Combine(_scanResult.RootPath, "logs", "latest.log");
+        if (!File.Exists(path))
+        {
+            await _dialogs.ShowMessageAsync("日志诊断", "当前实例还没有 logs/latest.log。");
+            return;
+        }
+        try
+        {
+            var text = await File.ReadAllTextAsync(path);
+            var report = CrashLogAnalyzer.Analyze(text, path, _graph);
+            await _dialogs.ShowDiagnosticReportAsync(report);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await _dialogs.ShowMessageAsync("日志诊断", ex.Message);
+        }
     }
 
     [RelayCommand]
