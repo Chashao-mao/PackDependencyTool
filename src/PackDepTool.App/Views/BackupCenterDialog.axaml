@@ -5,10 +5,10 @@
         x:Class="PackDepTool.App.Views.BackupCenterDialog"
         x:DataType="vm:BackupCenterViewModel"
         Title="备份中心"
-        Width="920"
-        Height="640"
-        MinWidth="780"
-        MinHeight="520"
+        Width="1100"
+        Height="720"
+        MinWidth="900"
+        MinHeight="560"
         CanResize="True"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
@@ -25,7 +25,7 @@
               VerticalAlignment="Center" />
     </Grid>
 
-    <Grid Grid.Row="1" ColumnDefinitions="320,*" ColumnSpacing="12">
+    <Grid Grid.Row="1" ColumnDefinitions="340,*" ColumnSpacing="12">
       <Border Classes="card" Padding="8">
         <Grid RowDefinitions="Auto,*">
           <TextBlock Grid.Row="0" Text="快照列表" Classes="section" Margin="4,2,4,6" />
@@ -90,7 +90,7 @@
           </TabItem>
 
           <TabItem Header="模组列表历史">
-            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" RowSpacing="8">
               <TextBlock Grid.Row="0" Text="与当前模组列表对比" Classes="section" />
               <ComboBox Grid.Row="1" ItemsSource="{Binding HistorySnapshots}"
                         SelectedItem="{Binding SelectedHistory, Mode=TwoWay}"
@@ -124,8 +124,10 @@
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
-              <TextBlock Grid.Row="4" Text="每次扫描会自动记录模组列表；这里只对比，不修改文件。"
+              <TextBlock Grid.Row="4" Text="每次扫描会自动记录模组列表；可尝试从本地旧 JAR 还原。"
                          Classes="caption" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
+              <Button Grid.Row="5" Content="还原到该模组列表" Command="{Binding RestoreHistoryCommand}"
+                      HorizontalAlignment="Left" FontSize="11" Padding="12,6" />
             </Grid>
           </TabItem>
         </TabControl>

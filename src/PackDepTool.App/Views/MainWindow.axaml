@@ -191,8 +191,8 @@
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
-          <Border Classes="chip" HorizontalAlignment="Left" MaxWidth="560">
-            <TextBlock Text="{Binding PackPathDisplay}" FontSize="11" TextTrimming="CharacterEllipsis" />
+          <Border Classes="chip" HorizontalAlignment="Left" MaxWidth="720">
+            <TextBlock Text="{Binding PackPathDisplay}" FontSize="11.5" TextTrimming="CharacterEllipsis" />
           </Border>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
             <Border Classes="accentChip" VerticalAlignment="Center">

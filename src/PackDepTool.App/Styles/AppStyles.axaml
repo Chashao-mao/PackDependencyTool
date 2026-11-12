@@ -53,6 +53,15 @@
     </Setter>
   </Style>
 
+  <Style Selector="Button:disabled">
+    <Setter Property="Opacity" Value="0.42" />
+    <Setter Property="Cursor" Value="Arrow" />
+  </Style>
+
+  <Style Selector="Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+  </Style>
+
   <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource HoverOverlay}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />

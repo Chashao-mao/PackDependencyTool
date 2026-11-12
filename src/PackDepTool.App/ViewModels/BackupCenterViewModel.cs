@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
 using PackDepTool.Core.Persistence;
 
@@ -30,6 +31,8 @@ public sealed partial class BackupCenterViewModel : ObservableObject
     private readonly string _packRoot;
     private readonly Func<string, string, Task<bool>> _confirm;
     private readonly ModListHistoryService _history;
+    private readonly ModListRestoreService _restore = new();
+    private readonly Func<ModListSnapshotEntry, Task<string?>>? _onlineRestore;
     private readonly ScanResult? _scan;
     private readonly GraphDocument? _graph;
 
@@ -39,7 +42,8 @@ public sealed partial class BackupCenterViewModel : ObservableObject
         Func<string, string, Task<bool>> confirm,
         ModListHistoryService? history = null,
         ScanResult? scan = null,
-        GraphDocument? graph = null)
+        GraphDocument? graph = null,
+        Func<ModListSnapshotEntry, Task<string?>>? onlineRestore = null)
     {
         _service = service;
         _packRoot = packRoot;
@@ -47,6 +51,7 @@ public sealed partial class BackupCenterViewModel : ObservableObject
         _history = history ?? new ModListHistoryService();
         _scan = scan;
         _graph = graph;
+        _onlineRestore = onlineRestore;
         Refresh();
         RefreshHistory();
     }
@@ -106,6 +111,71 @@ public sealed partial class BackupCenterViewModel : ObservableObject
         HistorySummary = changes.Count == 0
             ? "当前模组列表与该快照一致"
             : $"与 {value.Snapshot.CapturedAt.ToLocalTime():MM-dd HH:mm} 相比，{changes.Count} 项变化";
+    }
+
+    [RelayCommand]
+    private async Task RestoreHistoryAsync()
+    {
+        if (IsBusy || SelectedHistory is null) return;
+        var snapshot = SelectedHistory.Snapshot;
+        if (!await _confirm(
+                "还原模组列表",
+                $"把当前 mods 还原到 {snapshot.CapturedAt.ToLocalTime():MM-dd HH:mm} 的 {snapshot.Mods.Count} 个模组？{Environment.NewLine}{Environment.NewLine}" +
+                "只使用本地现成 JAR（mods / .packdep-trash / 修复快照）按 SHA1 匹配；" +
+                "找不到的旧版本会明确列出，不会联网乱下。当前多余模组会移到 .packdep-trash。"))
+            return;
+
+        IsBusy = true;
+        StatusText = "正在还原模组列表…";
+        try
+        {
+            var result = await _restore.RestoreAsync(_packRoot, snapshot);
+            StatusText = result.Summary;
+            if (result.MissingEntries.Count > 0 && _onlineRestore is not null &&
+                await _confirm("联网补齐缺失模组",
+                    $"本地找不到 {result.MissingEntries.Count} 个旧 JAR。{Environment.NewLine}{Environment.NewLine}" +
+                    "将用历史条目的 SHA1 / 版本号到模组站精确匹配并下载；匹配不到就跳过，不会下最新版。" +
+                    $"{Environment.NewLine}{Environment.NewLine}是否联网补齐？"))
+            {
+                var online = 0;
+                var onlineFailed = new List<string>();
+                foreach (var entry in result.MissingEntries)
+                {
+                    try
+                    {
+                        if (await _onlineRestore(entry) is not null) online++;
+                        else onlineFailed.Add(entry.Name);
+                    }
+                    catch (Exception ex) when (ex is IOException or HttpRequestException or InvalidOperationException)
+                    {
+                        onlineFailed.Add($"{entry.Name}（{ex.Message}）");
+                    }
+                }
+                StatusText = $"{result.Summary}；联网补齐 {online} 个" +
+                             (onlineFailed.Count > 0 ? $"，{onlineFailed.Count} 个失败" : string.Empty);
+                if (onlineFailed.Count > 0)
+                    await _confirm("联网补齐结果",
+                        string.Join(Environment.NewLine, onlineFailed.Take(15)));
+            }
+            if (result.Missing.Count > 0 || result.Warnings.Count > 0)
+            {
+                var detail = string.Join(Environment.NewLine,
+                    result.Missing.Select(item => "缺失：" + item)
+                        .Concat(result.Warnings.Select(item => "警告：" + item))
+                        .Take(20));
+                await _confirm("还原完成", result.Summary + Environment.NewLine + Environment.NewLine + detail);
+            }
+            Completed?.Invoke(new BackupCenterResult { NeedsRescan = true });
+            Refresh();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            StatusText = $"还原失败：{ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     partial void OnSelectedChanged(PackBackupInfo? value)

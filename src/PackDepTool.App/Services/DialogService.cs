@@ -187,10 +187,51 @@ public sealed class DialogService : IDialogService
             new PackBackupService(),
             packRoot,
             (title, message) => MessageDialog.ShowAsync(dialog!, title, message, "继续", "取消"),
-            new ModListHistoryService(), scan, graph);
+            new ModListHistoryService(), scan, graph,
+            entry => DownloadHistoryEntryAsync(packRoot, scan, entry));
         dialog = new BackupCenterDialog { DataContext = viewModel };
         return await dialog.ShowDialog<BackupCenterResult?>(Owner);
     }
+
+    private async Task<string?> DownloadHistoryEntryAsync(
+        string packRoot, ScanResult? scan, ModListSnapshotEntry entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.FilePath)) return null;
+        var destination = Path.GetFullPath(Path.Combine(packRoot, entry.FilePath));
+        if (!destination.StartsWith(Path.GetFullPath(packRoot) + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var query = !string.IsNullOrWhiteSpace(entry.Id) ? entry.Id : entry.Name;
+        var projects = await _downloader.SearchAsync(DownloadSource.All, DownloadProjectType.Mod, query);
+        var project = projects.FirstOrDefault(project =>
+            string.Equals(Normalize(project.Slug), Normalize(query), StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Normalize(project.Name), Normalize(entry.Name), StringComparison.OrdinalIgnoreCase));
+        if (project is null) return null;
+
+        var versions = await _downloader.GetVersionsAsync(
+            project, scan?.Profile.McVersion, scan?.Profile.Loader ?? LoaderKind.Unknown);
+        var version = versions.FirstOrDefault(candidate =>
+            (!string.IsNullOrWhiteSpace(entry.Sha1) &&
+             string.Equals(candidate.Sha1, entry.Sha1, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrWhiteSpace(entry.Version) &&
+             string.Equals(candidate.VersionNumber, entry.Version, StringComparison.OrdinalIgnoreCase)));
+        if (version is null) return null;
+
+        var directory = Path.GetDirectoryName(destination)!;
+        Directory.CreateDirectory(directory);
+        var result = await _downloader.DownloadAsync(version, directory);
+        if (string.Equals(result.FilePath, destination, StringComparison.OrdinalIgnoreCase))
+            return destination;
+
+        File.Move(result.FilePath, destination, overwrite: true);
+        return destination;
+    }
+
+    private static string Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : new string(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
 
     public async Task ShowDiagnosticReportAsync(DiagnosticReport report)
     {
