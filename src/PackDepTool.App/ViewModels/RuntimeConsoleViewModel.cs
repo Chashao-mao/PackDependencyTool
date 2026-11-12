@@ -17,6 +17,11 @@ public sealed class ConsoleLogLine
     public string Level { get; init; } = string.Empty;
     public string Message { get; init; } = string.Empty;
     public IBrush Brush { get; init; } = Brushes.Gray;
+    public IBrush RowBackground { get; init; } = Brushes.Transparent;
+    public IBrush BadgeBackground { get; init; } = Brushes.Transparent;
+    public bool HasLevel => Level.Length > 0;
+    public bool IsContinuation => Level.Length == 0;
+    public string DisplayMessage => IsContinuation ? "    " + Message : Message;
 }
 
 public sealed partial class QueueItemViewModel : ObservableObject
@@ -49,6 +54,15 @@ public sealed partial class QueueItemViewModel : ObservableObject
         ? $"{Item.Fraction * 100:0}%"
         : string.Empty;
     public string Error => Item.Error ?? string.Empty;
+
+    public IBrush StateBrush => Item.State switch
+    {
+        DownloadQueueState.Completed => new SolidColorBrush(Color.Parse("#249B69")),
+        DownloadQueueState.Failed => new SolidColorBrush(Color.Parse("#D94A4A")),
+        DownloadQueueState.Running => new SolidColorBrush(Color.Parse("#2878D0")),
+        DownloadQueueState.Paused => new SolidColorBrush(Color.Parse("#D99024")),
+        _ => new SolidColorBrush(Color.Parse("#748197")),
+    };
 
     [RelayCommand]
     private void PauseOrResume()
@@ -157,22 +171,57 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
     {
         var match = LogPattern.Match(raw);
         if (!match.Success)
-            return new ConsoleLogLine { Time = "", Thread = "", Level = "", Message = raw };
+        {
+            var continuationTime = Regex.Match(raw, @"\d{2}:\d{2}:\d{2}");
+            return new ConsoleLogLine
+            {
+                Time = continuationTime.Success ? continuationTime.Value : "",
+                Thread = "",
+                Level = "",
+                Message = raw,
+                Brush = new SolidColorBrush(Color.Parse("#8A97AA")),
+            };
+        }
 
         var level = match.Groups["level"].Value.ToUpperInvariant();
+        var rawTime = match.Groups["time"].Value;
+        var timeMatch = Regex.Match(rawTime, @"\d{2}:\d{2}:\d{2}");
+        var time = timeMatch.Success ? timeMatch.Value : rawTime;
+        IBrush brush;
+        IBrush row;
+        IBrush badge;
+        switch (level)
+        {
+            case "ERROR" or "FATAL":
+                brush = new SolidColorBrush(Color.Parse("#D94A4A"));
+                row = new SolidColorBrush(Color.Parse("#1FD94A4A"));
+                badge = new SolidColorBrush(Color.Parse("#33D94A4A"));
+                break;
+            case "WARN":
+                brush = new SolidColorBrush(Color.Parse("#D99024"));
+                row = new SolidColorBrush(Color.Parse("#1AD99024"));
+                badge = new SolidColorBrush(Color.Parse("#33D99024"));
+                break;
+            case "DEBUG" or "TRACE":
+                brush = new SolidColorBrush(Color.Parse("#8A97AA"));
+                row = Brushes.Transparent;
+                badge = new SolidColorBrush(Color.Parse("#148A97AA"));
+                break;
+            default:
+                brush = new SolidColorBrush(Color.Parse("#4D5B70"));
+                row = Brushes.Transparent;
+                badge = new SolidColorBrush(Color.Parse("#124D5B70"));
+                break;
+        }
         return new ConsoleLogLine
         {
-            Time = match.Groups["time"].Value,
+            Time = time,
             Thread = match.Groups["thread"].Value,
             Level = level,
             Message = match.Groups["message"].Value,
-            Brush = level switch
-            {
-                "ERROR" or "FATAL" => new SolidColorBrush(Color.Parse("#D94A4A")),
-                "WARN" => new SolidColorBrush(Color.Parse("#D99024")),
-                "DEBUG" or "TRACE" => new SolidColorBrush(Color.Parse("#8A97AA")),
-                _ => new SolidColorBrush(Color.Parse("#4D5B70")),
-            },
+            Brush = brush,
+            RowBackground = row,
+            BadgeBackground = badge,
         };
     }
 

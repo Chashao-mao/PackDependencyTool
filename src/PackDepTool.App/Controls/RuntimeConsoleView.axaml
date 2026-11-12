@@ -36,18 +36,24 @@
                        FontFamily="Consolas, Microsoft YaHei UI" FontSize="10">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:ConsoleLogLine">
-                    <Grid ColumnDefinitions="58,44,*,Auto" ColumnSpacing="6" Margin="1,0">
-                      <TextBlock Text="{Binding Time}" FontSize="9.5"
-                                 Foreground="{DynamicResource TextMuted}" />
-                      <TextBlock Grid.Column="1" Text="{Binding Level}" FontSize="9" FontWeight="SemiBold"
-                                 Foreground="{Binding Brush}" />
-                      <TextBlock Grid.Column="2" Text="{Binding Message}" FontSize="10"
-                                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                 Foreground="{DynamicResource TextPrimary}" />
-                      <TextBlock Grid.Column="3" Text="{Binding Thread}" FontSize="8.5"
-                                 Foreground="{DynamicResource TextMuted}" MaxWidth="110"
-                                 TextTrimming="CharacterEllipsis" />
-                    </Grid>
+                    <Border Background="{Binding RowBackground}" CornerRadius="3" Padding="4,1" Margin="0,1">
+                      <Grid ColumnDefinitions="58,48,*,130" ColumnSpacing="6">
+                        <TextBlock Text="{Binding Time}" FontSize="9.5" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource TextMuted}" />
+                        <Border Grid.Column="1" Background="{Binding BadgeBackground}" CornerRadius="3"
+                                Padding="4,1" VerticalAlignment="Top" IsVisible="{Binding HasLevel}">
+                          <TextBlock Text="{Binding Level}" FontSize="8.5" FontWeight="SemiBold"
+                                     Foreground="{Binding Brush}" HorizontalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding DisplayMessage}" FontSize="10"
+                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Top" />
+                        <TextBlock Grid.Column="3" Text="{Binding Thread}" FontSize="8.5"
+                                   Foreground="{DynamicResource TextMuted}" MaxWidth="125"
+                                   TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"
+                                   VerticalAlignment="Top" />
+                      </Grid>
+                    </Border>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
@@ -67,15 +73,15 @@
                       <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="SemiBold"
                                  TextTrimming="CharacterEllipsis" />
                       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
-                        <TextBlock Text="{Binding StateText}" FontSize="9.5"
-                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StateText}" FontSize="9.5" FontWeight="SemiBold"
+                                   Foreground="{Binding StateBrush}" VerticalAlignment="Center" />
                         <Button Content="暂停/继续" Command="{Binding PauseOrResumeCommand}"
                                 FontSize="9" Padding="5,2" MinHeight="22" />
                         <Button Content="取消" Command="{Binding CancelCommand}"
                                 FontSize="9" Padding="5,2" MinHeight="22" />
                       </StackPanel>
                       <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding Progress}"
-                                   Maximum="1" Height="4" />
+                                   Maximum="1" Height="4" Foreground="{Binding StateBrush}" />
                     </Grid>
                   </Border>
                 </DataTemplate>

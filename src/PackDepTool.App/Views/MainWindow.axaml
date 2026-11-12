@@ -1357,8 +1357,9 @@
 
       <Border IsVisible="{Binding IsHomePage}" Margin="10,10,10,6"
               Background="{DynamicResource AppBackground}">
-        <Grid RowDefinitions="*,250">
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid RowDefinitions="Auto,*">
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      MaxHeight="620">
           <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="14" Margin="24,22,24,24">
             <StackPanel Spacing="6" IsVisible="{Binding !HasGraph}">
               <TextBlock Text="开始使用" FontSize="24" FontWeight="SemiBold" />
@@ -1523,7 +1524,8 @@
             </Border>
           </StackPanel>
         </ScrollViewer>
-        <controls:RuntimeConsoleView Grid.Row="1" DataContext="{Binding RuntimeConsole}" />
+        <controls:RuntimeConsoleView Grid.Row="1" DataContext="{Binding RuntimeConsole}"
+                                     MinHeight="180" />
         </Grid>
       </Border>
 
