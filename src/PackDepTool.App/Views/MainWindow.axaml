@@ -246,8 +246,8 @@
               <ScrollViewer x:Name="FilterScrollViewer" VerticalScrollBarVisibility="Auto"
                             HorizontalScrollBarVisibility="Disabled" Margin="0,6,0,0">
                 <StackPanel Spacing="10">
-                  <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
-                          BorderThickness="1" CornerRadius="8" Padding="10,8">
+                  <Border Background="Transparent" BorderBrush="{DynamicResource CardBorder}"
+                          BorderThickness="0,0,0,1" Padding="0,0,0,9">
                     <StackPanel Spacing="6">
                       <TextBlock Text="关系类型" Classes="section" />
                       <WrapPanel>
@@ -260,8 +260,8 @@
                     </StackPanel>
                   </Border>
 
-                  <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
-                          BorderThickness="1" CornerRadius="8" Padding="10,8">
+                  <Border Background="Transparent" BorderBrush="{DynamicResource CardBorder}"
+                          BorderThickness="0,0,0,1" Padding="0,0,0,9">
                     <StackPanel Spacing="6">
                       <TextBlock Text="加载器" Classes="section" IsVisible="{Binding ShowLoaderFilters}" />
                       <WrapPanel IsVisible="{Binding ShowLoaderFilters}">
