@@ -1398,7 +1398,7 @@
             </Grid>
 
             <Grid ColumnDefinitions="1.45*,*" ColumnSpacing="12" IsVisible="{Binding HasGraph}">
-              <Border Classes="card" Padding="18" CornerRadius="12">
+              <Border Classes="card" Padding="18" CornerRadius="12" MinHeight="220">
                 <StackPanel Spacing="6">
                   <TextBlock Text="当前实例" Classes="section" />
                   <ComboBox ItemsSource="{Binding Instances}"
@@ -1433,7 +1433,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12">
+              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12" MinHeight="220">
                 <StackPanel Spacing="8">
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="健康概览" Classes="section" />
@@ -1480,7 +1480,7 @@
             </Grid>
 
             <Grid ColumnDefinitions="1.45*,*" ColumnSpacing="12" IsVisible="{Binding HasGraph}">
-              <Border Classes="card" Padding="16" CornerRadius="12">
+              <Border Classes="card" Padding="16" CornerRadius="12" MinHeight="120">
                 <StackPanel Spacing="8">
                   <TextBlock Text="常用操作" Classes="section" />
                   <WrapPanel>
@@ -1500,7 +1500,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12">
+              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12" MinHeight="120">
                 <StackPanel Spacing="8">
                   <TextBlock Text="最近打开" Classes="section" />
                   <ComboBox ItemsSource="{Binding RecentPacks}"
