@@ -1475,8 +1475,6 @@
                   </StackPanel>
                   <Button Content="一键体检向导" Command="{Binding OpenHealthWizardCommand}"
                           FontSize="10.5" HorizontalAlignment="Left" />
-                  <Button Content="一键体检向导" Command="{Binding OpenHealthWizardCommand}"
-                          FontSize="10.5" HorizontalAlignment="Left" />
                 </StackPanel>
               </Border>
             </Grid>

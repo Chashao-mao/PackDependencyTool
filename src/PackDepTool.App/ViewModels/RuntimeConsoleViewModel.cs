@@ -90,6 +90,8 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
     private readonly List<ConsoleLogLine> _allLines = [];
     private string? _logPath;
     private bool _disposed;
+    private long _lastLength = -1;
+    private DateTime _lastWriteTime;
 
     public RuntimeConsoleViewModel(DownloadQueueService queue)
     {
@@ -137,20 +139,34 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
             using var stream = new FileStream(
                 _logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = new StreamReader(stream, Encoding.UTF8, true);
+            var info = new FileInfo(_logPath);
+            if (info.Length == _lastLength && info.LastWriteTimeUtc == _lastWriteTime) return;
+            _lastLength = info.Length;
+            _lastWriteTime = info.LastWriteTimeUtc;
+
             var text = reader.ReadToEnd();
             var lines = text.Replace("\r\n", "\n").Split('\n');
-            if (lines.Length > 1200) lines = lines[^1200..];
-            _allLines.Clear();
-            foreach (var raw in lines)
+            if (lines.Length > 1600) lines = lines[^1600..];
+            var parsed = lines.Where(line => !string.IsNullOrWhiteSpace(line)).Select(Parse).ToList();
+            var previousCount = _allLines.Count;
+            var samePrefix = previousCount > 0 && parsed.Count >= previousCount &&
+                             parsed.Take(previousCount).Select(line => line.Time + line.Level + line.Message)
+                                 .SequenceEqual(_allLines.Select(line => line.Time + line.Level + line.Message));
+            if (samePrefix)
             {
-                if (string.IsNullOrWhiteSpace(raw)) continue;
-                _allLines.Add(Parse(raw));
+                var added = parsed.Skip(previousCount).ToList();
+                _allLines.AddRange(added);
+                AppendVisibleLines(added);
+            }
+            else
+            {
+                _allLines.Clear();
+                _allLines.AddRange(parsed);
+                ApplyLogFilter();
             }
             LevelSummary = $"INFO {_allLines.Count(line => line.Level == "INFO")} · " +
                            $"WARN {_allLines.Count(line => line.Level == "WARN")} · " +
                            $"ERROR {_allLines.Count(line => line.Level is "ERROR" or "FATAL")}";
-            ApplyLogFilter();
-            var info = new FileInfo(_logPath);
             LogStatus = $"{info.Length / 1024d:0.#} KB · {info.LastWriteTime:HH:mm:ss} · 自动刷新";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -180,6 +196,22 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
         }
         LogStatus = LogStatus.Split(" · 已折叠")[0];
         if (hidden > 0) LogStatus += $" · 已折叠 {hidden} 行堆栈";
+    }
+
+    private void AppendVisibleLines(IEnumerable<ConsoleLogLine> lines)
+    {
+        var level = SelectedLevel;
+        var search = SearchText.Trim();
+        foreach (var line in lines)
+        {
+            if (CollapseStackTraces && line.IsContinuation) continue;
+            if (level != "全部等级" && !line.Level.Equals(level, StringComparison.OrdinalIgnoreCase)) continue;
+            if (search.Length > 0 &&
+                !line.Message.Contains(search, StringComparison.OrdinalIgnoreCase) &&
+                !line.Thread.Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
+            LogLines.Add(line);
+        }
+        while (LogLines.Count > 1600) LogLines.RemoveAt(0);
     }
 
     private static ConsoleLogLine Parse(string raw)
