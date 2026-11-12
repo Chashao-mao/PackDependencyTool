@@ -194,10 +194,10 @@
           </Border>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0">
             <Border Classes="accentChip" VerticalAlignment="Center">
-              <TextBlock Text="{Binding ProfileSummary}" FontSize="11" />
+              <TextBlock Text="{Binding ProfileSummary, StringFormat='环境 · {0}'}" FontSize="10.5" />
             </Border>
             <Border Classes="chip" VerticalAlignment="Center">
-              <TextBlock Text="{Binding CountSummary}" FontSize="11" />
+              <TextBlock Text="{Binding CountSummary, StringFormat='统计 · {0}'}" FontSize="10.5" />
             </Border>
             <Border Classes="chip" IsVisible="{Binding IsOffline}">
               <TextBlock Text="离线模式" FontSize="11" Foreground="{DynamicResource Warning}" />
@@ -1435,37 +1435,46 @@
 
               <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12">
                 <StackPanel Spacing="8">
-                  <TextBlock Text="健康概览" Classes="section" />
-                  <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
-                    <Border Classes="card" Padding="10,7" CornerRadius="8">
-                      <StackPanel>
-                        <TextBlock Text="{Binding MissingCount}" FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Danger}" />
-                        <TextBlock Text="缺失依赖" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
-                      </StackPanel>
-                    </Border>
-                    <Border Grid.Column="1" Classes="card" Padding="10,7" CornerRadius="8">
-                      <StackPanel>
-                        <TextBlock Text="{Binding ConflictCount}" FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Warning}" />
-                        <TextBlock Text="冲突" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
-                      </StackPanel>
-                    </Border>
-                    <Border Grid.Row="1" Classes="card" Padding="10,7" CornerRadius="8">
-                      <StackPanel>
-                        <TextBlock Text="{Binding ErrorCount}" FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Danger}" />
-                        <TextBlock Text="错误" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
-                      </StackPanel>
-                    </Border>
-                    <Border Grid.Row="1" Grid.Column="1" Classes="card" Padding="10,7" CornerRadius="8">
-                      <StackPanel>
-                        <TextBlock Text="{Binding InfoCount}" FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextSecondary}" />
-                        <TextBlock Text="提示" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
-                      </StackPanel>
-                    </Border>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="健康概览" Classes="section" />
+                    <TextBlock Grid.Column="1" Text="当前实例" Classes="caption" />
                   </Grid>
+                  <StackPanel Spacing="2">
+                    <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="0,5">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource Danger}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Grid.Column="1" Text="缺失依赖" FontSize="10.5" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding MissingCount}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Danger}" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                    <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="0,5">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource Warning}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Grid.Column="1" Text="冲突" FontSize="10.5" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding ConflictCount}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Warning}" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                    <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="0,5">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource Danger}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Grid.Column="1" Text="错误" FontSize="10.5" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding ErrorCount}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Danger}" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                    <Border Padding="0,5">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Width="7" Height="7" Fill="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,7,0" />
+                        <TextBlock Grid.Column="1" Text="提示" FontSize="10.5" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding InfoCount}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </StackPanel>
+                  <Button Content="一键体检向导" Command="{Binding OpenHealthWizardCommand}"
+                          FontSize="10.5" HorizontalAlignment="Left" />
                   <Button Content="一键体检向导" Command="{Binding OpenHealthWizardCommand}"
                           FontSize="10.5" HorizontalAlignment="Left" />
                 </StackPanel>

@@ -107,6 +107,8 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
     [ObservableProperty] private string _logStatus = "尚未打开实例日志";
     [ObservableProperty] private string _queueStatus = "没有下载任务";
     [ObservableProperty] private bool _autoScroll = true;
+    [ObservableProperty] private bool _collapseStackTraces = true;
+    [ObservableProperty] private string _levelSummary = string.Empty;
     [ObservableProperty] private int _tabIndex;
 
     public string LogPath => _logPath ?? string.Empty;
@@ -144,6 +146,9 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
                 if (string.IsNullOrWhiteSpace(raw)) continue;
                 _allLines.Add(Parse(raw));
             }
+            LevelSummary = $"INFO {_allLines.Count(line => line.Level == "INFO")} · " +
+                           $"WARN {_allLines.Count(line => line.Level == "WARN")} · " +
+                           $"ERROR {_allLines.Count(line => line.Level is "ERROR" or "FATAL")}";
             ApplyLogFilter();
             var info = new FileInfo(_logPath);
             LogStatus = $"{info.Length / 1024d:0.#} KB · {info.LastWriteTime:HH:mm:ss} · 自动刷新";
@@ -159,12 +164,22 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
         var level = SelectedLevel;
         var search = SearchText.Trim();
         LogLines.Clear();
-        foreach (var line in _allLines.Where(line =>
-                     (level == "全部等级" || line.Level.Equals(level, StringComparison.OrdinalIgnoreCase)) &&
-                     (search.Length == 0 ||
-                      line.Message.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                      line.Thread.Contains(search, StringComparison.OrdinalIgnoreCase))))
+        var hidden = 0;
+        foreach (var line in _allLines)
+        {
+            if (CollapseStackTraces && line.IsContinuation)
+            {
+                hidden++;
+                continue;
+            }
+            if (level != "全部等级" && !line.Level.Equals(level, StringComparison.OrdinalIgnoreCase)) continue;
+            if (search.Length > 0 &&
+                !line.Message.Contains(search, StringComparison.OrdinalIgnoreCase) &&
+                !line.Thread.Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
             LogLines.Add(line);
+        }
+        LogStatus = LogStatus.Split(" · 已折叠")[0];
+        if (hidden > 0) LogStatus += $" · 已折叠 {hidden} 行堆栈";
     }
 
     private static ConsoleLogLine Parse(string raw)
@@ -255,6 +270,7 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
 
     partial void OnSelectedLevelChanged(string value) => ApplyLogFilter();
     partial void OnSearchTextChanged(string value) => ApplyLogFilter();
+    partial void OnCollapseStackTracesChanged(bool value) => ApplyLogFilter();
 
     [RelayCommand]
     private void ClearLog()
