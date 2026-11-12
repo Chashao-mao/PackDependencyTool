@@ -58,8 +58,8 @@
                         Command="{Binding SetLevelCommand}" CommandParameter="ERROR" />
               </StackPanel>
             </Grid>
-            <Grid Grid.Row="1" ColumnDefinitions="64,52,*,150" ColumnSpacing="6"
-                  Margin="6,0,6,2">
+            <Grid Grid.Row="1" ColumnDefinitions="64,52,*,124" ColumnSpacing="6"
+                  Margin="6,0,22,2">
               <TextBlock Text="时间" FontSize="9" Foreground="{DynamicResource TextMuted}" />
               <TextBlock Grid.Column="1" Text="级别" FontSize="9" Foreground="{DynamicResource TextMuted}" />
               <TextBlock Grid.Column="2" Text="内容" FontSize="9" Foreground="{DynamicResource TextMuted}" />
@@ -67,14 +67,14 @@
                          HorizontalAlignment="Right" />
             </Grid>
             <Border Grid.Row="2" Background="{DynamicResource PanelAlt}" CornerRadius="6"
-                    Padding="6" ClipToBounds="True">
+                    Padding="6,6,18,6" ClipToBounds="True">
               <ListBox x:Name="LogList" ItemsSource="{Binding LogLines}" Background="Transparent"
                        BorderThickness="0"
                        FontFamily="Consolas, Microsoft YaHei UI" FontSize="10">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:ConsoleLogLine">
                     <Border Background="{Binding RowBackground}" CornerRadius="3" Padding="3,2" Margin="0,1">
-                      <Grid ColumnDefinitions="64,52,*,150" ColumnSpacing="6">
+                      <Grid ColumnDefinitions="64,52,*,124" ColumnSpacing="6">
                         <TextBlock Text="{Binding Time}" FontSize="10" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextMuted}" />
                         <Border Grid.Column="1" Background="{Binding BadgeBackground}" CornerRadius="3"
@@ -88,7 +88,7 @@
                         <TextBlock Grid.Column="3" Text="{Binding Thread}" FontSize="8.5"
                                    Foreground="{DynamicResource TextMuted}" MaxWidth="148"
                                    TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"
-                                   VerticalAlignment="Center" />
+                                   VerticalAlignment="Center" Margin="0,0,4,0" />
                       </Grid>
                     </Border>
                   </DataTemplate>

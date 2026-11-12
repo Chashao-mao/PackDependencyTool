@@ -240,6 +240,20 @@
     <Setter Property="Background" Value="{DynamicResource HoverOverlay}" />
   </Style>
 
+  <Style Selector="ScrollBar:vertical">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar:vertical /template/ Thumb">
+    <Setter Property="Background" Value="#AAB6C6" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="MinHeight" Value="24" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal">
+    <Setter Property="Height" Value="9" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
   <!-- ============================== Inputs ============================== -->
   <Style Selector="TextBox">
     <Setter Property="CornerRadius" Value="8" />
