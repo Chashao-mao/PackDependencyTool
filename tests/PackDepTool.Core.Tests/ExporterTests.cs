@@ -117,7 +117,7 @@ public sealed class ExporterTests
         };
 
         var mdPath = temp.Combine("modlist.md");
-        PackListExporter.ExportModListMarkdown(scan, graph, mdPath);
+        PackListExporter.ExportModListMarkdown(scan, graph, mdPath, includeEmbedded: true);
         var markdown = File.ReadAllText(mdPath);
         Assert.Contains("顶层 1 · 内嵌 1", markdown);
         Assert.Contains("| 层级 |", markdown);
@@ -125,12 +125,16 @@ public sealed class ExporterTests
         Assert.Contains("| Parent |", markdown);
 
         var csvPath = temp.Combine("modlist.csv");
-        PackListExporter.ExportModListCsv(scan, graph, csvPath);
+        PackListExporter.ExportModListCsv(scan, graph, csvPath, includeEmbedded: true);
         var bytes = File.ReadAllBytes(csvPath);
         Assert.Equal([0xEF, 0xBB, 0xBF], bytes[..3]);
         var csv = File.ReadAllText(csvPath);
         Assert.Contains("level,parentId,parentName", csv);
         Assert.Contains("内嵌,parent,Parent", csv);
+
+        var defaultPath = temp.Combine("modlist-default.md");
+        PackListExporter.ExportModListMarkdown(scan, graph, defaultPath);
+        Assert.DoesNotContain("↳ Child", File.ReadAllText(defaultPath));
     }
 
     [Fact]

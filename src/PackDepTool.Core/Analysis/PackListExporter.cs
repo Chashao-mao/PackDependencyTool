@@ -6,7 +6,8 @@ namespace PackDepTool.Core.Analysis;
 /// <summary>Human-readable pack-author exports (Markdown / CSV).</summary>
 public static class PackListExporter
 {
-    public static string ExportModListMarkdown(ScanResult scan, GraphDocument graph, string path)
+    public static string ExportModListMarkdown(
+        ScanResult scan, GraphDocument graph, string path, bool includeEmbedded = false)
     {
         var builder = new StringBuilder();
         var name = scan.Profile.PackName ?? Path.GetFileName(scan.RootPath);
@@ -15,8 +16,12 @@ public static class PackListExporter
         builder.AppendLine($"- 加载器：{scan.Profile.DisplayLoader}");
         builder.AppendLine($"- Minecraft：{scan.Profile.McVersion}");
         var parentByChild = EmbeddedParents(graph);
-        var ordered = OrderedNodes(graph, parentByChild);
-        var embeddedCount = ordered.Count(node => parentByChild.ContainsKey(node.Id));
+        var ordered = OrderedNodes(graph, parentByChild)
+            .Where(node => includeEmbedded || !parentByChild.ContainsKey(node.Id))
+            .ToList();
+        var embeddedCount = includeEmbedded
+            ? ordered.Count(node => parentByChild.ContainsKey(node.Id))
+            : graph.Nodes.Count(node => !node.IsSynthetic && node.IsEmbedded);
         builder.AppendLine($"- 模组：{graph.Nodes.Count(node => !node.IsSynthetic)}（顶层 {ordered.Count - embeddedCount} · 内嵌 {embeddedCount}）");
         builder.AppendLine($"- 导出时间：{DateTime.Now:yyyy-MM-dd HH:mm}");
         builder.AppendLine();
@@ -71,13 +76,16 @@ public static class PackListExporter
         return path;
     }
 
-    public static string ExportModListCsv(ScanResult scan, GraphDocument graph, string path)
+    public static string ExportModListCsv(
+        ScanResult scan, GraphDocument graph, string path, bool includeEmbedded = false)
     {
         var builder = new StringBuilder();
         builder.AppendLine("name,modId,chineseName,level,parentId,parentName,category,version,loader,side,sideInferred,status," +
                            "requires,optional,incompatible,embedded,recommends,file,curseforge,modrinth");
         var parentByChild = EmbeddedParents(graph);
-        var ordered = OrderedNodes(graph, parentByChild);
+        var ordered = OrderedNodes(graph, parentByChild)
+            .Where(node => includeEmbedded || !parentByChild.ContainsKey(node.Id))
+            .ToList();
         var outgoing = graph.Edges
             .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);

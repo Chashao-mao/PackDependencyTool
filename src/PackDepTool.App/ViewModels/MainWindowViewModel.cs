@@ -5880,7 +5880,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             "导出模组清单", ExportFileName("modlist", "md"), "md", "Markdown");
         if (string.IsNullOrWhiteSpace(path)) return;
 
-        PackListExporter.ExportModListMarkdown(_scanResult, _graph, path);
+        PackListExporter.ExportModListMarkdown(_scanResult, _graph, path, ShowEmbedded);
         StatusText = $"模组清单已导出：{Path.GetFileName(path)}";
         await _dialogs.ShowMessageAsync("导出完成", $"模组清单已写入：{Environment.NewLine}{path}");
     }
@@ -5906,7 +5906,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             "导出模组清单 CSV", ExportFileName("modlist", "csv"), "csv", "CSV");
         if (string.IsNullOrWhiteSpace(path)) return;
 
-        PackListExporter.ExportModListCsv(_scanResult, _graph, path);
+        PackListExporter.ExportModListCsv(_scanResult, _graph, path, ShowEmbedded);
         StatusText = $"模组清单 CSV 已导出：{Path.GetFileName(path)}";
         await _dialogs.ShowMessageAsync("导出完成", $"模组清单 CSV 已写入：{Environment.NewLine}{path}");
     }
