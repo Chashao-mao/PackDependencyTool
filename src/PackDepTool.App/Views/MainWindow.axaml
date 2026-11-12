@@ -222,218 +222,209 @@
 
       <!-- Left: search + filters + issue/mod navigator -->
       <Border Grid.Column="0" x:Name="LeftPanelBorder" Classes="card" Padding="12" ClipToBounds="True">
-        <Grid RowDefinitions="Auto,1.2*,*" RowSpacing="10">
-          <StackPanel Spacing="6">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="筛选与问题" Classes="section" VerticalAlignment="Center" />
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                <Button Content="重置" Command="{Binding ResetFiltersCommand}"
-                        FontSize="9.5" Padding="7,1" MinHeight="22"
-                        ToolTip.Tip="清除搜索、状态、加载器与关系筛选" />
-                <Button Content="«" Click="ToggleLeftPanel_Click"
-                        FontSize="11" Padding="6,1" MinHeight="22"
-                        ToolTip.Tip="收起左栏（可从顶部「面板」恢复）" />
-              </StackPanel>
-            </Grid>
-            <TextBox x:Name="SearchBox"
-                     Text="{Binding SearchText, Mode=TwoWay}"
-                     Watermark="搜索名称 / modId / slug（Ctrl+F）"
-                     ToolTip.Tip="空格分隔多个条件，多个条件同时满足；前缀 - 或 ! 表示排除。例如：sodium -bad" />
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-              <TextBlock Text="最近" Classes="caption" VerticalAlignment="Center" />
-              <ComboBox Grid.Column="1" ItemsSource="{Binding RecentPacks}"
-                        SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
-                        HorizontalAlignment="Stretch" FontSize="11" Height="30"
-                        PlaceholderText="选择最近整合包">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <TextBlock Text="{Binding}" FontSize="11" TextTrimming="CharacterEllipsis" MaxWidth="190" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </Grid>
-          </StackPanel>
-
-          <ScrollViewer Grid.Row="1" x:Name="FilterScrollViewer" VerticalScrollBarVisibility="Auto"
-                        HorizontalScrollBarVisibility="Disabled">
-          <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
-                  BorderThickness="1" CornerRadius="6" Padding="9,7">
-            <StackPanel Spacing="5">
-              <TextBlock Text="关系类型" Classes="section" />
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="2">
-              <CheckBox Content="必需" IsChecked="{Binding ShowRequires, Mode=TwoWay}" />
-              <CheckBox Grid.Column="1" Content="不兼容" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" />
-              <CheckBox Grid.Row="1" Content="可选" IsChecked="{Binding ShowOptional, Mode=TwoWay}" />
-              <CheckBox Grid.Row="1" Grid.Column="1" Content="推荐" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" />
-              <CheckBox Grid.Row="2" Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
-            </Grid>
-
-            <StackPanel IsVisible="{Binding ShowLoaderFilters}" Spacing="5">
-              <TextBlock Text="加载器" Classes="section" Margin="0,4,0,0" />
-              <WrapPanel>
-                <CheckBox Content="Fabric" IsChecked="{Binding ShowFabric, Mode=TwoWay}"
-                          IsVisible="{Binding ShowFabricFilter}" Margin="0,0,12,0" />
-                <CheckBox Content="Quilt" IsChecked="{Binding ShowQuilt, Mode=TwoWay}"
-                          IsVisible="{Binding ShowQuiltFilter}" Margin="0,0,12,0" />
-                <CheckBox Content="Forge" IsChecked="{Binding ShowForge, Mode=TwoWay}"
-                          IsVisible="{Binding ShowForgeFilter}" Margin="0,0,12,0" />
-                <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}"
-                          IsVisible="{Binding ShowNeoForgeFilter}" Margin="0,0,12,0" />
-                <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}"
-                          IsVisible="{Binding ShowUnknownFilter}" />
-              </WrapPanel>
+        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="9">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="筛选与问题" Classes="section" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <Button Content="重置" Command="{Binding ResetFiltersCommand}"
+                      FontSize="9.5" Padding="7,1" MinHeight="22"
+                      ToolTip.Tip="清除搜索、状态、加载器与关系筛选" />
+              <Button Content="«" Click="ToggleLeftPanel_Click"
+                      FontSize="11" Padding="6,1" MinHeight="22"
+                      ToolTip.Tip="收起左栏" />
             </StackPanel>
-
-            <Grid ColumnDefinitions="44,*" ColumnSpacing="6" Margin="0,2,0,0">
-              <TextBlock Text="侧" Classes="caption" VerticalAlignment="Center" />
-              <ComboBox Grid.Column="1" ItemsSource="{Binding SideFilters}"
-                        SelectedItem="{Binding SelectedSideFilter, Mode=TwoWay}"
-                        FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:SideFilterOption">
-                    <TextBlock Text="{Binding Label}" FontSize="10.5" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-            </Grid>
-
-            <ComboBox ItemsSource="{Binding StatusFilters}"
-                      SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}"
-                      FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch"
-                      Margin="0,2,0,0">
-              <ComboBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:StatusFilterOption">
-                  <TextBlock Text="{Binding Label}" FontSize="10.5" />
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-
-            <Expander Header="显示选项" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
-              <StackPanel Spacing="5" Margin="0,4,0,0">
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2">
-                  <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
-                  <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
-                            IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
-                  <CheckBox Grid.Row="1" Content="展开内嵌" FontSize="10.5"
-                            IsChecked="{Binding ShowEmbedded, Mode=TwoWay}"
-                            ToolTip.Tip="展开父模组下所有内嵌 JAR；依赖图始终不铺开内嵌节点" />
-                  <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
-                            IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}"
-                            ToolTip.Tip="勾选后才显示底部未安装的可选/推荐依赖" />
-                  <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
-                            IsChecked="{Binding ShowMissing, Mode=TwoWay}"
-                            ToolTip.Tip="在列表和依赖图中显示未安装的必需依赖" />
-                  <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
-                            IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
-                            IsEnabled="{Binding HasUpdateCheck}"
-                            ToolTip.Tip="先检查模组更新，再筛选有可用更新的模组" />
-                  <Button Grid.Row="3" Grid.Column="1" Content="检查模组更新"
-                          Command="{Binding CheckUpdatesCommand}"
-                          IsVisible="{Binding !IsCheckingUpdates}"
-                          IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24" />
-                </Grid>
-                <Grid ColumnDefinitions="52,*,Auto" ColumnSpacing="6" IsVisible="{Binding IsListView}">
-                  <TextBlock Text="依赖线" Classes="caption" VerticalAlignment="Center" />
-                  <ComboBox Grid.Column="1" ItemsSource="{Binding ConnectionLineOptions}"
-                            SelectedItem="{Binding SelectedConnectionLineMode, Mode=TwoWay}"
-                            FontSize="10.5" Height="28" MinWidth="0" HorizontalAlignment="Stretch">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="vm:ConnectionLineOption">
-                        <TextBlock Text="{Binding Label}" FontSize="10.5" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                  <Button Grid.Column="2" x:Name="RailManagerButton" Content="管理"
-                          Click="RailManager_Click" FontSize="9.5" Padding="6,1" MinHeight="28"
-                          ToolTip.Tip="隐藏 / 仅显示 / 恢复依赖线" />
-                </Grid>
-              </StackPanel>
-            </Expander>
-
-            <Expander Header="功能分类" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
-              <ItemsControl ItemsSource="{Binding CategoryChips}" Margin="0,4,0,0">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <WrapPanel />
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:CategoryChipItem">
-                    <Button Classes="categoryChip" Classes.active="{Binding IsActive}"
-                            Content="{Binding Display}" Command="{Binding SelectCommand}"
-                            Margin="0,0,4,4" ToolTip.Tip="按功能分类筛选" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </Expander>
-            </StackPanel>
-          </Border>
-          </ScrollViewer>
-
-          <Grid Grid.Row="2" RowDefinitions="Auto,*" Margin="0,2,0,0">
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel Spacing="1">
-                <TextBlock Text="问题速览" Classes="section" IsVisible="{Binding IsListView}" />
-                <TextBlock Text="模组列表" Classes="section" IsVisible="{Binding IsGraphView}" />
-                <TextBlock Text="{Binding ProblemSummary}" FontSize="9.5"
-                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
-                           IsVisible="{Binding IsListView}" />
-              </StackPanel>
-            </Grid>
-
-            <ListBox Grid.Row="1" ItemsSource="{Binding Issues}"
-                     SelectedItem="{Binding SelectedIssue, Mode=TwoWay}"
-                     IsVisible="{Binding IsListView}">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:IssueItemViewModel">
-                  <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Message}">
-                    <Border Width="3" CornerRadius="2" Background="{Binding SeverityBrush}" Margin="0,1,7,1" />
-                    <StackPanel Grid.Column="1" Spacing="1">
-                      <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Text="{Binding Message}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
-                                 TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Text="{Binding Location}" FontSize="10.5" Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                  </Grid>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-
-            <ListBox Grid.Row="1" ItemsSource="{Binding NodeItems}"
-                     SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
-                     IsVisible="{Binding IsGraphView}">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:NodeItemViewModel">
-                  <Grid ColumnDefinitions="Auto,34,*,Auto" ColumnSpacing="2" ToolTip.Tip="{Binding Tooltip}">
-                    <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}"
-                              VerticalAlignment="Center" MinWidth="0" Margin="0,0,2,0" />
-                    <Grid Grid.Column="1" Width="30" Height="30" VerticalAlignment="Center" Margin="0,0,7,0">
-                      <Border Width="26" Height="26" CornerRadius="5" Background="{DynamicResource PanelAlt}"
-                              ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Center">
-                        <Grid>
-                          <TextBlock Text="{Binding Initial}" FontSize="11" FontWeight="SemiBold"
-                                     Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
-                                     VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
-                          <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
-                        </Grid>
-                      </Border>
-                      <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" HorizontalAlignment="Right"
-                               VerticalAlignment="Bottom" Stroke="{DynamicResource PanelBackground}" StrokeThickness="1.5" />
-                    </Grid>
-                    <StackPanel Grid.Column="2" Spacing="1">
-                      <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Text="{Binding Subtitle}" FontSize="10.5"
-                                 Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                    <Border Grid.Column="3" Classes="chip" Padding="6,1" VerticalAlignment="Center" Margin="6,0,0,0">
-                      <TextBlock Text="{Binding LoaderText}" FontSize="10.5" />
-                    </Border>
-                  </Grid>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
           </Grid>
 
+          <TextBox Grid.Row="1" x:Name="SearchBox"
+                   Text="{Binding SearchText, Mode=TwoWay}"
+                   Watermark="搜索名称 / modId / slug（Ctrl+F）"
+                   FontSize="11"
+                   ToolTip.Tip="空格分隔多个条件；前缀 - 或 ! 表示排除" />
+
+          <TabControl Grid.Row="2">
+            <TabItem Header="筛选">
+              <ScrollViewer x:Name="FilterScrollViewer" VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled" Margin="0,6,0,0">
+                <StackPanel Spacing="10">
+                  <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                          BorderThickness="1" CornerRadius="8" Padding="10,8">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="关系类型" Classes="section" />
+                      <WrapPanel>
+                        <CheckBox Content="必需" IsChecked="{Binding ShowRequires, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="可选" IsChecked="{Binding ShowOptional, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="推荐" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="不兼容" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" Margin="0,0,14,0" />
+                        <CheckBox Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
+                      </WrapPanel>
+                    </StackPanel>
+                  </Border>
+
+                  <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+                          BorderThickness="1" CornerRadius="8" Padding="10,8">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="加载器" Classes="section" IsVisible="{Binding ShowLoaderFilters}" />
+                      <WrapPanel IsVisible="{Binding ShowLoaderFilters}">
+                        <CheckBox Content="Fabric" IsChecked="{Binding ShowFabric, Mode=TwoWay}"
+                                  IsVisible="{Binding ShowFabricFilter}" Margin="0,0,12,0" />
+                        <CheckBox Content="Quilt" IsChecked="{Binding ShowQuilt, Mode=TwoWay}"
+                                  IsVisible="{Binding ShowQuiltFilter}" Margin="0,0,12,0" />
+                        <CheckBox Content="Forge" IsChecked="{Binding ShowForge, Mode=TwoWay}"
+                                  IsVisible="{Binding ShowForgeFilter}" Margin="0,0,12,0" />
+                        <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}"
+                                  IsVisible="{Binding ShowNeoForgeFilter}" Margin="0,0,12,0" />
+                        <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}"
+                                  IsVisible="{Binding ShowUnknownFilter}" />
+                      </WrapPanel>
+                      <Grid ColumnDefinitions="64,*" ColumnSpacing="8" Margin="0,3,0,0">
+                        <TextBlock Text="侧" Classes="caption" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding SideFilters}"
+                                  SelectedItem="{Binding SelectedSideFilter, Mode=TwoWay}"
+                                  FontSize="10.5" Height="28" HorizontalAlignment="Stretch">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SideFilterOption">
+                              <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                      </Grid>
+                      <ComboBox ItemsSource="{Binding StatusFilters}"
+                                SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}"
+                                FontSize="10.5" Height="28" HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="vm:StatusFilterOption">
+                            <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
+                  </Border>
+
+                  <Expander Header="显示选项" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
+                    <StackPanel Spacing="5" Margin="0,4,0,0">
+                      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2">
+                        <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
+                        <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
+                                  IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
+                        <CheckBox Grid.Row="1" Content="展开内嵌" FontSize="10.5"
+                                  IsChecked="{Binding ShowEmbedded, Mode=TwoWay}"
+                                  ToolTip.Tip="展开父模组下所有内嵌 JAR" />
+                        <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
+                                  IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}" />
+                        <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
+                                  IsChecked="{Binding ShowMissing, Mode=TwoWay}" />
+                        <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
+                                  IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
+                                  IsEnabled="{Binding HasUpdateCheck}" />
+                        <Button Grid.Row="3" Grid.Column="1" Content="检查模组更新"
+                                Command="{Binding CheckUpdatesCommand}"
+                                IsVisible="{Binding !IsCheckingUpdates}"
+                                IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24" />
+                      </Grid>
+                      <Grid ColumnDefinitions="52,*,Auto" ColumnSpacing="6" IsVisible="{Binding IsListView}">
+                        <TextBlock Text="依赖线" Classes="caption" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding ConnectionLineOptions}"
+                                  SelectedItem="{Binding SelectedConnectionLineMode, Mode=TwoWay}"
+                                  FontSize="10.5" Height="28" HorizontalAlignment="Stretch">
+                          <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ConnectionLineOption">
+                              <TextBlock Text="{Binding Label}" FontSize="10.5" />
+                            </DataTemplate>
+                          </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Grid.Column="2" x:Name="RailManagerButton" Content="管理"
+                                Click="RailManager_Click" FontSize="9.5" Padding="6,1" MinHeight="28"
+                                ToolTip.Tip="隐藏 / 仅显示 / 恢复依赖线" />
+                      </Grid>
+                    </StackPanel>
+                  </Expander>
+
+                  <Expander Header="功能分类" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
+                    <ItemsControl ItemsSource="{Binding CategoryChips}" Margin="0,4,0,0">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <WrapPanel />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CategoryChipItem">
+                          <Button Classes="categoryChip" Classes.active="{Binding IsActive}"
+                                  Content="{Binding Display}" Command="{Binding SelectCommand}"
+                                  Margin="0,0,4,4" ToolTip.Tip="按功能分类筛选" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Expander>
+                </StackPanel>
+              </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="问题">
+              <Grid RowDefinitions="Auto,*" Margin="0,6,0,0" RowSpacing="6">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="问题速览" Classes="section" IsVisible="{Binding IsListView}" />
+                  <TextBlock Text="问题节点" Classes="section" IsVisible="{Binding IsGraphView}" />
+                  <TextBlock Text="{Binding ProblemSummary}" FontSize="10"
+                             Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                             IsVisible="{Binding IsListView}" />
+                </StackPanel>
+                <ListBox Grid.Row="1" ItemsSource="{Binding Issues}"
+                         SelectedItem="{Binding SelectedIssue, Mode=TwoWay}"
+                         IsVisible="{Binding IsListView}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:IssueItemViewModel">
+                      <Grid ColumnDefinitions="Auto,*" ToolTip.Tip="{Binding Message}" Margin="0,2">
+                        <Border Width="3" CornerRadius="2" Background="{Binding SeverityBrush}" Margin="0,1,7,1" />
+                        <StackPanel Grid.Column="1" Spacing="1">
+                          <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Message}" FontSize="10.5"
+                                     Foreground="{DynamicResource TextSecondary}"
+                                     TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Location}" FontSize="10"
+                                     Foreground="{DynamicResource TextMuted}"
+                                     TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <ListBox Grid.Row="1" ItemsSource="{Binding NodeItems}"
+                         SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
+                         IsVisible="{Binding IsGraphView}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:NodeItemViewModel">
+                      <Grid ColumnDefinitions="Auto,34,*,Auto" ColumnSpacing="2" ToolTip.Tip="{Binding Tooltip}">
+                        <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                  VerticalAlignment="Center" MinWidth="0" Margin="0,0,2,0" />
+                        <Grid Grid.Column="1" Width="30" Height="30" VerticalAlignment="Center" Margin="0,0,7,0">
+                          <Border Width="26" Height="26" CornerRadius="5" Background="{DynamicResource PanelAlt}"
+                                  ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <Grid>
+                              <TextBlock Text="{Binding Initial}" FontSize="11" FontWeight="SemiBold"
+                                         Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                         VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                              <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                            </Grid>
+                          </Border>
+                          <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" HorizontalAlignment="Right"
+                                   VerticalAlignment="Bottom" Stroke="{DynamicResource PanelBackground}" StrokeThickness="1.5" />
+                        </Grid>
+                        <StackPanel Grid.Column="2" Spacing="1">
+                          <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Subtitle}" FontSize="10.5"
+                                     Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Border Grid.Column="3" Classes="chip" Padding="6,1" VerticalAlignment="Center" Margin="6,0,0,0">
+                          <TextBlock Text="{Binding LoaderText}" FontSize="10.5" />
+                        </Border>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Grid>
+            </TabItem>
+          </TabControl>
         </Grid>
       </Border>
 
@@ -1265,138 +1256,85 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="12" Margin="24,22,24,24">
             <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="{Binding Instances.Count, StringFormat='共 {0} 个实例'}"
-                         Classes="caption" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Content="＋ 新建实例" Command="{Binding OpenInstancesCommand}"
-                      Classes="accent" VerticalAlignment="Center" />
+              <StackPanel Spacing="3">
+                <TextBlock Text="当前实例启动中心" FontSize="20" FontWeight="SemiBold" />
+                <TextBlock Text="实例列表、选择和管理统一在实例管理面板；这里只负责当前实例启动。"
+                           Classes="caption" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Instances.Count, StringFormat='已发现 {0} 个实例'}"
+                           Classes="caption" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <Button Content="实例管理…" Command="{Binding OpenInstancesCommand}"
+                        Classes="accent" />
+              </StackPanel>
             </Grid>
 
-            <Grid ColumnDefinitions="1.35*,*" ColumnSpacing="12">
-              <Border Classes="card" Padding="12" CornerRadius="10">
-                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Spacing="1">
-                      <TextBlock Text="实例列表" Classes="section" />
-                      <TextBlock Text="{Binding InstancesRootText}" FontSize="9.5"
-                                 TextTrimming="CharacterEllipsis"
-                                 Foreground="{DynamicResource TextMuted}" />
-                    </StackPanel>
-                    <Button Grid.Column="1" Content="刷新" Command="{Binding LoadInstancesCommand}"
-                            FontSize="10" VerticalAlignment="Center" />
-                  </Grid>
-                  <Grid Grid.Row="1" ColumnDefinitions="*,150" ColumnSpacing="8">
-                    <TextBox Text="{Binding InstanceSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Watermark="搜索实例名 / MC 版本" FontSize="10.5" Height="30" />
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding InstanceLoaderFilters}"
-                              SelectedItem="{Binding SelectedInstanceLoaderFilter, Mode=TwoWay}"
-                              FontSize="10" Height="30" />
-                  </Grid>
-                  <TextBlock Grid.Row="2" Text="{Binding FilteredInstances.Count, StringFormat='显示 {0} 个实例'}"
-                             Classes="caption" />
-                  <ListBox Grid.Row="3" ItemsSource="{Binding FilteredInstances}"
-                           SelectedItem="{Binding SelectedInstance, Mode=TwoWay}"
-                           Background="Transparent" Height="360">
-                    <ListBox.ItemTemplate>
-                      <DataTemplate x:DataType="scanning:MinecraftInstanceInfo">
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,6">
-                          <StackPanel Spacing="2">
-                            <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Detail}" FontSize="10"
-                                       Foreground="{DynamicResource TextSecondary}" />
-                          </StackPanel>
-                          <TextBlock Grid.Column="1" Text="{Binding ModifiedText}" FontSize="9.5"
-                                     Foreground="{DynamicResource TextMuted}"
-                                     VerticalAlignment="Center" />
-                        </Grid>
-                      </DataTemplate>
-                    </ListBox.ItemTemplate>
-                  </ListBox>
-                  <WrapPanel Grid.Row="4">
-                    <Button Content="打开选中实例" Command="{Binding OpenSelectedInstanceCommand}"
-                            Classes="accent" FontSize="11" Padding="12,6" Margin="0,0,8,4" />
-                    <Button Content="实例管理…" Command="{Binding OpenInstancesCommand}"
-                            FontSize="11" Padding="12,6" Margin="0,0,8,4" />
-                    <Button Content="重新扫描" Command="{Binding RescanCommand}"
-                            FontSize="11" Padding="12,6" Margin="0,0,8,4" />
+            <Grid ColumnDefinitions="1.25*,*" ColumnSpacing="12">
+              <Border Classes="card" Padding="20" CornerRadius="12">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="当前实例" Classes="section" />
+                  <TextBlock Text="{Binding PackName}" FontSize="22" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding PackPathDisplay}" FontSize="9.5"
+                             TextTrimming="CharacterEllipsis"
+                             Foreground="{DynamicResource TextMuted}" />
+                  <TextBlock Text="{Binding ProfileSummary}" FontSize="13" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Accent}" />
+                  <TextBlock Text="{Binding CountSummary}" Classes="caption" />
+                  <Border Background="{DynamicResource PanelAlt}" CornerRadius="8"
+                          Padding="12,9" Margin="0,6,0,0">
+                    <Grid ColumnDefinitions="70,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="7">
+                      <TextBlock Text="内存" FontSize="10.5" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextSecondary}" />
+                      <TextBlock Grid.Column="1" Text="{Binding LaunchMemoryText}" FontSize="11.5"
+                                 FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <TextBlock Grid.Row="1" Text="Java" FontSize="10.5" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextSecondary}" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LaunchJavaText}"
+                                 FontSize="10" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <TextBlock Grid.Row="2" Text="模式" FontSize="10.5" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource TextSecondary}" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LaunchModeText}"
+                                 FontSize="11" VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                  <WrapPanel Margin="0,8,0,0">
+                    <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
+                            IsEnabled="{Binding HasGraph}" Classes="accent"
+                            FontSize="12" Padding="16,8" MinHeight="38" Margin="0,0,8,4" />
+                    <Button Content="启动前诊断" Command="{Binding DiagnoseLaunchCommand}"
+                            IsEnabled="{Binding HasGraph}" FontSize="11" Padding="12,7" Margin="0,0,8,4" />
+                    <Button Content="模组列表" Command="{Binding EnterWorkspaceCommand}"
+                            FontSize="11" Padding="12,7" Margin="0,0,8,4" />
                   </WrapPanel>
-                </Grid>
+                </StackPanel>
               </Border>
 
               <StackPanel Grid.Column="1" Spacing="12">
-                <Border Classes="card" Padding="16" CornerRadius="10">
+                <Border Classes="card" Padding="16" CornerRadius="12">
                   <StackPanel Spacing="8">
-                    <TextBlock Text="当前实例" Classes="section" />
-                    <TextBlock Text="{Binding PackName}" FontSize="19" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding PackPathDisplay}" FontSize="9"
-                               TextTrimming="CharacterEllipsis"
-                               Foreground="{DynamicResource TextMuted}" />
-                    <TextBlock Text="{Binding ProfileSummary}" FontSize="12" FontWeight="SemiBold"
-                               Foreground="{DynamicResource Accent}" />
-                    <TextBlock Text="{Binding CountSummary}" Classes="caption" />
-                    <Border Background="{DynamicResource PanelAlt}" CornerRadius="6"
-                            Padding="10,7" Margin="0,4,0,0">
-                      <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
-                        <TextBlock Text="内存" FontSize="10" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondary}" />
-                        <TextBlock Grid.Column="1" Text="{Binding LaunchMemoryText}" FontSize="11"
-                                   FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="1" Text="Java" FontSize="10" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondary}" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LaunchJavaText}"
-                                   FontSize="10" TextTrimming="CharacterEllipsis"
-                                   VerticalAlignment="Center" />
-                        <TextBlock Grid.Row="2" Text="模式" FontSize="10" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondary}" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LaunchModeText}"
-                                   FontSize="10.5" VerticalAlignment="Center" />
-                      </Grid>
-                    </Border>
-                    <WrapPanel Margin="0,4,0,0">
-                      <Button Content="启动游戏" Command="{Binding LaunchCurrentInstanceCommand}"
-                              IsEnabled="{Binding HasGraph}" Classes="accent"
-                              FontSize="11" Padding="14,7" Margin="0,0,8,4" />
-                      <Button Content="启动前诊断" Command="{Binding DiagnoseLaunchCommand}"
-                              IsEnabled="{Binding HasGraph}" FontSize="11" Padding="12,7" Margin="0,0,8,4" />
-                      <Button Content="模组列表" Command="{Binding EnterWorkspaceCommand}"
-                              FontSize="11" Padding="12,7" Margin="0,0,8,4" />
+                    <TextBlock Text="本实例工具" Classes="section" />
+                    <TextBlock Text="备份、历史、更新都跟随当前实例。" Classes="caption" TextWrapping="Wrap" />
+                    <WrapPanel>
+                      <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
+                              FontSize="10.5" Padding="10,5" Margin="0,0,6,4" />
+                      <Button Content="历史对比" Command="{Binding CompareModListHistoryCommand}"
+                              FontSize="10.5" Padding="10,5" Margin="0,0,6,4" />
+                      <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
+                              FontSize="10.5" Padding="10,5" Margin="0,0,6,4" />
                     </WrapPanel>
-                    <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0"
-                            Padding="0,8,0,0" Margin="0,4,0,0">
-                      <StackPanel Spacing="5">
-                        <TextBlock Text="本实例工具" FontSize="9.5"
-                                   Foreground="{DynamicResource TextMuted}" />
-                        <WrapPanel>
-                          <Button Content="备份中心" Command="{Binding OpenBackupCenterCommand}"
-                                  FontSize="10" Padding="8,4" Margin="0,0,6,3" />
-                          <Button Content="历史对比" Command="{Binding CompareModListHistoryCommand}"
-                                  FontSize="10" Padding="8,4" Margin="0,0,6,3" />
-                          <Button Content="更新中心" Command="{Binding OpenUpdateCenterCommand}"
-                                  FontSize="10" Padding="8,4" Margin="0,0,6,3" />
-                        </WrapPanel>
-                      </StackPanel>
-                    </Border>
                   </StackPanel>
                 </Border>
-
-                <Border Classes="card" Padding="14" CornerRadius="10">
+                <Border Classes="card" Padding="16" CornerRadius="12">
                   <StackPanel Spacing="7">
-                    <TextBlock Text="最近打开" Classes="section" />
-                    <ComboBox ItemsSource="{Binding RecentPacks}"
-                              SelectedItem="{Binding SelectedRecentPack, Mode=TwoWay}"
-                              HorizontalAlignment="Stretch" Height="30" FontSize="10.5"
-                              PlaceholderText="选择最近整合包">
-                      <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="x:String">
-                          <TextBlock Text="{Binding}" FontSize="10" TextTrimming="CharacterEllipsis" />
-                        </DataTemplate>
-                      </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <WrapPanel Margin="0,2,0,0">
+                    <TextBlock Text="日志" Classes="section" />
+                    <WrapPanel>
                       <Button Content="打开 latest.log" Command="{Binding OpenLatestLogCommand}"
                               FontSize="10" Margin="0,0,6,4" />
                       <Button Content="实时日志" Command="{Binding OpenLogTailCommand}"
                               FontSize="10" Margin="0,0,6,4" />
                     </WrapPanel>
+                    <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap"
+                               MaxHeight="40" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
                 </Border>
               </StackPanel>
