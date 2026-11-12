@@ -15,6 +15,7 @@ public sealed class AppSettings
     // Edge type visibility. Defaults follow the product spec: requires + incompatible only.
     public bool ShowOptional { get; set; }
     public bool ShowEmbedded { get; set; }
+    public int SettingsVersion { get; set; }
     public bool ShowRecommends { get; set; }
     public bool ShowManual { get; set; } = true;
     public bool HideIsolated { get; set; }
@@ -73,6 +74,7 @@ public sealed class AppSettings
         ModrinthContact = other.ModrinthContact;
         ShowOptional = other.ShowOptional;
         ShowEmbedded = other.ShowEmbedded;
+        SettingsVersion = other.SettingsVersion;
         ShowRecommends = other.ShowRecommends;
         ShowManual = other.ShowManual;
         HideIsolated = other.HideIsolated;
@@ -120,8 +122,14 @@ public sealed class SettingsStore
 
         try
         {
-            var settings = JsonDefaults.Deserialize<AppSettings>(text);
-            return settings ?? new AppSettings();
+            var settings = JsonDefaults.Deserialize<AppSettings>(text) ?? new AppSettings();
+            if (settings.SettingsVersion < 1)
+            {
+                // The old default expanded JiJ content; new installs start collapsed.
+                settings.ShowEmbedded = false;
+                settings.SettingsVersion = 1;
+            }
+            return settings;
         }
         catch (Exception)
         {
