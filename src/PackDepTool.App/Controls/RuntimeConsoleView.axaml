@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PackDepTool.App.ViewModels"
+             x:Class="PackDepTool.App.Controls.RuntimeConsoleView"
+             x:DataType="vm:RuntimeConsoleViewModel">
+  <Border Background="{DynamicResource PanelBackground}"
+          BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0">
+    <Grid RowDefinitions="Auto,*" Margin="12,8,12,10">
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="运行控制台" FontSize="12" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding LogStatus}" FontSize="9.5"
+                     Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+          <CheckBox Content="自动滚动" IsChecked="{Binding AutoScroll, Mode=TwoWay}" FontSize="9.5" />
+          <Button Content="打开日志目录" Command="{Binding OpenLogFolderCommand}"
+                  FontSize="9.5" Padding="7,2" MinHeight="24" />
+          <Button Content="清空显示" Command="{Binding ClearLogCommand}"
+                  FontSize="9.5" Padding="7,2" MinHeight="24" />
+        </StackPanel>
+      </Grid>
+
+      <TabControl Grid.Row="1" SelectedIndex="{Binding TabIndex, Mode=TwoWay}">
+        <TabItem Header="日志">
+          <Grid RowDefinitions="Auto,*" Margin="0,4,0,0">
+            <Grid ColumnDefinitions="*,90" ColumnSpacing="6" Margin="0,0,0,5">
+              <TextBox Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       Watermark="过滤日志内容 / 线程" FontSize="10" Height="26" />
+              <ComboBox Grid.Column="1" ItemsSource="{Binding LevelFilters}"
+                        SelectedItem="{Binding SelectedLevel, Mode=TwoWay}"
+                        FontSize="10" Height="26" />
+            </Grid>
+            <Border Grid.Row="1" Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="6">
+              <ListBox x:Name="LogList" ItemsSource="{Binding LogLines}" Background="Transparent"
+                       FontFamily="Consolas, Microsoft YaHei UI" FontSize="10">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ConsoleLogLine">
+                    <Grid ColumnDefinitions="58,44,*,Auto" ColumnSpacing="6" Margin="1,0">
+                      <TextBlock Text="{Binding Time}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextMuted}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Level}" FontSize="9" FontWeight="SemiBold"
+                                 Foreground="{Binding Brush}" />
+                      <TextBlock Grid.Column="2" Text="{Binding Message}" FontSize="10"
+                                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                 Foreground="{DynamicResource TextPrimary}" />
+                      <TextBlock Grid.Column="3" Text="{Binding Thread}" FontSize="8.5"
+                                 Foreground="{DynamicResource TextMuted}" MaxWidth="110"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Border>
+          </Grid>
+        </TabItem>
+
+        <TabItem Header="下载队列">
+          <Grid RowDefinitions="Auto,*" Margin="0,4,0,0" RowSpacing="5">
+            <TextBlock Text="{Binding QueueStatus}" FontSize="9.5"
+                       Foreground="{DynamicResource TextSecondary}" />
+            <ListBox Grid.Row="1" ItemsSource="{Binding Downloads}" Background="Transparent">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:QueueItemViewModel">
+                  <Border Background="{DynamicResource PanelAlt}" CornerRadius="6" Padding="8,5" Margin="0,2">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="3">
+                      <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5">
+                        <TextBlock Text="{Binding StateText}" FontSize="9.5"
+                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <Button Content="暂停/继续" Command="{Binding PauseOrResumeCommand}"
+                                FontSize="9" Padding="5,2" MinHeight="22" />
+                        <Button Content="取消" Command="{Binding CancelCommand}"
+                                FontSize="9" Padding="5,2" MinHeight="22" />
+                      </StackPanel>
+                      <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding Progress}"
+                                   Maximum="1" Height="4" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+      </TabControl>
+    </Grid>
+  </Border>
+</UserControl>

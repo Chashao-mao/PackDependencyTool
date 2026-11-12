@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 {
     private readonly AppServices _services;
     private readonly IDialogService _dialogs;
+    public RuntimeConsoleViewModel RuntimeConsole { get; }
 
     private Window? _window;
     private DependencyGraphView? _graphView;
@@ -73,6 +74,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         _services = services;
         _dialogs = dialogs;
+        RuntimeConsole = new RuntimeConsoleViewModel(services.DownloadQueue);
         ShowRequires = true;
         ShowIncompatible = true;
         ShowManual = services.Settings.ShowManual;
@@ -2543,6 +2545,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             PackPath = full;
             PackPathDisplay = full;
             PackName = Path.GetFileName(full.TrimEnd(Path.DirectorySeparatorChar));
+            RuntimeConsole.SetLogPath(Path.Combine(full, "logs", "latest.log"));
             _services.Settings.LastPackPath = full;
             AddRecentPack(full);
             _services.SaveSettings();
@@ -3844,6 +3847,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var process = await _services.Launcher.LaunchOfflineAsync(
                 gameRoot, versionName, _scanResult.Profile.McVersion, instanceRoot, username,
                 ramMb, _services.Settings.JavaPath, _services.Settings.DebugMode);
+            RuntimeConsole.TabIndex = 0;
             StatusText = $"已启动 {versionName}（{ramMb} MB" +
                          (_services.Settings.DebugMode ? "，调试模式" : string.Empty) +
                          $"，PID {process.Id}）。";
@@ -3982,6 +3986,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void ShowQueueProgress(int expected)
     {
+        RuntimeConsole.TabIndex = 1;
         var detail = new DownloadProgressViewModel("批量下载", $"{expected} 个模组 · 下载队列");
         var window = DownloadProgressWindow.ShowFor(detail);
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
