@@ -31,6 +31,7 @@ public sealed class CrashFacts
     public string Memory { get; init; } = "";
     public string PrimaryError { get; init; } = "";
     public string DeepestCause { get; init; } = "";
+    public string Feature { get; init; } = "";
     public string FileKind { get; init; } = "";
 
     public string Summary => string.Join(" · ", new[]
@@ -40,6 +41,7 @@ public sealed class CrashFacts
         string.IsNullOrWhiteSpace(Loader) ? null : Loader,
         string.IsNullOrWhiteSpace(JavaVersion) ? null : "Java " + JavaVersion,
         string.IsNullOrWhiteSpace(Memory) ? null : "内存 " + Memory,
+        string.IsNullOrWhiteSpace(Feature) ? null : "Feature " + Feature,
     }.Where(value => value is not null));
 }
 
@@ -176,6 +178,33 @@ public static class CrashLogAnalyzer
                     "通常由目标类被其他模组改写、Mixin 版本不匹配或模组版本与 MC 不匹配引起。");
             }
 
+            if (Contains(line, "KubeJS Server/ERROR") || Contains(line, "KubeJS/ERROR"))
+                Add(index, "kubejs-script", DiagnosticSeverity.Warning,
+                    "KubeJS 脚本错误",
+                    "KubeJS 脚本在事件中抛异常；这不是本次世界生成崩溃的根因，但会持续刷屏。",
+                    "按堆栈中的脚本文件和行号修复；ServerPlayer 的 UUID 建议使用 player.uuid，而不是不确定存在的 getUUID()。",
+                    "https://kubejs.com/");
+
+            if (Contains(line, "Tried to load invalid item"))
+                Add(index, "invalid-item", DiagnosticSeverity.Info,
+                    "无效物品引用",
+                    "有数据包/模组写入了 minecraft:air 作为物品；通常与数据包版本或模组 registry 不匹配有关。",
+                    "清理旧数据包/配方，检查最近更新过的模组；它不是本次 Feature placement 的根因。");
+
+            if (Contains(line, "AllTheLeaks") || Contains(line, "Leaking objects"))
+                Add(index, "alltheleaks", DiagnosticSeverity.Info,
+                    "AllTheLeaks 泄漏报告",
+                    "这是停服/崩溃后的残留对象报告，属于结果，不是根因。",
+                    "先修复崩溃；如果正常运行时仍持续泄漏，再单独排查 AllTheLeaks。",
+                    "https://www.curseforge.com/minecraft/mc-mods/alltheleaks");
+
+            if (Contains(line, "SINYTRA CONNECTOR IS PRESENT"))
+                Add(index, "sinytra-present", DiagnosticSeverity.Info,
+                    "Sinytra Connector 环境",
+                    "崩溃报告提示这是 Connector 环境；它可能影响 Fabric 模组的世界生成兼容性，但不是直接栈帧。",
+                    "先测直接栈中的 Primal/Lithostitched；若仍复现，再移除或更新 Connector。",
+                    "https://github.com/Sinytra/Connector/issues");
+
             if (Contains(line, "java.lang.OutOfMemoryError"))
             {
                 if (Contains(line, "Java heap space"))
@@ -276,6 +305,23 @@ public static class CrashLogAnalyzer
             }
         }
 
+        var featureIndex = Array.FindIndex(lines, line =>
+            Contains(line, "stream has already been operated upon or closed"));
+        if (featureIndex < 0)
+            featureIndex = Array.FindIndex(lines, line => Contains(line, "-- Feature --"));
+        if (featureIndex >= 0 &&
+            Contains(text, "Feature placement") &&
+            Contains(text, "PlacedFeature"))
+        {
+            Add(featureIndex, "feature-placement-stream", DiagnosticSeverity.Error,
+                "世界生成特性放置崩溃",
+                "区块生成时 PlacedFeature 重复使用了一个已消费/关闭的 Java Stream" +
+                (string.IsNullOrWhiteSpace(facts.Feature) ? "。" : $"，触发特性：{facts.Feature}。") +
+                " 直接栈中 PlacedFeature 被 lithostitched 的 accessor 和 primal 的 PlacedFeatureMixin 改写；Primal 是首要嫌疑。",
+                "先备份世界，移除或更新 Primal；仍复现再依次测试 Lithostitched、Terralith、Sable、Sinytra Connector。不要先加内存。",
+                "https://github.com/Sinytra/Connector/issues");
+        }
+
         var summary = findings.Count == 0
             ? "没有识别到确定性的崩溃模式；日志需要人工查看。"
             : $"识别到 {findings.Count} 条线索：错误 {findings.Count(f => f.Severity == DiagnosticSeverity.Error)} · " +
@@ -313,6 +359,9 @@ public static class CrashLogAnalyzer
         if (string.IsNullOrWhiteSpace(primary)) primary = Match(@"Description:\s*([^\r\n]+)");
         var causes = Regex.Matches(text, @"Caused by:\s*([^\r\n]+)", RegexOptions.IgnoreCase);
         var deepest = causes.Count == 0 ? string.Empty : causes[^1].Groups[1].Value.Trim();
+        var feature = Match(@"-- Feature --[\s\S]*?ResourceKey\[[^\]]*?\s/\s([^\]]+)\]");
+        if (string.IsNullOrWhiteSpace(feature))
+            feature = Match(@"Description:\s*ResourceKey\[[^\]]*?\s/\s([^\]]+)\]");
         var kind = text.Contains("---- Minecraft Crash Report ----", StringComparison.OrdinalIgnoreCase)
             ? "崩溃报告"
             : text.Contains("# A fatal error has been detected", StringComparison.OrdinalIgnoreCase)
@@ -329,6 +378,7 @@ public static class CrashLogAnalyzer
             Memory = memory,
             PrimaryError = primary,
             DeepestCause = deepest,
+            Feature = feature,
         };
     }
 

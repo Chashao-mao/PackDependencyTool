@@ -135,7 +135,8 @@
                   <MenuItem Header="分析与诊断">
                     <MenuItem Header="一键体检向导…" Command="{Binding OpenHealthWizardCommand}" />
                     <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />
-                    <MenuItem Header="崩溃日志诊断…" Command="{Binding DiagnoseCrashCommand}" />
+                    <MenuItem Header="崩溃日志诊断（当前实例）…" Command="{Binding DiagnoseCrashCommand}" />
+                    <MenuItem Header="分析日志文件…" Command="{Binding DiagnoseCrashFileCommand}" />
                     <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
                     <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
                     <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />

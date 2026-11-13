@@ -39,6 +39,27 @@ public sealed class CrashLogAnalyzerTests
     }
 
     [Fact]
+    public void DetectsFeaturePlacementStreamCrash()
+    {
+        const string log = """
+        [13Nov2026 16:46:43.517] [Server thread/ERROR] [net.minecraft.util.thread.BlockableEventLoop/FATAL]: Error executing task
+        net.minecraft.ReportedException: Feature placement
+        Caused by: java.lang.IllegalStateException: stream has already been operated upon or closed
+        -- Feature --
+        Details:
+        	Description: ResourceKey[minecraft:worldgen/placed_feature / terralith:cave/fungal/hanging_roots_cluster]
+        at net.minecraft.world.level.levelgen.placement.PlacedFeature.placeWithContext(PlacedFeature.java:53)
+        {pl:mixin:APP:primal.mixins.json:PlacedFeatureMixin from mod primal}
+        """;
+
+        var report = CrashLogAnalyzer.Analyze(log, "latest.log");
+
+        Assert.Contains(report.Findings, finding => finding.RuleId == "feature-placement-stream");
+        Assert.Equal("terralith:cave/fungal/hanging_roots_cluster", report.Facts?.Feature);
+        Assert.Contains(report.Findings, finding => finding.SuggestedFix.Contains("Primal"));
+    }
+
+    [Fact]
     public void UnknownLogDoesNotFabricateFindings()
     {
         var report = CrashLogAnalyzer.Analyze("hello world\nnothing here", "log.txt");

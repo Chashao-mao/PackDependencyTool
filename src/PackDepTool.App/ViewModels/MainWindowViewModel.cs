@@ -3306,18 +3306,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task DiagnoseCrashAsync()
     {
-        if (_scanResult is null) return;
-
-        var logs = CrashLogAnalyzer.Discover(_scanResult.RootPath);
-        var path = logs.FirstOrDefault()?.Path;
+        var path = _scanResult is null
+            ? null
+            : CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
         if (string.IsNullOrWhiteSpace(path))
-        {
             path = await _dialogs.PickOpenFileAsync(
                 "选择崩溃报告或日志", ["txt", "log"], "日志文件");
-        }
+        await DiagnoseCrashPathAsync(path);
+    }
+
+    [RelayCommand]
+    private async Task DiagnoseCrashFileAsync()
+    {
+        var path = await _dialogs.PickOpenFileAsync(
+            "选择崩溃报告或日志（支持服务器 latest.log / hs_err）", ["txt", "log"], "日志文件");
+        await DiagnoseCrashPathAsync(path);
+    }
+
+    private async Task DiagnoseCrashPathAsync(string? path)
+    {
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusText = "没有找到可分析的崩溃报告或日志。";
+            StatusText = "没有选择日志。";
             return;
         }
 
