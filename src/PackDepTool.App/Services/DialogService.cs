@@ -188,7 +188,8 @@ public sealed class DialogService : IDialogService
             packRoot,
             (title, message) => MessageDialog.ShowAsync(dialog!, title, message, "继续", "取消"),
             new ModListHistoryService(), scan, graph,
-            entry => DownloadHistoryEntryAsync(packRoot, scan, entry));
+            entry => DownloadHistoryEntryAsync(packRoot, scan, entry),
+            (title, suggested) => PickSaveFileAsync(title, suggested, "md", "Markdown 变更日志"));
         dialog = new BackupCenterDialog { DataContext = viewModel };
         return await dialog.ShowDialog<BackupCenterResult?>(Owner);
     }

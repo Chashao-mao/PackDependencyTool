@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PackDepTool.Core.Analysis;
@@ -33,6 +34,7 @@ public sealed partial class BackupCenterViewModel : ObservableObject
     private readonly ModListHistoryService _history;
     private readonly ModListRestoreService _restore = new();
     private readonly Func<ModListSnapshotEntry, Task<string?>>? _onlineRestore;
+    private readonly Func<string, string, Task<string?>>? _pickExport;
     private readonly ScanResult? _scan;
     private readonly GraphDocument? _graph;
 
@@ -43,7 +45,8 @@ public sealed partial class BackupCenterViewModel : ObservableObject
         ModListHistoryService? history = null,
         ScanResult? scan = null,
         GraphDocument? graph = null,
-        Func<ModListSnapshotEntry, Task<string?>>? onlineRestore = null)
+        Func<ModListSnapshotEntry, Task<string?>>? onlineRestore = null,
+        Func<string, string, Task<string?>>? pickExport = null)
     {
         _service = service;
         _packRoot = packRoot;
@@ -52,6 +55,7 @@ public sealed partial class BackupCenterViewModel : ObservableObject
         _scan = scan;
         _graph = graph;
         _onlineRestore = onlineRestore;
+        _pickExport = pickExport;
         Refresh();
         RefreshHistory();
     }
@@ -112,6 +116,61 @@ public sealed partial class BackupCenterViewModel : ObservableObject
             ? "当前模组列表与该快照一致"
             : $"与 {value.Snapshot.CapturedAt.ToLocalTime():MM-dd HH:mm} 相比，{changes.Count} 项变化";
     }
+
+    [RelayCommand]
+    private async Task ExportHistoryAsync()
+    {
+        if (IsBusy || SelectedHistory is null) return;
+        if (_pickExport is null)
+        {
+            StatusText = "导出对话框不可用。";
+            return;
+        }
+
+        var name = _scan?.Profile.PackName ?? Path.GetFileName(_packRoot);
+        var path = await _pickExport("导出模组变更日志",
+            $"{name}-changelog-{DateTime.Now:yyyyMMdd-HHmm}.md");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        var snapshot = SelectedHistory.Snapshot;
+        var builder = new StringBuilder();
+        builder.AppendLine("# 模组列表变更日志");
+        builder.AppendLine();
+        builder.AppendLine($"- 实例：{name}");
+        builder.AppendLine($"- 对比基准：{snapshot.CapturedAt.ToLocalTime():yyyy-MM-dd HH:mm}");
+        builder.AppendLine($"- 基准模组数：{snapshot.Mods.Count}");
+        builder.AppendLine($"- 导出时间：{DateTime.Now:yyyy-MM-dd HH:mm}");
+        builder.AppendLine($"- 变更数：{HistoryChanges.Count}");
+        builder.AppendLine();
+        if (HistoryChanges.Count == 0)
+        {
+            builder.AppendLine("当前模组列表与该快照一致。");
+        }
+        else
+        {
+            builder.AppendLine("| 类型 | 模组 | modId | 变更前 | 变更后 |");
+            builder.AppendLine("| --- | --- | --- | --- | --- |");
+            foreach (var change in HistoryChanges)
+                builder.AppendLine(
+                    $"| {change.KindText} | {Escape(change.Name)} | {Escape(change.ModId)} | " +
+                    $"{Escape(change.Before)} | {Escape(change.After)} |");
+        }
+        builder.AppendLine();
+        builder.AppendLine("由 Pack Dependency Tool 生成。");
+
+        try
+        {
+            await File.WriteAllTextAsync(path, builder.ToString(), Encoding.UTF8);
+            StatusText = $"变更日志已导出：{path}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"导出失败：{ex.Message}";
+        }
+    }
+
+    private static string Escape(string value) =>
+        value.Replace("|", "\\|").Replace(Environment.NewLine, " ");
 
     [RelayCommand]
     private async Task RestoreHistoryAsync()
