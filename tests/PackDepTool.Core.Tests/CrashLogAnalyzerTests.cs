@@ -60,6 +60,30 @@ public sealed class CrashLogAnalyzerTests
     }
 
     [Fact]
+    public void FeatureRootCauseSurvivesRepeatedNoise()
+    {
+        var noise = string.Join('\n', Enumerable.Repeat(
+            "Tried to load invalid item: 'Item must not be minecraft:air'", 80));
+        var log = noise + """
+
+        net.minecraft.ReportedException: Feature placement
+        Caused by: java.lang.IllegalStateException: stream has already been operated upon or closed
+        -- Feature --
+        Details:
+        	Description: ResourceKey[minecraft:worldgen/placed_feature / terralith:cave/fungal/hanging_roots_cluster]
+        at net.minecraft.world.level.levelgen.placement.PlacedFeature.placeWithContext(PlacedFeature.java:53)
+        {pl:mixin:APP:primal.mixins.json:PlacedFeatureMixin from mod primal}
+        {pl:mixin:APP:lithostitched.mixins.json:common.PlacedFeatureAccessor from mod lithostitched}
+        """;
+
+        var report = CrashLogAnalyzer.Analyze(log, "latest.log");
+
+        Assert.Contains(report.Findings, finding => finding.RuleId == "feature-placement-stream");
+        Assert.Equal(1, report.Findings.Count(finding => finding.RuleId == "invalid-item"));
+        Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("primal"));
+    }
+
+    [Fact]
     public void UnknownLogDoesNotFabricateFindings()
     {
         var report = CrashLogAnalyzer.Analyze("hello world\nnothing here", "log.txt");

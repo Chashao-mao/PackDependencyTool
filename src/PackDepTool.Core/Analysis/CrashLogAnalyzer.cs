@@ -114,6 +114,7 @@ public static class CrashLogAnalyzer
 
         var findings = new List<DiagnosticFinding>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenRules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var facts = ExtractFacts(text, sourcePath);
 
         void Add(
@@ -126,6 +127,8 @@ public static class CrashLogAnalyzer
             string source = "")
         {
             if (findings.Count >= 50) return;
+            if (rule is "invalid-item" or "kubejs-script" or "alltheleaks" or "sinytra-present" &&
+                !seenRules.Add(rule)) return;
             var evidenceStart = Math.Max(0, index - 2);
             var evidenceEnd = Math.Min(lines.Length - 1, index + 2);
             var evidence = string.Join(Environment.NewLine,
@@ -303,6 +306,19 @@ public static class CrashLogAnalyzer
                     "图形初始化失败",
                     "优先检查显卡驱动、OpenGL 版本和渲染模组，不是依赖缺失。");
             }
+
+            if (Contains(line, "Can't keep up") || Contains(line, "Running behind"))
+                Add(index, "server-lag", DiagnosticSeverity.Warning,
+                    "服务器 tick 落后",
+                    "服务器主线程跟不上目标 tick；这是性能症状，不是本次崩溃的根因。",
+                    "检查实体/区块加载、GC、spark 采样；不要只在看到这条时删模组。");
+
+            if ((Contains(line, "Exception ticking") || Contains(line, "Error executing task")) &&
+                !Contains(line, "Feature placement"))
+                Add(index, "server-task", DiagnosticSeverity.Warning,
+                    "服务器任务/实体 tick 异常",
+                    "服务器主线程任务抛异常；结合相邻堆栈定位具体实体、方块或模组。",
+                    "查看完整 Caused by 和实体/方块 ID；先用二分或移除最近更新模组验证。");
         }
 
         var featureIndex = Array.FindIndex(lines, line =>
@@ -384,10 +400,13 @@ public static class CrashLogAnalyzer
 
     private static IReadOnlyList<string> ExtractRelatedMods(string text, GraphDocument? graph)
     {
-        if (graph is null) return [];
-
         var related = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic))
+        foreach (Match match in Regex.Matches(text, @"from mod\s+([a-z0-9_.-]+)", RegexOptions.IgnoreCase))
+        {
+            var id = match.Groups[1].Value.Trim();
+            if (id.Length > 0) related.Add(id);
+        }
+        if (graph is not null) foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic))
         {
             if (!string.IsNullOrWhiteSpace(node.Id) &&
                 Regex.IsMatch(text, $@"(?<![\w-]){Regex.Escape(node.Id)}(?![\w-])",
