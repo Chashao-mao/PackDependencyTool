@@ -1,9 +1,9 @@
 {
-  "version": "1.0.6",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.6",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.6/PackDependencyTool.exe",
-  "sha256": "bd44c22486c8a1899976d53c949d06bf64859724a840458e65bfe20db1aeefc1",
+  "version": "1.0.7",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.7",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.7/PackDependencyTool.exe",
+  "sha256": "7efc6a760b5cb94a10a7899a5e0b4751362979c0f9a78d37f0f9d221295c81f6",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "1.0.6：修复实例隔离与无模组启动，Java 版本匹配/javaw，自动内存与调试模式；实例管理统一；常驻日志与下载控制台；Crash Doctor、i18n、表格导入、服务端 mrpack、整合包合并、历史恢复与 UI 重构。",
-  "publishedAt": "2026-11-12T20:10:00.000+08:00"
+  "notes": "1.0.7：备份中心「模组列表历史」支持导出 Markdown 变更日志；包含上一版 1.0.6 的启动隔离、Java 匹配、自动内存、日志控制台、Crash Doctor 与 UI 重构。",
+  "publishedAt": "2026-11-13T10:30:00.000+08:00"
 }
