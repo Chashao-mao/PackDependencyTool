@@ -32,6 +32,7 @@ public sealed class CrashFacts
     public string PrimaryError { get; init; } = "";
     public string DeepestCause { get; init; } = "";
     public string Feature { get; init; } = "";
+    public string AffectedScreen { get; init; } = "";
     public string FileKind { get; init; } = "";
 
     public string Summary => string.Join(" · ", new[]
@@ -42,6 +43,7 @@ public sealed class CrashFacts
         string.IsNullOrWhiteSpace(JavaVersion) ? null : "Java " + JavaVersion,
         string.IsNullOrWhiteSpace(Memory) ? null : "内存 " + Memory,
         string.IsNullOrWhiteSpace(Feature) ? null : "Feature " + Feature,
+        string.IsNullOrWhiteSpace(AffectedScreen) ? null : "界面 " + AffectedScreen,
     }.Where(value => value is not null));
 }
 
@@ -284,12 +286,27 @@ public static class CrashLogAnalyzer
                     "常见于依赖未安装、模组版本不匹配或 Java 版本错误；结合前置和堆栈判断。");
             }
 
-            if (Contains(line, "NoSuchMethodError") ||
-                Contains(line, "NoSuchFieldError"))
+            if (Contains(line, "NoSuchMethodError") || Contains(line, "NoSuchFieldError"))
             {
-                Add(index, "api-mismatch", DiagnosticSeverity.Warning,
-                    "模组 / API 版本不匹配",
-                    "堆栈显示调用了当前版本不存在的成员，优先检查前置和加载器版本。");
+                var missing = Regex.Match(text, @"NoSuch(?:Method|Field)Error:\s*'([^']+)'",
+                    RegexOptions.IgnoreCase);
+                var caller = Regex.Match(text, @"TRANSFORMER/([a-z0-9_.-]+)@([^\s/]+)",
+                    RegexOptions.IgnoreCase);
+                var callerName = caller.Success ? $"{caller.Groups[1].Value} {caller.Groups[2].Value}" : "调用方模组";
+                var missingMember = missing.Success ? missing.Groups[1].Value : "未知成员";
+                var isThaumaturgeJei = Contains(text, "ThaumaturgeJEIPlugin") ||
+                                       (Contains(text, "thaumaturge") && missingMember.Contains("jei"));
+                Add(index, isThaumaturgeJei ? "thaumaturge-jei-api" : "api-mismatch",
+                    DiagnosticSeverity.Error,
+                    isThaumaturgeJei ? "Thaumaturge 与 JEI API 不匹配" : "模组 / API 版本不匹配",
+                    $"调用方 {callerName} 在执行配方/界面逻辑时调用了不存在的成员：{missingMember}。" +
+                    (isThaumaturgeJei
+                        ? " 这通常发生在打开 Arcane Workbench 配方界面时，Thaumaturge 编译时使用的 JEI API 与当前 JEI 版本不一致。"
+                        : " 这是编译期与运行期依赖版本不一致，不是配置问题。"),
+                    isThaumaturgeJei
+                        ? "优先更新 Thaumaturge 到匹配当前 JEI 19.56 的版本；没有兼容版本时暂时移除 Thaumaturge，或把 JEI 回退到 Thaumaturge 编译时对应的版本。"
+                        : $"更新 {callerName} 到匹配当前前置版本的版本；无法更新时移除该模组或回退对应前置。",
+                    "https://github.com/mezz/JustEnoughItems");
             }
 
             if (Contains(line, "Failed to load mods") ||
@@ -375,6 +392,7 @@ public static class CrashLogAnalyzer
         if (string.IsNullOrWhiteSpace(primary)) primary = Match(@"Description:\s*([^\r\n]+)");
         var causes = Regex.Matches(text, @"Caused by:\s*([^\r\n]+)", RegexOptions.IgnoreCase);
         var deepest = causes.Count == 0 ? string.Empty : causes[^1].Groups[1].Value.Trim();
+        var screen = Match(@"Screen name:\s*([^\r\n]+)");
         var feature = Match(@"-- Feature --[\s\S]*?ResourceKey\[[^\]]*?\s/\s([^\]]+)\]");
         if (string.IsNullOrWhiteSpace(feature))
             feature = Match(@"Description:\s*ResourceKey\[[^\]]*?\s/\s([^\]]+)\]");
@@ -395,6 +413,7 @@ public static class CrashLogAnalyzer
             PrimaryError = primary,
             DeepestCause = deepest,
             Feature = feature,
+            AffectedScreen = screen,
         };
     }
 
@@ -402,6 +421,11 @@ public static class CrashLogAnalyzer
     {
         var related = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (Match match in Regex.Matches(text, @"from mod\s+([a-z0-9_.-]+)", RegexOptions.IgnoreCase))
+        {
+            var id = match.Groups[1].Value.Trim();
+            if (id.Length > 0) related.Add(id);
+        }
+        foreach (Match match in Regex.Matches(text, @"TRANSFORMER/([a-z0-9_.-]+)@", RegexOptions.IgnoreCase))
         {
             var id = match.Groups[1].Value.Trim();
             if (id.Length > 0) related.Add(id);

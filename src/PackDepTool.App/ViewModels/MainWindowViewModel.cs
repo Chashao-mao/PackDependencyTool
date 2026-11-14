@@ -3347,7 +3347,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 .Select(source => (source.Name,
                     Report: CrashLogAnalyzer.Analyze(source.Text, $"{path} / {source.Name}", _graph)))
                 .ToList();
-            var findings = reports.SelectMany(pair => pair.Report.Findings).ToList();
+            var findings = reports.SelectMany(pair => pair.Report.Findings)
+                .GroupBy(finding => finding.RuleId + "\u0000" + finding.Title, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
             var facts = reports.Select(pair => pair.Report.Facts)
                 .FirstOrDefault(facts => facts?.FileKind == "崩溃报告")
                 ?? reports.FirstOrDefault().Report.Facts;

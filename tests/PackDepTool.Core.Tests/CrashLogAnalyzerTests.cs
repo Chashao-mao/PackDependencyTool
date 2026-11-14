@@ -113,6 +113,27 @@ public sealed class CrashLogAnalyzerTests
     }
 
     [Fact]
+    public void DetectsThaumaturgeJeiApiMismatch()
+    {
+        const string log = """
+        Description: mouseReleased event handler
+        java.lang.NoSuchMethodError: 'mezz.jei.api.recipe.transfer.IRecipeTransferError mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper.transferRecipeWithInputAlternatives(mezz.jei.api.recipe.transfer.IRecipeTransferHandler, mezz.jei.api.recipe.transfer.IRecipeTransferContext, java.util.List, boolean)'
+        at TRANSFORMER/thaumaturge@1.1.0/com.leclowndu93150.thaumaturge.compat.jei.ThaumaturgeJEIPlugin$ArcaneWorkbenchTransferHandler.transferRecipe(ThaumaturgeJEIPlugin.java:355)
+        at TRANSFORMER/jei@19.56.0.438/mezz.jei.common.transfer.RecipeTransferService.transferRecipe(RecipeTransferService.java:91)
+        -- Affected screen --
+        Details:
+        	Screen name: com.leclowndu93150.thaumaturge.client.screen.workbench.ArcaneWorkbenchScreen
+        """;
+
+        var report = CrashLogAnalyzer.Analyze(log, "crash-client.txt");
+
+        Assert.Contains(report.Findings, finding => finding.RuleId == "thaumaturge-jei-api");
+        Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("thaumaturge"));
+        Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("jei"));
+        Assert.Contains("ArcaneWorkbenchScreen", report.Facts?.AffectedScreen);
+    }
+
+    [Fact]
     public void UnknownLogDoesNotFabricateFindings()
     {
         var report = CrashLogAnalyzer.Analyze("hello world\nnothing here", "log.txt");

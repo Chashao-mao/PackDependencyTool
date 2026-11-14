@@ -53,8 +53,15 @@ public sealed partial class DiagnosticReportViewModel : ObservableObject
     public DiagnosticReportViewModel(DiagnosticReport report)
     {
         Report = report;
-        foreach (var finding in report.Findings)
+        foreach (var finding in report.Findings
+                     .OrderBy(finding => finding.Severity)
+                     .ThenBy(finding => finding.Title, StringComparer.Ordinal))
             Findings.Add(new DiagnosticFindingItem(finding));
+        var verdict = report.Findings.FirstOrDefault(finding => finding.Severity == DiagnosticSeverity.Error)
+                      ?? report.Findings.FirstOrDefault();
+        VerdictTitle = verdict?.Title ?? "未识别到确定性问题";
+        VerdictMessage = verdict?.Message ?? "日志中没有匹配到确定性崩溃模式，建议查看原始日志。";
+        HasVerdict = verdict is not null;
         SourceText = string.IsNullOrWhiteSpace(report.SourcePath)
             ? "未指定日志"
             : report.SourcePath;
@@ -65,6 +72,9 @@ public sealed partial class DiagnosticReportViewModel : ObservableObject
     public string Summary => Report.Summary;
     public string SourceText { get; }
     public string FactsText => Report.Facts?.Summary ?? string.Empty;
+    public string VerdictTitle { get; }
+    public string VerdictMessage { get; }
+    public bool HasVerdict { get; }
     public bool HasFacts => !string.IsNullOrWhiteSpace(FactsText);
     public bool HasFindings => Findings.Count > 0;
 
