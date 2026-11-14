@@ -1,9 +1,9 @@
 {
-  "version": "1.0.9",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.0.9",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.0.9/PackDependencyTool.exe",
-  "sha256": "9686c01924438d4b3352104fd099e8f4f848dd56361eb43f3e410e864b63d1b2",
+  "version": "1.1.0",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.1.0",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.1.0/PackDependencyTool.exe",
+  "sha256": "2e5af12a1f4319342b71766ffc8585a5a1ee1e70238af5d9b08ed789ee6d5e04",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "1.0.9：崩溃诊断主入口改为选择外部日志/zip；支持从 zip 读取 crash report 与 latest.log，跳过 debug.log；Feature placement 根因不再被重复 invalid-item 挤出。",
-  "publishedAt": "2026-11-14T11:30:00.000+08:00"
+  "notes": "1.1.0：崩溃分析新增 Thaumaturge/JEI NoSuchMethodError 识别、顶部结论卡、跨文件去重；支持 .zip 日志包和外部日志文件。",
+  "publishedAt": "2026-11-14T11:50:00.000+08:00"
 }
