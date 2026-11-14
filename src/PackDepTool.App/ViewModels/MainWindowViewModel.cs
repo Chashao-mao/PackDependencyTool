@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -3196,7 +3198,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             new("进入模组列表", "打开筛选、依赖图和批量操作", "视图", string.Empty, ShowModListCommand),
             new("打开依赖图", "查看正向/反向依赖关系", "视图", string.Empty, ShowDependencyGraphCommand),
             new("一键体检", "运行整合包检查并查看报告", "诊断", string.Empty, OpenPackToolsCommand),
-            new("崩溃日志诊断", "分析 crash-report 或 latest.log", "诊断", string.Empty, DiagnoseCrashCommand),
+            new("分析日志文件", "分析外部的 crash-report / latest.log / zip", "诊断", string.Empty, DiagnoseCrashFileCommand),
             new("JAR 冲突扫描", "检查重复类、资源覆盖和 Mixin 重叠", "诊断", string.Empty, ScanJarConflictsCommand),
             new("性能归因", "解析 spark/性能日志", "诊断", string.Empty, AnalyzePerformanceCommand),
             new("数据包扫描", "检查 datapacks JSON 与重复资源 ID", "诊断", string.Empty, ScanDataPacksCommand),
@@ -3311,7 +3313,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             : CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
         if (string.IsNullOrWhiteSpace(path))
             path = await _dialogs.PickOpenFileAsync(
-                "选择崩溃报告或日志", ["txt", "log"], "日志文件");
+                "选择崩溃报告、日志或日志包（.zip）", ["txt", "log", "zip"], "日志文件");
         await DiagnoseCrashPathAsync(path);
     }
 
@@ -3319,7 +3321,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private async Task DiagnoseCrashFileAsync()
     {
         var path = await _dialogs.PickOpenFileAsync(
-            "选择崩溃报告或日志（支持服务器 latest.log / hs_err）", ["txt", "log"], "日志文件");
+            "选择崩溃报告、日志或日志包（支持 zip / latest.log / hs_err）",
+            ["txt", "log", "zip"], "日志文件");
         await DiagnoseCrashPathAsync(path);
     }
 
@@ -3333,16 +3336,35 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var text = await File.ReadAllTextAsync(path);
-            if (text.Length > 4 * 1024 * 1024)
-                text = text[..(4 * 1024 * 1024)];
-            var report = CrashLogAnalyzer.Analyze(text, path, _graph);
-            StatusText = report.Findings.Count == 0
+            var sources = await CrashLogBundleReader.ReadAsync(path);
+            if (sources.Count == 0)
+            {
+                StatusText = "没有在日志包中找到可分析的 .log / .txt 文件。";
+                return;
+            }
+
+            var reports = sources
+                .Select(source => (source.Name,
+                    Report: CrashLogAnalyzer.Analyze(source.Text, $"{path} / {source.Name}", _graph)))
+                .ToList();
+            var findings = reports.SelectMany(pair => pair.Report.Findings).ToList();
+            var facts = reports.Select(pair => pair.Report.Facts)
+                .FirstOrDefault(facts => facts?.FileKind == "崩溃报告")
+                ?? reports.FirstOrDefault().Report.Facts;
+            var summary = $"分析 {reports.Count} 个文件 · 共 {findings.Count} 条线索";
+            var report = new PackDepTool.Core.Analysis.DiagnosticReport
+            {
+                SourcePath = sources.Count == 1 ? $"{path} / {sources[0].Name}" : path,
+                Facts = facts,
+                Findings = findings,
+                Summary = summary,
+            };
+            StatusText = findings.Count == 0
                 ? "日志诊断完成：没有识别到确定性崩溃模式。"
-                : $"日志诊断完成：{report.Findings.Count} 条线索。";
+                : $"日志诊断完成：{findings.Count} 条线索。";
             await _dialogs.ShowDiagnosticReportAsync(report);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             StatusText = $"读取日志失败：{ex.Message}";
         }

@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
 using Xunit;
@@ -81,6 +82,34 @@ public sealed class CrashLogAnalyzerTests
         Assert.Contains(report.Findings, finding => finding.RuleId == "feature-placement-stream");
         Assert.Equal(1, report.Findings.Count(finding => finding.RuleId == "invalid-item"));
         Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("primal"));
+    }
+
+    [Fact]
+    public async Task ReadsCrashReportAndLatestLogFromZip()
+    {
+        using var temp = new TempDir();
+        var zipPath = temp.Combine("logs.zip");
+        using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            Write(zip, "latest.log", "latest");
+            Write(zip, "debug.log", "debug");
+            Write(zip, "crash-1.txt", "crash");
+            Write(zip, "PCL 启动日志.txt", "pcl");
+        }
+
+        var sources = await CrashLogBundleReader.ReadAsync(zipPath);
+
+        Assert.Equal("crash-1.txt", sources[0].Name);
+        Assert.Equal("latest.log", sources[1].Name);
+        Assert.DoesNotContain(sources, source => source.Name == "debug.log");
+        Assert.Contains(sources, source => source.Name == "PCL 启动日志.txt");
+    }
+
+    private static void Write(ZipArchive archive, string name, string text)
+    {
+        var entry = archive.CreateEntry(name);
+        using var writer = new StreamWriter(entry.Open());
+        writer.Write(text);
     }
 
     [Fact]

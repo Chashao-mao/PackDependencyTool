@@ -135,8 +135,8 @@
                   <MenuItem Header="分析与诊断">
                     <MenuItem Header="一键体检向导…" Command="{Binding OpenHealthWizardCommand}" />
                     <MenuItem Header="整合包工具…" Command="{Binding OpenPackToolsCommand}" />
+                    <MenuItem Header="分析日志文件 / zip…" Command="{Binding DiagnoseCrashFileCommand}" />
                     <MenuItem Header="崩溃日志诊断（当前实例）…" Command="{Binding DiagnoseCrashCommand}" />
-                    <MenuItem Header="分析日志文件…" Command="{Binding DiagnoseCrashFileCommand}" />
                     <MenuItem Header="JAR 冲突扫描…" Command="{Binding ScanJarConflictsCommand}" />
                     <MenuItem Header="性能归因…" Command="{Binding AnalyzePerformanceCommand}" />
                     <MenuItem Header="数据包扫描…" Command="{Binding ScanDataPacksCommand}" />
@@ -1286,7 +1286,11 @@
                 <StackPanel Spacing="7">
                   <TextBlock Text="崩溃日志诊断" FontSize="15" FontWeight="SemiBold" />
                   <TextBlock Text="读取 crash-report / latest.log / hs_err，抽取事实、证据、修复步骤和来源。" Classes="caption" TextWrapping="Wrap" />
-                  <Button Content="选择日志并诊断" Command="{Binding DiagnoseCrashCommand}" Classes="accent" HorizontalAlignment="Left" />
+                  <WrapPanel>
+                    <Button Content="选择日志文件 / zip…" Command="{Binding DiagnoseCrashFileCommand}"
+                            Classes="accent" Margin="0,0,6,0" />
+                    <Button Content="分析当前实例日志" Command="{Binding DiagnoseCrashCommand}" />
+                  </WrapPanel>
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="10">
@@ -1485,7 +1489,7 @@
                 <StackPanel Spacing="8">
                   <TextBlock Text="常用操作" Classes="section" />
                   <WrapPanel>
-                    <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashCommand}"
+                    <Button Content="崩溃诊断" Command="{Binding DiagnoseCrashFileCommand}"
                             FontSize="11" Padding="12,7" Margin="0,0,7,7" />
                     <Button Content="冲突扫描" Command="{Binding ScanJarConflictsCommand}"
                             FontSize="11" Padding="12,7" Margin="0,0,7,7" />
