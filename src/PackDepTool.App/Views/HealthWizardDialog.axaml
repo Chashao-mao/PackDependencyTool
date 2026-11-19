@@ -4,8 +4,8 @@
         x:Class="PackDepTool.App.Views.HealthWizardDialog"
         x:DataType="vm:HealthWizardViewModel"
         Title="一键体检"
-        Width="640"
-        Height="560"
+        Width="720"
+        Height="430"
         CanResize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
@@ -18,13 +18,13 @@
 
     <StackPanel Grid.Row="1" Spacing="12">
       <Border Classes="card" Padding="16" CornerRadius="10">
-        <StackPanel Spacing="5">
-          <TextBlock Text="检查结果" Classes="section" />
-          <TextBlock Text="{Binding MissingText}" FontSize="13" />
-          <TextBlock Text="{Binding ConflictText}" FontSize="13" />
-          <TextBlock Text="{Binding MismatchText}" FontSize="13" />
-          <TextBlock Text="{Binding DuplicateText}" FontSize="13" />
-        </StackPanel>
+        <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="14" RowDefinitions="Auto,Auto" RowSpacing="6">
+          <TextBlock Grid.Row="0" Grid.ColumnSpan="4" Text="检查结果" Classes="section" />
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding MissingText}" FontSize="13" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding ConflictText}" FontSize="13" />
+          <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding MismatchText}" FontSize="13" />
+          <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding DuplicateText}" FontSize="13" />
+        </Grid>
       </Border>
       <Border Classes="card" Padding="16" CornerRadius="10">
         <StackPanel Spacing="6">

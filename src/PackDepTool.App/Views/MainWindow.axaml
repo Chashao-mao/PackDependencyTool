@@ -222,10 +222,11 @@
           </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" Classes="chip" HorizontalAlignment="Stretch" MaxWidth="1600">
+        <Border Grid.Row="1" Classes="chip" HorizontalAlignment="Stretch" MaxWidth="1600"
+                IsVisible="{Binding !IsHomePage}">
           <TextBlock Text="{Binding PackPathDisplay}" FontSize="11" TextTrimming="CharacterEllipsis" />
         </Border>
-        <WrapPanel Grid.Row="2" Orientation="Horizontal">
+        <WrapPanel Grid.Row="2" Orientation="Horizontal" IsVisible="{Binding !IsHomePage}">
           <Border Classes="accentChip" VerticalAlignment="Center" Margin="0,0,7,0">
             <TextBlock Text="{Binding ProfileSummary, StringFormat='环境 · {0}'}" FontSize="10" />
           </Border>
@@ -265,17 +266,23 @@
             </StackPanel>
           </Grid>
 
-          <TextBox Grid.Row="1" x:Name="SearchBox"
-                   Text="{Binding SearchText, Mode=TwoWay}"
-                   Watermark="搜索名称 / modId / slug（Ctrl+F）"
-                   FontSize="11"
-                   ToolTip.Tip="空格分隔多个条件；前缀 - 或 ! 表示排除" />
+          <Border Grid.Row="1" CornerRadius="8" Background="{DynamicResource PanelAlt}"
+                  BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Text="⌕" FontSize="16" Margin="10,0,0,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource TextMuted}" />
+              <TextBox Grid.Column="1" x:Name="SearchBox" Text="{Binding SearchText, Mode=TwoWay}"
+                       Watermark="搜索模组 / modId / slug（Ctrl+F）" FontSize="11"
+                       BorderThickness="0" Background="Transparent" Height="34"
+                       ToolTip.Tip="空格分隔多个条件；前缀 - 或 ! 表示排除" />
+            </Grid>
+          </Border>
 
           <WrapPanel Grid.Row="2" Orientation="Horizontal">
-            <ToggleButton Content="只看问题" Classes="consoleChip" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" Margin="0,0,4,4" />
-            <ToggleButton Content="缺失" Classes="consoleChip" IsChecked="{Binding ShowMissing, Mode=TwoWay}" Margin="0,0,4,4" />
-            <ToggleButton Content="可更新" Classes="consoleChip" IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}" Margin="0,0,4,4" />
-            <ToggleButton Content="内嵌" Classes="consoleChip" IsChecked="{Binding ShowEmbedded, Mode=TwoWay}" Margin="0,0,4,4" />
+            <ToggleButton Content="只看问题" Classes="filterChip" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
+            <ToggleButton Content="缺失" Classes="filterChip" IsChecked="{Binding ShowMissing, Mode=TwoWay}" />
+            <ToggleButton Content="可更新" Classes="filterChip" IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}" />
+            <ToggleButton Content="内嵌" Classes="filterChip" IsChecked="{Binding ShowEmbedded, Mode=TwoWay}" />
           </WrapPanel>
 
           <TabControl Grid.Row="3">
@@ -288,11 +295,11 @@
                     <StackPanel Spacing="6">
                       <TextBlock Text="关系类型" Classes="section" />
                       <WrapPanel>
-                        <CheckBox Content="必需" IsChecked="{Binding ShowRequires, Mode=TwoWay}" Margin="0,0,14,0" />
-                        <CheckBox Content="可选" IsChecked="{Binding ShowOptional, Mode=TwoWay}" Margin="0,0,14,0" />
-                        <CheckBox Content="推荐" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" Margin="0,0,14,0" />
-                        <CheckBox Content="不兼容" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" Margin="0,0,14,0" />
-                        <CheckBox Content="手动" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
+                        <ToggleButton Content="必需" Classes="filterChip" IsChecked="{Binding ShowRequires, Mode=TwoWay}" />
+                        <ToggleButton Content="可选" Classes="filterChip" IsChecked="{Binding ShowOptional, Mode=TwoWay}" />
+                        <ToggleButton Content="推荐" Classes="filterChip" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" />
+                        <ToggleButton Content="不兼容" Classes="filterChip" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" />
+                        <ToggleButton Content="手动" Classes="filterChip" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
                       </WrapPanel>
                     </StackPanel>
                   </Border>
@@ -302,16 +309,16 @@
                     <StackPanel Spacing="6">
                       <TextBlock Text="加载器" Classes="section" IsVisible="{Binding ShowLoaderFilters}" />
                       <WrapPanel IsVisible="{Binding ShowLoaderFilters}">
-                        <CheckBox Content="Fabric" IsChecked="{Binding ShowFabric, Mode=TwoWay}"
-                                  IsVisible="{Binding ShowFabricFilter}" Margin="0,0,12,0" />
-                        <CheckBox Content="Quilt" IsChecked="{Binding ShowQuilt, Mode=TwoWay}"
-                                  IsVisible="{Binding ShowQuiltFilter}" Margin="0,0,12,0" />
-                        <CheckBox Content="Forge" IsChecked="{Binding ShowForge, Mode=TwoWay}"
-                                  IsVisible="{Binding ShowForgeFilter}" Margin="0,0,12,0" />
-                        <CheckBox Content="NeoForge" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}"
-                                  IsVisible="{Binding ShowNeoForgeFilter}" Margin="0,0,12,0" />
-                        <CheckBox Content="未知" IsChecked="{Binding ShowUnknown, Mode=TwoWay}"
-                                  IsVisible="{Binding ShowUnknownFilter}" />
+                        <ToggleButton Content="Fabric" Classes="filterChip" IsChecked="{Binding ShowFabric, Mode=TwoWay}"
+                                      IsVisible="{Binding ShowFabricFilter}" />
+                        <ToggleButton Content="Quilt" Classes="filterChip" IsChecked="{Binding ShowQuilt, Mode=TwoWay}"
+                                      IsVisible="{Binding ShowQuiltFilter}" />
+                        <ToggleButton Content="Forge" Classes="filterChip" IsChecked="{Binding ShowForge, Mode=TwoWay}"
+                                      IsVisible="{Binding ShowForgeFilter}" />
+                        <ToggleButton Content="NeoForge" Classes="filterChip" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}"
+                                      IsVisible="{Binding ShowNeoForgeFilter}" />
+                        <ToggleButton Content="未知" Classes="filterChip" IsChecked="{Binding ShowUnknown, Mode=TwoWay}"
+                                      IsVisible="{Binding ShowUnknownFilter}" />
                       </WrapPanel>
                       <Grid ColumnDefinitions="64,*" ColumnSpacing="8" Margin="0,3,0,0">
                         <TextBlock Text="侧" Classes="caption" VerticalAlignment="Center" />
@@ -339,21 +346,12 @@
 
                   <Expander Header="显示选项" IsExpanded="False" FontSize="10" HorizontalAlignment="Stretch">
                     <StackPanel Spacing="5" Margin="0,4,0,0">
-                      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="2">
-                        <CheckBox Content="只看问题" FontSize="10.5" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" />
-                        <CheckBox Grid.Column="1" Content="隐藏孤立" FontSize="10.5"
+                      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="2">
+                        <CheckBox Content="隐藏孤立" FontSize="10.5"
                                   IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
-                        <CheckBox Grid.Row="1" Content="展开内嵌" FontSize="10.5"
-                                  IsChecked="{Binding ShowEmbedded, Mode=TwoWay}"
-                                  ToolTip.Tip="展开父模组下所有内嵌 JAR" />
-                        <CheckBox Grid.Row="1" Grid.Column="1" Content="未安装可选" FontSize="10.5"
+                        <CheckBox Grid.Column="1" Content="未安装可选" FontSize="10.5"
                                   IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}" />
-                        <CheckBox Grid.Row="2" Content="显示缺失" FontSize="10.5"
-                                  IsChecked="{Binding ShowMissing, Mode=TwoWay}" />
-                        <CheckBox Grid.Row="3" Content="可更新" FontSize="10.5"
-                                  IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}"
-                                  IsEnabled="{Binding HasUpdateCheck}" />
-                        <Button Grid.Row="3" Grid.Column="1" Content="检查模组更新"
+                        <Button Grid.Row="1" Grid.Column="1" Content="检查模组更新"
                                 Command="{Binding CheckUpdatesCommand}"
                                 IsVisible="{Binding !IsCheckingUpdates}"
                                 IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24" />
@@ -590,8 +588,9 @@
                                Foreground="{DynamicResource Accent}" />
                     <Grid ColumnDefinitions="26,36,48,*,80,76,86" ToolTip.Tip="{Binding Tooltip}">
 
-                      <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"
-                                MinWidth="0" Margin="0,0,2,0" />
+                      <ToggleButton Grid.Column="0" Classes="selectMark"
+                                    IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"
+                                    MinWidth="0" Margin="0,0,2,0" ToolTip.Tip="加入批量操作" />
                       <TextBlock Grid.Column="1" Text="{Binding IndexText}" FontSize="10.5" Foreground="{DynamicResource TextMuted}"
                                  VerticalAlignment="Center" />
                       <Grid Grid.Column="2" Width="44" Height="44" VerticalAlignment="Center"
@@ -1454,7 +1453,7 @@
         <Grid RowDefinitions="Auto,*">
         <ScrollViewer x:Name="HomeScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled" MaxHeight="620">
-          <StackPanel x:Name="HomeContent" MaxWidth="1600" HorizontalAlignment="Stretch"
+          <StackPanel x:Name="HomeContent" Width="1200" HorizontalAlignment="Center"
                       Spacing="14" Margin="24,22,24,24">
             <StackPanel Spacing="6" IsVisible="{Binding !HasGraph}">
               <TextBlock Text="开始使用" FontSize="24" FontWeight="SemiBold" />
@@ -1562,7 +1561,7 @@
                                    Foreground="{DynamicResource Danger}" VerticalAlignment="Center" />
                       </Grid>
                     </Border>
-                    <Border Padding="0,5">
+                    <Border Padding="0,5" ToolTip.Tip="提示是非阻断信息，例如可选依赖、元数据或命名建议，不计入一键体检的阻断项。">
                       <Grid ColumnDefinitions="Auto,*,Auto">
                         <Ellipse Width="7" Height="7" Fill="{DynamicResource TextMuted}" VerticalAlignment="Center" Margin="0,0,7,0" />
                         <TextBlock Grid.Column="1" Text="提示" FontSize="10.5" VerticalAlignment="Center" />
@@ -1570,42 +1569,11 @@
                                    Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
                       </Grid>
                     </Border>
+                    <TextBlock Text="提示为非阻断信息，不计入一键体检。" Classes="caption"
+                               Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" Margin="0,3,0,0" />
                   </StackPanel>
                   <Button Content="一键体检向导" Command="{Binding OpenHealthWizardCommand}"
                           FontSize="10.5" HorizontalAlignment="Left" />
-                </StackPanel>
-              </Border>
-            </Grid>
-
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12" IsVisible="{Binding HasGraph}">
-              <Border Classes="card" Padding="16" CornerRadius="12" MinHeight="138">
-                <StackPanel Spacing="8">
-                  <TextBlock Text="发现内容" Classes="section" />
-                  <TextBlock Text="下载模组或整合包，安装后自动扫描。" Classes="caption" TextWrapping="Wrap" />
-                  <WrapPanel Margin="0,3,0,0">
-                    <Button Content="浏览发现页…" Command="{Binding OpenDiscoverCommand}" Margin="0,0,6,6" />
-                    <Button Content="下载整合包…" Command="{Binding DownloadModpackCommand}" Margin="0,0,0,6" />
-                  </WrapPanel>
-                </StackPanel>
-              </Border>
-              <Border Grid.Column="1" Classes="card" Padding="16" CornerRadius="12" MinHeight="138">
-                <StackPanel Spacing="8">
-                  <TextBlock Text="实例" Classes="section" />
-                  <TextBlock Text="切换实例、PCL 目录或 Axolotl 实例。" Classes="caption" TextWrapping="Wrap" />
-                  <WrapPanel Margin="0,3,0,0">
-                    <Button Content="实例管理…" Command="{Binding OpenInstancesCommand}" Margin="0,0,6,6" />
-                    <Button Content="打开目录" Command="{Binding OpenPackFolderCommand}" Margin="0,0,0,6" />
-                  </WrapPanel>
-                </StackPanel>
-              </Border>
-              <Border Grid.Column="2" Classes="card" Padding="16" CornerRadius="12" MinHeight="138">
-                <StackPanel Spacing="8">
-                  <TextBlock Text="备份与历史" Classes="section" />
-                  <TextBlock Text="快照、模组列表历史和变更日志。" Classes="caption" TextWrapping="Wrap" />
-                  <WrapPanel Margin="0,3,0,0">
-                    <Button Content="备份中心…" Command="{Binding OpenBackupCenterCommand}" Margin="0,0,6,6" />
-                    <Button Content="对比历史…" Command="{Binding CompareModListHistoryCommand}" Margin="0,0,0,6" />
-                  </WrapPanel>
                 </StackPanel>
               </Border>
             </Grid>
