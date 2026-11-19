@@ -9,6 +9,7 @@ public sealed class AppSettings
     public List<string> RecentPacks { get; set; } = [];
 
     public string Theme { get; set; } = "Dark";
+    public string AccentColor { get; set; } = "#D75A8A";
     public bool NetworkEnabled { get; set; } = true;
     public string? ModrinthContact { get; set; }
 
@@ -71,6 +72,7 @@ public sealed class AppSettings
         LastPackPath = other.LastPackPath;
         RecentPacks = [.. other.RecentPacks];
         Theme = other.Theme;
+        AccentColor = other.AccentColor;
         NetworkEnabled = other.NetworkEnabled;
         ModrinthContact = other.ModrinthContact;
         ShowOptional = other.ShowOptional;

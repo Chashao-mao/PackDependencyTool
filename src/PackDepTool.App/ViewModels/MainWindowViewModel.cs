@@ -5486,7 +5486,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
             string.Equals(_services.Settings.Theme, "Light", StringComparison.OrdinalIgnoreCase)
                 ? ThemeVariant.Light
                 : ThemeVariant.Dark;
+        ApplyAccentColor();
         _graphView?.RefreshTheme();
+    }
+
+    private void ApplyAccentColor()
+    {
+        if (Application.Current is null) return;
+        Color color;
+        try { color = Color.Parse(_services.Settings.AccentColor); }
+        catch (FormatException) { color = Color.Parse("#D75A8A"); }
+        var hover = Color.FromRgb(
+            (byte)Math.Min(255, color.R + 28),
+            (byte)Math.Min(255, color.G + 28),
+            (byte)Math.Min(255, color.B + 28));
+        var soft = Color.FromArgb(42, color.R, color.G, color.B);
+        Application.Current.Resources["Accent"] = new SolidColorBrush(color);
+        Application.Current.Resources["AccentHover"] = new SolidColorBrush(hover);
+        Application.Current.Resources["AccentSoft"] = new SolidColorBrush(soft);
+        Application.Current.Resources["SystemAccentColor"] = color;
     }
 
     private static string SourceText(EdgeSource source) => source switch

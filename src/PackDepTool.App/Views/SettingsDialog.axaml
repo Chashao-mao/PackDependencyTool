@@ -183,6 +183,14 @@
               <TextBlock Grid.Row="2" Text="显示节点标签" VerticalAlignment="Center" />
               <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding ShowLabels}" Content="在图中绘制名称与 modId" />
             </Grid>
+
+            <Grid ColumnDefinitions="140,*">
+              <TextBlock Text="强调色" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding AccentColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       Watermark="#D75A8A" MaxLength="9" HorizontalAlignment="Left" Width="150" />
+            </Grid>
+            <TextBlock Text="支持 #RRGGBB 自定义强调色；保存后应用到按钮、导航和选中态。"
+                       Classes="caption" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
           </StackPanel>
         </Border>
 

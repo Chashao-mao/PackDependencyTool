@@ -36,6 +36,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _curseForge = curseForge;
 
         ThemeOptions = ThemeOption.All;
+        AccentColor = _settings.AccentColor;
         LayoutOptions = LayoutOption.All;
 
         SelectedTheme = ThemeOptions.FirstOrDefault(t =>
@@ -122,6 +123,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _debugMode;
     [ObservableProperty] private string _javaPath = string.Empty;
     [ObservableProperty] private string _axolotlPath = string.Empty;
+    [ObservableProperty] private string _accentColor = "#D75A8A";
 
     [ObservableProperty] private string _keyInput = string.Empty;
     [ObservableProperty] private string _keyStatusText = string.Empty;
@@ -164,6 +166,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.DebugMode = DebugMode;
         _settings.JavaPath = string.IsNullOrWhiteSpace(JavaPath) ? null : JavaPath.Trim();
         _settings.AxolotlPath = string.IsNullOrWhiteSpace(AxolotlPath) ? null : AxolotlPath.Trim();
+        _settings.AccentColor = string.IsNullOrWhiteSpace(AccentColor) ? "#D75A8A" : AccentColor.Trim();
         Completed?.Invoke(_settings);
     }
 

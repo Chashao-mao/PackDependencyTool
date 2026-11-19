@@ -24,57 +24,80 @@
     <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding OpenSettingsCommand}" />
   </Window.KeyBindings>
 
-  <Grid ColumnDefinitions="208,*">
+  <Grid ColumnDefinitions="92,*">
 
     <!-- ============================ Navigation ============================ -->
     <Border Grid.Column="0" Background="{DynamicResource HeaderBackground}"
-            BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,1,0" Padding="10,12">
+            BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,1,0" Padding="6,12">
       <Grid RowDefinitions="Auto,*,Auto">
-        <StackPanel Spacing="2" Margin="4,0,4,18">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Border Width="28" Height="28" CornerRadius="6" ClipToBounds="True">
-              <Image Source="avares://PackDependencyTool/Assets/app.png" />
-            </Border>
-            <StackPanel VerticalAlignment="Center">
-              <TextBlock Text="Pack Dependency" FontSize="12" FontWeight="SemiBold" />
-              <TextBlock Text="Tool" FontSize="10" Foreground="{DynamicResource TextMuted}" />
+        <Image Source="avares://PackDependencyTool/Assets/app.png" Width="34" Height="34"
+               HorizontalAlignment="Center" Margin="0,0,0,14" />
+
+        <StackPanel Grid.Row="1" Spacing="2">
+          <Button Command="{Binding NavigateCommand}" CommandParameter="home"
+                  Classes="nav" Classes.active="{Binding IsHomePage}" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="首页">
+            <StackPanel Spacing="1">
+              <TextBlock Text="⌂" FontSize="18" HorizontalAlignment="Center" />
+              <TextBlock Text="首页" FontSize="9" HorizontalAlignment="Center" />
             </StackPanel>
-          </StackPanel>
+          </Button>
+          <Button Command="{Binding OpenDiscoverCommand}"
+                  Classes="nav" Classes.active="{Binding IsDiscoverPage}" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="发现内容">
+            <StackPanel Spacing="1">
+              <TextBlock Text="⌕" FontSize="18" HorizontalAlignment="Center" />
+              <TextBlock Text="发现" FontSize="9" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding OpenInstancesCommand}"
+                  Classes="nav" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="实例管理">
+            <StackPanel Spacing="1">
+              <TextBlock Text="▣" FontSize="17" HorizontalAlignment="Center" />
+              <TextBlock Text="实例" FontSize="9" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding OpenBackupCenterCommand}"
+                  Classes="nav" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="备份与历史">
+            <StackPanel Spacing="1">
+              <TextBlock Text="⟲" FontSize="18" HorizontalAlignment="Center" />
+              <TextBlock Text="备份" FontSize="9" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding NavigateCommand}" CommandParameter="mods"
+                  Classes="nav" Classes.active="{Binding IsModsPage}" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="模组">
+            <StackPanel Spacing="1">
+              <TextBlock Text="▦" FontSize="17" HorizontalAlignment="Center" />
+              <TextBlock Text="模组" FontSize="9" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding NavigateCommand}" CommandParameter="diagnostics"
+                  Classes="nav" Classes.active="{Binding IsDiagnosticsPage}" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="诊断">
+            <StackPanel Spacing="1">
+              <TextBlock Text="✚" FontSize="18" HorizontalAlignment="Center" />
+              <TextBlock Text="诊断" FontSize="9" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Command="{Binding NavigateCommand}" CommandParameter="server"
+                  Classes="nav" Classes.active="{Binding IsServerPage}" Height="56" Padding="0"
+                  HorizontalContentAlignment="Center" ToolTip.Tip="服务端">
+            <StackPanel Spacing="1">
+              <TextBlock Text="▤" FontSize="17" HorizontalAlignment="Center" />
+              <TextBlock Text="服务端" FontSize="9" HorizontalAlignment="Center" />
+            </StackPanel>
+          </Button>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Spacing="3">
-          <TextBlock Text="工作空间" FontSize="9" Margin="10,0,0,3"
+        <StackPanel Grid.Row="2" Spacing="4">
+          <TextBlock Text="{Binding VersionLabel}" FontSize="8.5" HorizontalAlignment="Center"
                      Foreground="{DynamicResource TextMuted}" />
-          <Button Content="首页" Command="{Binding NavigateCommand}" CommandParameter="home"
-                  Classes="nav" Classes.active="{Binding IsHomePage}" FontSize="12" MinHeight="36" />
-          <Button Content="发现内容" Command="{Binding OpenDiscoverCommand}"
-                  Classes="nav" Classes.active="{Binding IsDiscoverPage}" FontSize="12" MinHeight="36"
-                  ToolTip.Tip="搜索并下载模组、整合包、资源包" />
-          <Button Content="实例管理" Command="{Binding OpenInstancesCommand}"
-                  Classes="nav" FontSize="12" MinHeight="36"
-                  ToolTip.Tip="浏览、切换和管理实例" />
-          <Button Content="备份与历史" Command="{Binding OpenBackupCenterCommand}"
-                  Classes="nav" FontSize="12" MinHeight="36"
-                  ToolTip.Tip="快照、模组列表历史和变更日志" />
-          <Button Content="模组" Command="{Binding NavigateCommand}" CommandParameter="mods"
-                  Classes="nav" Classes.active="{Binding IsModsPage}" FontSize="12" MinHeight="36" />
-          <Button Content="诊断" Command="{Binding NavigateCommand}" CommandParameter="diagnostics"
-                  Classes="nav" Classes.active="{Binding IsDiagnosticsPage}" FontSize="12" MinHeight="36" />
-          <Button Content="服务端" Command="{Binding NavigateCommand}" CommandParameter="server"
-                  Classes="nav" Classes.active="{Binding IsServerPage}" FontSize="12" MinHeight="36" />
-
-        </StackPanel>
-
-        <StackPanel Grid.Row="2" Spacing="5">
-          <TextBlock Text="{Binding PackPathDisplay}" FontSize="9" TextWrapping="Wrap"
-                     Foreground="{DynamicResource TextMuted}" MaxHeight="45" />
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
-            <TextBlock Text="{Binding VersionLabel}" FontSize="9" VerticalAlignment="Center"
-                       Foreground="{DynamicResource TextMuted}" />
-            <Button Content="⚙" Command="{Binding OpenSettingsCommand}" Classes="ghost"
-                    FontSize="11" Padding="2,0" MinHeight="18" MinWidth="20"
-                    ToolTip.Tip="设置" />
-          </StackPanel>
+          <Button Content="⚙" Command="{Binding OpenSettingsCommand}" Classes="ghost"
+                  FontSize="12" Padding="2,0" MinHeight="22" MinWidth="22"
+                  HorizontalAlignment="Center" ToolTip.Tip="设置" />
         </StackPanel>
       </Grid>
     </Border>
