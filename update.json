@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0",
-  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.1.0",
-  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.1.0/PackDependencyTool.exe",
-  "sha256": "2e5af12a1f4319342b71766ffc8585a5a1ee1e70238af5d9b08ed789ee6d5e04",
+  "version": "1.1.1",
+  "releaseUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/tag/v1.1.1",
+  "downloadUrl": "https://github.com/Chashao-mao/PackDependencyTool/releases/download/v1.1.1/PackDependencyTool.exe",
+  "sha256": "12f5eb309b0ab1dcdd3c006ff27df3e64636b78c59349811237f2f1589f512ab",
   "signerThumbprint": "132BDA330ACF56C47D095F50C5A395A2CB9A9D5A",
-  "notes": "1.1.0：崩溃分析新增 Thaumaturge/JEI NoSuchMethodError 识别、顶部结论卡、跨文件去重；支持 .zip 日志包和外部日志文件。",
-  "publishedAt": "2026-11-14T11:50:00.000+08:00"
+  "notes": "1.1.1：Axolotl 伴生适配（实例自动识别、axolotl://launch 启动）、暗色主题、下载中心胶囊筛选与独立搜索行。",
+  "publishedAt": "2026-11-19T17:55:00.000+08:00"
 }
