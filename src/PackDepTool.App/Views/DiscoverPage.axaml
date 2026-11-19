@@ -131,6 +131,14 @@
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
+            <StackPanel Grid.Row="1" IsVisible="{Binding !HasProjects}" VerticalAlignment="Center"
+                        HorizontalAlignment="Center" Spacing="8" Margin="24">
+              <ProgressBar IsIndeterminate="True" Width="160" IsVisible="{Binding IsBusy}" />
+              <TextBlock Text="{Binding StatusText}" Classes="caption" TextAlignment="Center"
+                         TextWrapping="Wrap" MaxWidth="320" />
+              <Button Content="清空搜索并重试" Command="{Binding ClearSearchCommand}"
+                      IsVisible="{Binding !IsBusy}" HorizontalAlignment="Center" />
+            </StackPanel>
           </Grid>
         </Border>
 

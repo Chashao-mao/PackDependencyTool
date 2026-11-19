@@ -323,6 +323,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public string DataDirectory => _services.Paths.DataDirectory;
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
+    public bool HasOfflineUsername => !string.IsNullOrWhiteSpace(_services.Settings.OfflineUsername);
+    public bool CanLaunch => HasGraph && HasOfflineUsername;
     public string NetworkStatusText => IsOffline ? "离线模式" : "联网可用";
     public string VersionLabel => $"v{typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"}";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
@@ -1884,6 +1886,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StatusText = "设置已保存";
             if (!string.IsNullOrWhiteSpace(_services.Settings.ModrinthContact))
                 StatusText += "（Modrinth User-Agent 将在下次启动生效）";
+            OnPropertyChanged(nameof(HasOfflineUsername));
+            OnPropertyChanged(nameof(CanLaunch));
         }
         ActivePage = "home";
         IsOverviewMode = true;
@@ -2639,6 +2643,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
             var scan = await _services.Scanner.ScanAsync(PackPath, progress, cts.Token);
             _scanResult = scan;
+            OnPropertyChanged(nameof(CanLaunch));
             ModIconCache.Clear();
             _iconsPrimed = false;
             _updateStates.Clear();

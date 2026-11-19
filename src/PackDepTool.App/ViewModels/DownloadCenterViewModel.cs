@@ -272,6 +272,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
             : $"当前实例：{_context.McVersion} · {GraphPalette.LoaderText(_context.Loader)}";
 
     public ObservableCollection<DownloadProjectItem> Projects { get; } = [];
+    public bool HasProjects => Projects.Count > 0;
     public ObservableCollection<DownloadVersionItem> Versions { get; } = [];
     public ObservableCollection<DownloadQueueRow> Queue { get; } = [];
     public bool HasQueue => Queue.Count > 0;
@@ -334,6 +335,13 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
     }
 
     partial void OnDestinationFolderChanged(string value) => UpdateTargetText();
+
+    [RelayCommand]
+    private async Task ClearSearchAsync()
+    {
+        SearchQuery = string.Empty;
+        await LoadPageAsync(1);
+    }
 
     [RelayCommand]
     private Task SearchAsync() => LoadPageAsync(1);
@@ -421,6 +429,7 @@ public sealed partial class DownloadCenterViewModel : ObservableObject, IDisposa
                 .ToList();
             foreach (var item in items)
                 Projects.Add(item);
+                OnPropertyChanged(nameof(HasProjects));
             _ = LoadProjectIconsAsync(items, cts.Token);
 
             CurrentPage = requestedPage;
