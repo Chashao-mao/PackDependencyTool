@@ -12,6 +12,7 @@ namespace PackDepTool.App.ViewModels;
 
 public sealed class ConsoleLogLine
 {
+    public int LineNumber { get; set; }
     public string Time { get; init; } = string.Empty;
     public string Thread { get; init; } = string.Empty;
     public string Level { get; init; } = string.Empty;
@@ -210,6 +211,7 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
             if (search.Length > 0 &&
                 !line.Message.Contains(search, StringComparison.OrdinalIgnoreCase) &&
                 !line.Thread.Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
+            line.LineNumber = LogLines.Count + 1;
             LogLines.Add(line);
         }
         LogStatus = LogStatus.Split(" · 已折叠")[0];
@@ -227,6 +229,7 @@ public sealed partial class RuntimeConsoleViewModel : ObservableObject, IDisposa
             if (search.Length > 0 &&
                 !line.Message.Contains(search, StringComparison.OrdinalIgnoreCase) &&
                 !line.Thread.Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
+            line.LineNumber = LogLines.Count + 1;
             LogLines.Add(line);
         }
         while (LogLines.Count > 1600) LogLines.RemoveAt(0);

@@ -58,12 +58,13 @@
                         Command="{Binding SetLevelCommand}" CommandParameter="ERROR" />
               </StackPanel>
             </Grid>
-            <Grid Grid.Row="1" ColumnDefinitions="64,52,*,124" ColumnSpacing="6"
+            <Grid Grid.Row="1" ColumnDefinitions="38,58,48,*,116" ColumnSpacing="6"
                   Margin="6,0,22,2">
-              <TextBlock Text="时间" FontSize="9" Foreground="{DynamicResource TextMuted}" />
-              <TextBlock Grid.Column="1" Text="级别" FontSize="9" Foreground="{DynamicResource TextMuted}" />
-              <TextBlock Grid.Column="2" Text="内容" FontSize="9" Foreground="{DynamicResource TextMuted}" />
-              <TextBlock Grid.Column="3" Text="线程" FontSize="9" Foreground="{DynamicResource TextMuted}"
+              <TextBlock Text="行" FontSize="9" Foreground="{DynamicResource TextMuted}" />
+              <TextBlock Grid.Column="1" Text="时间" FontSize="9" Foreground="{DynamicResource TextMuted}" />
+              <TextBlock Grid.Column="2" Text="级别" FontSize="9" Foreground="{DynamicResource TextMuted}" />
+              <TextBlock Grid.Column="3" Text="内容" FontSize="9" Foreground="{DynamicResource TextMuted}" />
+              <TextBlock Grid.Column="4" Text="线程" FontSize="9" Foreground="{DynamicResource TextMuted}"
                          HorizontalAlignment="Right" />
             </Grid>
             <Border Grid.Row="2" Background="{DynamicResource PanelAlt}" CornerRadius="6"
@@ -74,18 +75,20 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:ConsoleLogLine">
                     <Border Background="{Binding RowBackground}" CornerRadius="3" Padding="3,2" Margin="0,1">
-                      <Grid ColumnDefinitions="64,52,*,124" ColumnSpacing="6">
-                        <TextBlock Text="{Binding Time}" FontSize="10" VerticalAlignment="Center"
+                      <Grid ColumnDefinitions="38,58,48,*,116" ColumnSpacing="6">
+                        <TextBlock Text="{Binding LineNumber}" FontSize="9" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextMuted}" TextAlignment="Right" Margin="0,0,4,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding Time}" FontSize="10" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextMuted}" />
-                        <Border Grid.Column="1" Background="{Binding BadgeBackground}" CornerRadius="3"
+                        <Border Grid.Column="2" Background="{Binding BadgeBackground}" CornerRadius="3"
                                 Padding="4,1" VerticalAlignment="Center" IsVisible="{Binding HasLevel}">
                           <TextBlock Text="{Binding Level}" FontSize="8.5" FontWeight="SemiBold"
                                      Foreground="{Binding Brush}" HorizontalAlignment="Center" />
                         </Border>
-                        <TextBlock Grid.Column="2" Text="{Binding DisplayMessage}" FontSize="10.5"
+                        <TextBlock Grid.Column="3" Text="{Binding DisplayMessage}" FontSize="10.5"
                                    TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="{Binding Thread}" FontSize="8.5"
+                        <TextBlock Grid.Column="4" Text="{Binding Thread}" FontSize="8.5"
                                    Foreground="{DynamicResource TextMuted}" MaxWidth="148"
                                    TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"
                                    VerticalAlignment="Center" Margin="0,0,4,0" />

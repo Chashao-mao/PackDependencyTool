@@ -310,6 +310,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IReadOnlyList<GroupModeOption> GroupModes => GroupModeOption.All;
     public ObservableCollection<ModTreeNodeViewModel> DependencyTreeRoots { get; } = [];
     [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
+    [ObservableProperty] private string _treeDirection = "requires";
+    public bool TreeUsesRequires => string.Equals(TreeDirection, "requires", StringComparison.OrdinalIgnoreCase);
+
+    [RelayCommand]
+    private void SetTreeDirection(string direction)
+    {
+        TreeDirection = string.Equals(direction, "requiredBy", StringComparison.OrdinalIgnoreCase)
+            ? "requiredBy"
+            : "requires";
+        OnPropertyChanged(nameof(TreeUsesRequires));
+        BuildDependencyTree();
+    }
 
     public bool IsListView => string.Equals(SelectedViewOption?.Value, "list", StringComparison.OrdinalIgnoreCase);
     public bool IsTreeView => string.Equals(SelectedViewOption?.Value, "tree", StringComparison.OrdinalIgnoreCase);
@@ -4535,15 +4547,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var progress = new Progress<IconProgress>(report =>
-            {
-                if (report.Total > 0)
-                    StatusText = $"正在获取在线图标 {report.Done}/{report.Total} · {report.Message}".TrimEnd(' ', '·');
-                else
-                    StatusText = $"正在获取在线图标：{report.Phase}";
-            });
-
-            var count = await _services.Icons.FetchIconsAsync(nodes, progress, cts.Token, forceRefresh);
+            var count = await _services.Icons.FetchIconsAsync(nodes, null, cts.Token, forceRefresh);
             if (count <= 0 || cts.IsCancellationRequested) return;
 
             var selected = _selectedNodeId;
@@ -4553,7 +4557,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             else
                 RefreshDetailFromState();
 
-            StatusText = $"已从 Modrinth / CurseForge 获取 {count} 个模组图标";
         }
         catch (OperationCanceledException)
         {
@@ -5541,14 +5544,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         if (nodes.Count == 0) return;
-        var incoming = _graph.Edges
-            .Where(edge => edge.Type == EdgeType.Requires &&
-                           nodes.ContainsKey(edge.From) && nodes.ContainsKey(edge.To))
-            .Select(edge => edge.To)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var childrenByParent = _graph.Edges
-            .Where(edge => edge.Type == EdgeType.Requires &&
-                           nodes.ContainsKey(edge.From) && nodes.ContainsKey(edge.To))
+
+        var requires = TreeUsesRequires;
+        var edges = _graph.Edges
+            .Where(edge => edge.Type == EdgeType.Requires)
+            .Select(edge => requires ? (From: edge.From, To: edge.To) : (From: edge.To, To: edge.From))
+            .Where(edge => nodes.ContainsKey(edge.From) && nodes.ContainsKey(edge.To))
+            .ToList();
+        var incoming = edges.Select(edge => edge.To).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var childrenByParent = edges
             .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key,
                 group => group.Select(edge => edge.To).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
@@ -5559,8 +5563,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (roots.Count == 0) roots = [.. nodes.Values.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)];
+        var expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in roots.Take(100))
-            DependencyTreeRoots.Add(BuildTreeNode(root, nodes, childrenByParent, [], 0));
+            DependencyTreeRoots.Add(BuildTreeNode(root, nodes, childrenByParent, [], expanded, 0));
     }
 
     private static ModTreeNodeViewModel BuildTreeNode(
@@ -5568,17 +5573,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IReadOnlyDictionary<string, NodeItemViewModel> nodes,
         IReadOnlyDictionary<string, List<string>> childrenByParent,
         HashSet<string> path,
+        HashSet<string> expanded,
         int depth)
     {
-        var branch = new ModTreeNodeViewModel(node);
-        if (depth >= 12 || !path.Add(node.Id)) return branch;
-        if (childrenByParent.TryGetValue(node.Id, out var childIds))
+        var isCycle = path.Contains(node.Id);
+        var isReference = !isCycle && expanded.Contains(node.Id);
+        var kind = isCycle ? ModTreeNodeKind.Cycle
+            : isReference ? ModTreeNodeKind.Reference
+            : ModTreeNodeKind.Node;
+        var branch = new ModTreeNodeViewModel(node, kind, depth);
+        if (kind != ModTreeNodeKind.Node) return branch;
+
+        path.Add(node.Id);
+        expanded.Add(node.Id);
+        if (depth < 12 && childrenByParent.TryGetValue(node.Id, out var childIds))
         {
             foreach (var id in childIds)
             {
-                if (string.IsNullOrWhiteSpace(id)) continue;
-                if (!nodes.TryGetValue(id, out var child)) continue;
-                branch.Children.Add(BuildTreeNode(child, nodes, childrenByParent, path, depth + 1));
+                if (string.IsNullOrWhiteSpace(id) || !nodes.TryGetValue(id, out var child)) continue;
+                branch.Children.Add(BuildTreeNode(child, nodes, childrenByParent, path, expanded, depth + 1));
             }
         }
         path.Remove(node.Id);

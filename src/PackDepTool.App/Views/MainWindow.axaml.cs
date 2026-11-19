@@ -58,6 +58,11 @@ public partial class MainWindow : Window
         HomeContent.Width = Math.Max(0, Math.Min(1200, available - 48));
     }
 
+    private void CloseDetailsPanel_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null) _viewModel.ShowDetailsPanel = false;
+    }
+
     private void ConstrainWorkspace()
     {
         var available = Bounds.Width - 92 - 20;

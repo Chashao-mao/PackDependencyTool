@@ -244,15 +244,15 @@
     <Grid Grid.Row="1">
       <Grid x:Name="MainContentGrid" IsVisible="{Binding IsModsPage}" Margin="10,10,10,6">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="250" MinWidth="180" MaxWidth="360" />
-        <ColumnDefinition Width="5" />
-        <ColumnDefinition Width="*" MinWidth="400" />
-        <ColumnDefinition Width="5" />
-        <ColumnDefinition Width="{Binding DetailsColumnWidth}" MinWidth="0" MaxWidth="440" />
+        <ColumnDefinition Width="0" />
+        <ColumnDefinition Width="0" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="0" />
+        <ColumnDefinition Width="0" />
       </Grid.ColumnDefinitions>
 
       <!-- Left: search + filters + issue/mod navigator -->
-      <Border Grid.Column="0" x:Name="LeftPanelBorder" Classes="card" Padding="12" ClipToBounds="True">
+      <Border Grid.Column="0" x:Name="LeftPanelBorder" Classes="card" Padding="12" ClipToBounds="True" IsVisible="False">
         <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="9">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="筛选与问题" Classes="section" VerticalAlignment="Center" />
@@ -457,8 +457,11 @@
                         </Grid>
                         <StackPanel Grid.Column="2" Spacing="1">
                           <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Text="{Binding Subtitle}" FontSize="10.5"
-                                     Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding CardDescription}" FontSize="10.5"
+                                     Foreground="{DynamicResource TextSecondary}"
+                                     TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding AuthorsText}" FontSize="9"
+                                     Foreground="{DynamicResource TextMuted}" IsVisible="{Binding HasAuthors}" />
                         </StackPanel>
                         <Border Grid.Column="3" Classes="chip" Padding="6,1" VerticalAlignment="Center" Margin="6,0,0,0">
                           <TextBlock Text="{Binding LoaderText}" FontSize="10.5" />
@@ -473,7 +476,7 @@
         </Grid>
       </Border>
 
-      <GridSplitter Grid.Column="1" x:Name="LeftPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+      <GridSplitter Grid.Column="1" x:Name="LeftPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" IsVisible="False" />
 
       <!-- Center: structured mod list (default) or dependency graph -->
       <Border Grid.Column="2" Classes="card" ClipToBounds="True">
@@ -498,36 +501,80 @@
                 </StackPanel>
               </Grid>
 
-              <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6"
-                    VerticalAlignment="Center" HorizontalAlignment="Left">
-                <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
-                          IsVisible="{Binding IsListView}" Width="120" Height="32" FontSize="10.5"
-                          ToolTip.Tip="排序方式">
+              <Grid Grid.Row="1" ColumnDefinitions="300,Auto,112,30,216,64,*" ColumnSpacing="6"
+                    VerticalAlignment="Center">
+                <TextBox Text="{Binding SearchText, Mode=TwoWay}" Height="30" FontSize="10.5"
+                         Watermark="搜索模组 / modId / slug" ToolTip.Tip="Ctrl+F" />
+
+                <Button Grid.Column="1" Content="筛选" Height="30" Padding="14,0" FontSize="10">
+                  <Button.Flyout>
+                    <Flyout>
+                      <Border Width="360" Padding="14" Background="{DynamicResource PanelBackground}"
+                              BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" CornerRadius="10">
+                        <ScrollViewer MaxHeight="520" HorizontalScrollBarVisibility="Disabled">
+                          <StackPanel Spacing="10">
+                            <TextBlock Text="关系类型" Classes="section" />
+                            <WrapPanel>
+                              <ToggleButton Content="必需" Classes="filterChip" IsChecked="{Binding ShowRequires, Mode=TwoWay}" />
+                              <ToggleButton Content="可选" Classes="filterChip" IsChecked="{Binding ShowOptional, Mode=TwoWay}" />
+                              <ToggleButton Content="推荐" Classes="filterChip" IsChecked="{Binding ShowRecommends, Mode=TwoWay}" />
+                              <ToggleButton Content="不兼容" Classes="filterChip" IsChecked="{Binding ShowIncompatible, Mode=TwoWay}" />
+                              <ToggleButton Content="手动" Classes="filterChip" IsChecked="{Binding ShowManual, Mode=TwoWay}" />
+                            </WrapPanel>
+                            <TextBlock Text="加载器" Classes="section" IsVisible="{Binding ShowLoaderFilters}" />
+                            <WrapPanel IsVisible="{Binding ShowLoaderFilters}">
+                              <ToggleButton Content="Fabric" Classes="filterChip" IsChecked="{Binding ShowFabric, Mode=TwoWay}" IsVisible="{Binding ShowFabricFilter}" />
+                              <ToggleButton Content="Quilt" Classes="filterChip" IsChecked="{Binding ShowQuilt, Mode=TwoWay}" IsVisible="{Binding ShowQuiltFilter}" />
+                              <ToggleButton Content="Forge" Classes="filterChip" IsChecked="{Binding ShowForge, Mode=TwoWay}" IsVisible="{Binding ShowForgeFilter}" />
+                              <ToggleButton Content="NeoForge" Classes="filterChip" IsChecked="{Binding ShowNeoForge, Mode=TwoWay}" IsVisible="{Binding ShowNeoForgeFilter}" />
+                              <ToggleButton Content="未知" Classes="filterChip" IsChecked="{Binding ShowUnknown, Mode=TwoWay}" IsVisible="{Binding ShowUnknownFilter}" />
+                            </WrapPanel>
+                            <TextBlock Text="侧 / 状态" Classes="section" />
+                            <ComboBox ItemsSource="{Binding SideFilters}" SelectedItem="{Binding SelectedSideFilter, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                            <ComboBox ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding SelectedStatusFilter, Mode=TwoWay}" HorizontalAlignment="Stretch" />
+                            <TextBlock Text="显示 / 分组" Classes="section" />
+                            <WrapPanel>
+                              <ToggleButton Content="隐藏孤立" Classes="filterChip" IsChecked="{Binding HideIsolated, Mode=TwoWay}" />
+                              <ToggleButton Content="未安装可选" Classes="filterChip" IsChecked="{Binding ShowUninstalledOptional, Mode=TwoWay}" />
+                              <ToggleButton Content="显示缺失" Classes="filterChip" IsChecked="{Binding ShowMissing, Mode=TwoWay}" />
+                              <ToggleButton Content="可更新" Classes="filterChip" IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}" />
+                            </WrapPanel>
+                            <ComboBox ItemsSource="{Binding GroupModes}" SelectedItem="{Binding SelectedGroupMode, Mode=TwoWay}" HorizontalAlignment="Stretch"
+                                      ToolTip.Tip="按分类 / 加载器 / 状态 / 侧分组" />
+                            <TextBlock Text="功能分类" Classes="section" />
+                            <ItemsControl ItemsSource="{Binding CategoryChips}">
+                              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CategoryChipItem">
+                                  <Button Classes="categoryChip" Classes.active="{Binding IsActive}" Content="{Binding Display}"
+                                          Command="{Binding SelectCommand}" Margin="0,0,4,4" />
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="重置全部筛选" Command="{Binding ResetFiltersCommand}" HorizontalAlignment="Left" />
+                          </StackPanel>
+                        </ScrollViewer>
+                      </Border>
+                    </Flyout>
+                  </Button.Flyout>
+                </Button>
+
+                <ComboBox Grid.Column="2" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSortOption, Mode=TwoWay}"
+                          Width="112" Height="30" FontSize="10" ToolTip.Tip="排序方式">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ModSortOption">
                       <TextBlock Text="{Binding Label}" />
                     </DataTemplate>
                   </ComboBox.ItemTemplate>
                 </ComboBox>
-                <Button Grid.Column="1" Content="{Binding SortDirectionText}" Command="{Binding ToggleSortDirectionCommand}"
-                        IsVisible="{Binding IsListView}" FontSize="14" Width="32" Height="32" Padding="0"
+                <Button Grid.Column="3" Content="{Binding SortDirectionText}" Command="{Binding ToggleSortDirectionCommand}"
+                        FontSize="14" Width="30" Height="30" Padding="0"
                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                         ToolTip.Tip="{Binding SortDirectionTooltip}" />
-                <ComboBox Grid.Column="2" ItemsSource="{Binding GroupModes}"
-                          SelectedItem="{Binding SelectedGroupMode, Mode=TwoWay}"
-                          Width="110" Height="32" FontSize="10.5"
-                          IsVisible="{Binding IsListView}"
-                          ToolTip.Tip="按分类 / 加载器 / 状态 / 侧分组">
-                  <ComboBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GroupModeOption">
-                      <TextBlock Text="{Binding Label}" />
-                    </DataTemplate>
-                  </ComboBox.ItemTemplate>
-                </ComboBox>
 
-                <ListBox Grid.Column="3" ItemsSource="{Binding ViewOptions}"
+                <ListBox Grid.Column="4" ItemsSource="{Binding ViewOptions}"
                          SelectedItem="{Binding SelectedViewOption, Mode=TwoWay}"
-                         Height="32" Background="Transparent" BorderThickness="0" Padding="0"
+                         Width="216" Height="30" Background="Transparent" BorderThickness="0" Padding="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          HorizontalAlignment="Right" ToolTip.Tip="切换模组清单 / 关系树 / 依赖图">
                   <ListBox.ItemsPanel>
@@ -535,51 +582,42 @@
                   </ListBox.ItemsPanel>
                   <ListBox.Styles>
                     <Style Selector="ListBoxItem">
-                      <Setter Property="Padding" Value="11,5" />
-                      <Setter Property="Margin" Value="0,0,2,0" />
-                      <Setter Property="CornerRadius" Value="14" />
-                      <Setter Property="FontSize" Value="10" />
+                      <Setter Property="Width" Value="72" />
+                      <Setter Property="Height" Value="30" />
+                      <Setter Property="Padding" Value="0" />
+                      <Setter Property="Margin" Value="0" />
+                      <Setter Property="CornerRadius" Value="15" />
+                      <Setter Property="FontSize" Value="9.5" />
+                      <Setter Property="HorizontalContentAlignment" Value="Center" />
                       <Setter Property="VerticalContentAlignment" Value="Center" />
                     </Style>
                     <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
                       <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
-                      <Setter Property="CornerRadius" Value="14" />
+                      <Setter Property="CornerRadius" Value="15" />
                     </Style>
                   </ListBox.Styles>
                   <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ViewOption">
-                      <TextBlock Text="{Binding Label}" FontSize="10" />
+                      <TextBlock Text="{Binding Label}" FontSize="9.5" HorizontalAlignment="Center" />
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
 
-                <ToggleButton Grid.Column="4" Content="详情" Classes="filterChip"
+                <ToggleButton Grid.Column="5" Content="详情" Classes="filterChip"
                               IsChecked="{Binding ShowDetailsPanel, Mode=TwoWay}"
-                              Height="32" Padding="12,5" VerticalContentAlignment="Center"
-                              ToolTip.Tip="显示右侧模组详情面板" />
-                <CheckBox Grid.Column="5" Content="简化连线" IsChecked="{Binding FocusEdgesOnly, Mode=TwoWay}"
-                          IsVisible="{Binding IsGraphView}" FontSize="10" VerticalAlignment="Center"
-                          HorizontalAlignment="Right" Margin="0,0,10,0"
-                          ToolTip.Tip="折叠库/前置节点的密集入线，选中或悬停时展开相关连线" />
+                              Width="64" Height="30" Padding="0" Margin="0"
+                              HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                              ToolTip.Tip="显示右侧模组详情抽屉" />
               </Grid>
             </Grid>
           </Border>
 
           <Grid Grid.Row="1">
             <!-- Structured mod list -->
-            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,Auto,*,Auto,Auto" Background="{DynamicResource GraphBackground}">
-              <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
-                      BorderThickness="0,0,0,1" Padding="12,6">
-                <StackPanel Spacing="4">
-                <Grid ColumnDefinitions="20,28,34,*">
-                  <TextBlock Text="选" Grid.Column="0" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Text="#" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="3" Text="模组" Classes="section" VerticalAlignment="Center" />
-                </Grid>
-                </StackPanel>
-              </Border>
+            <Grid IsVisible="{Binding IsListView}" RowDefinitions="Auto,*,Auto,Auto" Background="{DynamicResource GraphBackground}">
 
-              <Border Grid.Row="1" IsVisible="{Binding HasChecked}"
+
+              <Border Grid.Row="0" IsVisible="{Binding HasChecked}"
                       Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,0,0,1" Padding="10,4">
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
@@ -602,7 +640,7 @@
                 </Grid>
               </Border>
 
-              <ListBox Grid.Row="2" x:Name="ModuleList" Classes="dense" ItemsSource="{Binding NodeItems}"
+              <ListBox Grid.Row="1" x:Name="ModuleList" Classes="dense" ItemsSource="{Binding NodeItems}"
                        SelectedItem="{Binding SelectedNodeItem, Mode=TwoWay}"
                        DoubleTapped="ModuleList_DoubleTapped"
                        Background="Transparent"
@@ -615,111 +653,71 @@
                 </ListBox.Styles>
                 <ListBox.ItemsPanel>
                   <ItemsPanelTemplate>
-                    <VirtualizingStackPanel CacheLength="1" />
+                    <UniformGrid Columns="1" />
                   </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:NodeItemViewModel">
-                    <StackPanel>
-                    <TextBlock Text="{Binding GroupHeader}" IsVisible="{Binding HasGroupHeader}"
-                               FontSize="9.5" FontWeight="SemiBold" Margin="42,7,0,2"
-                               Foreground="{DynamicResource Accent}" />
-                    <Grid ColumnDefinitions="20,28,34,*" ToolTip.Tip="{Binding Tooltip}">
-
-                      <ToggleButton Grid.Column="0" Classes="selectMark"
-                                    IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"
-                                    MinWidth="0" Margin="0,0,2,0" ToolTip.Tip="加入批量操作" />
-                      <TextBlock Grid.Column="1" Text="{Binding IndexText}" FontSize="10.5" Foreground="{DynamicResource TextMuted}"
-                                 VerticalAlignment="Center" />
-                      <Grid Grid.Column="2" Width="30" Height="30" VerticalAlignment="Center"
-                            HorizontalAlignment="Center">
-                        <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource PanelAlt}"
-                                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
-                                ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
-                          <Grid>
-                            <TextBlock Text="{Binding Initial}" FontSize="10" FontWeight="SemiBold"
-                                       Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
-                                       VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
-                            <Image Source="{Binding Icon}" Stretch="Uniform" IsVisible="{Binding HasIcon}"
-                                   RenderOptions.BitmapInterpolationMode="HighQuality" />
-                          </Grid>
-                        </Border>
-                        <Ellipse Width="7" Height="7" Fill="{Binding StatusBrush}" HorizontalAlignment="Right"
-                                 VerticalAlignment="Bottom" Margin="0,0,0,0"
-                                 Stroke="{DynamicResource GraphBackground}" StrokeThickness="2" />
-                      </Grid>
-                      <StackPanel Grid.Column="3" Spacing="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Subtitle}" FontSize="9.5" Foreground="{DynamicResource TextSecondary}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,2,0,0">
-                          <Border Classes="chip" Padding="5,1">
-                            <TextBlock Text="{Binding LoaderText}" FontSize="8.5" />
-                          </Border>
-                          <TextBlock Text="{Binding Version}" FontSize="9"
-                                     Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
-                          <TextBlock Text="{Binding StatusText}" FontSize="9"
-                                     Foreground="{Binding StatusTextBrush}" VerticalAlignment="Center" />
-                          <TextBlock Text="{Binding IssueBadgeText}" FontSize="9"
-                                     Foreground="{DynamicResource Warning}"
-                                     IsVisible="{Binding HasIssueBadge}" />
-                          <TextBlock Text="{Binding UpdateBadgeText}" FontSize="9"
-                                     Foreground="{DynamicResource Success}"
-                                     IsVisible="{Binding HasUpdateBadge}" />
-                        </StackPanel>
-                        <Button Content="{Binding EmbeddedToggleText}" Command="{Binding ToggleEmbeddedCommand}"
-                                IsVisible="{Binding HasEmbeddedChildren}" FontSize="8.5" Padding="3,0"
-                                MinHeight="17" HorizontalAlignment="Left" Margin="0,1,0,0"
-                                ToolTip.Tip="展开 / 收起这个模组内嵌的 JAR" />
-                      </StackPanel>
-                    </Grid>
-
-                    <ItemsControl ItemsSource="{Binding EmbeddedChildren}"
-                                  IsVisible="{Binding IsEmbeddedExpanded}"
-                                  Margin="62,0,0,4">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:NodeItemViewModel">
-                          <Button Classes="embeddedChild" Click="EmbeddedItem_Click"
-                                  ToolTip.Tip="{Binding Tooltip}">
-                            <Grid ColumnDefinitions="28,*,80,66,100" ColumnSpacing="7">
-                              <Grid Width="24" Height="24" VerticalAlignment="Center"
-                                    HorizontalAlignment="Center">
-                                <Border Width="22" Height="22" CornerRadius="4"
-                                        Background="{DynamicResource PanelAlt}" ClipToBounds="True"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                                  <Grid>
-                                    <TextBlock Text="{Binding Initial}" FontSize="10" FontWeight="SemiBold"
-                                               Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
-                                               VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
-                                    <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}"
-                                           RenderOptions.BitmapInterpolationMode="HighQuality" />
-                                  </Grid>
-                                </Border>
-                              </Grid>
-                              <StackPanel Grid.Column="1" Spacing="0">
-                                <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding Subtitle}" FontSize="9.5"
-                                           Foreground="{DynamicResource TextMuted}"
-                                           TextTrimming="CharacterEllipsis" />
-                              </StackPanel>
-                              <TextBlock Grid.Column="2" Text="{Binding Version}" FontSize="10"
-                                         Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
-                                         TextTrimming="CharacterEllipsis" />
-                              <Border Grid.Column="3" Classes="chip" Padding="4,1"
-                                      HorizontalAlignment="Left" VerticalAlignment="Center"
-                                      ToolTip.Tip="{Binding SideTooltip}">
-                                <TextBlock Text="{Binding SideText}" FontSize="9" Foreground="{Binding SideBrush}" />
-                              </Border>
-                              <TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="10"
-                                         Foreground="{Binding StatusTextBrush}" VerticalAlignment="Center"
-                                         TextTrimming="CharacterEllipsis" />
+                    <Border Classes="card" Padding="12,9" CornerRadius="10" Margin="0,0,8,8"
+                            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                      <Grid ColumnDefinitions="Auto,52,*" ColumnSpacing="11">
+                        <ToggleButton Classes="selectMark" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                      VerticalAlignment="Center" ToolTip.Tip="加入批量操作" />
+                        <Grid Grid.Column="1" Width="52" Height="52" VerticalAlignment="Center">
+                          <Border Width="50" Height="50" CornerRadius="10" Background="{DynamicResource PanelAlt}"
+                                  BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" ClipToBounds="True">
+                            <Grid>
+                              <TextBlock Text="{Binding Initial}" FontSize="16" FontWeight="SemiBold"
+                                         Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                         VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                              <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}"
+                                     RenderOptions.BitmapInterpolationMode="HighQuality" />
                             </Grid>
-                          </Button>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    </StackPanel>
+                          </Border>
+                          <Ellipse Width="8" Height="8" Fill="{Binding StatusBrush}" HorizontalAlignment="Right"
+                                   VerticalAlignment="Bottom" Stroke="{DynamicResource GraphBackground}" StrokeThickness="2" />
+                        </Grid>
+                        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold"
+                                         TextTrimming="CharacterEllipsis" />
+                              <Border Classes="chip" Padding="6,1"><TextBlock Text="{Binding LoaderText}" FontSize="9" /></Border>
+                              <TextBlock Text="{Binding Version}" FontSize="9.5"
+                                         Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding StatusText}" FontSize="9.5"
+                                         Foreground="{Binding StatusTextBrush}" VerticalAlignment="Center" />
+                              <TextBlock Text="{Binding IssueBadgeText}" FontSize="9"
+                                         Foreground="{DynamicResource Warning}" IsVisible="{Binding HasIssueBadge}" />
+                              <TextBlock Text="{Binding UpdateBadgeText}" FontSize="9"
+                                         Foreground="{DynamicResource Success}" IsVisible="{Binding HasUpdateBadge}" />
+                            </StackPanel>
+
+                          </Grid>
+                          <TextBlock Text="{Binding Subtitle}" FontSize="10.5"
+                                     Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                          <Button Content="{Binding EmbeddedToggleText}" Command="{Binding ToggleEmbeddedCommand}"
+                                  IsVisible="{Binding HasEmbeddedChildren}" FontSize="8.5" Padding="3,0"
+                                  MinHeight="17" HorizontalAlignment="Left"
+                                  ToolTip.Tip="展开 / 收起这个模组内嵌的 JAR" />
+                          <ItemsControl ItemsSource="{Binding EmbeddedChildren}"
+                                        IsVisible="{Binding IsEmbeddedExpanded}" Margin="0,2,0,0">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:NodeItemViewModel">
+                                <Button Classes="embeddedChild" Click="EmbeddedItem_Click" Margin="0,0,0,2"
+                                        ToolTip.Tip="{Binding Tooltip}">
+                                  <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding Name}" FontSize="9.5" />
+                                    <TextBlock Text="{Binding Version}" FontSize="9"
+                                               Foreground="{DynamicResource TextMuted}" />
+                                  </StackPanel>
+                                </Button>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
@@ -805,8 +803,17 @@
             </Grid>
 
             <!-- Dependency tree -->
-            <Grid IsVisible="{Binding IsTreeView}" Background="{DynamicResource GraphBackground}">
-              <TreeView ItemsSource="{Binding DependencyTreeRoots}"
+            <Grid IsVisible="{Binding IsTreeView}" Background="{DynamicResource GraphBackground}"
+                  RowDefinitions="Auto,*">
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="10,8,10,4">
+                <Button Content="依赖项" Classes="filterChip" Command="{Binding SetTreeDirectionCommand}"
+                        CommandParameter="requires" Classes.active="{Binding TreeUsesRequires}" />
+                <Button Content="被依赖项" Classes="filterChip" Command="{Binding SetTreeDirectionCommand}"
+                        CommandParameter="requiredBy" Classes.active="{Binding !TreeUsesRequires}" />
+                <TextBlock Text="箭头方向：当前对象 → 它使用的依赖 / 使用它的对象" Classes="caption"
+                           VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}" />
+              </StackPanel>
+              <TreeView Grid.Row="1" ItemsSource="{Binding DependencyTreeRoots}"
                         SelectedItem="{Binding SelectedTreeNode, Mode=TwoWay}"
                         Background="Transparent" BorderThickness="0" Padding="8">
                 <TreeView.ItemTemplate>
@@ -835,6 +842,10 @@
                                    Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding StatusText}" FontSize="9.5"
                                    Foreground="{Binding StatusBrush}" VerticalAlignment="Center" />
+                        <Border Classes="chip" Padding="5,1" IsVisible="{Binding IsSpecial}">
+                          <TextBlock Text="{Binding KindText}" FontSize="8.5"
+                                     Foreground="{DynamicResource Warning}" />
+                        </Border>
                       </StackPanel>
                     </Grid>
                   </TreeDataTemplate>
@@ -922,18 +933,20 @@
         </Grid>
       </Border>
 
-      <GridSplitter Grid.Column="3" x:Name="RightPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+      <GridSplitter Grid.Column="3" x:Name="RightPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" IsVisible="False" />
 
       <!-- Right: details / report / manual links -->
-      <Border Grid.Column="4" x:Name="RightPanelBorder" Classes="card" ClipToBounds="True">
+      <Border Grid.ColumnSpan="5" x:Name="RightPanelBorder" Classes="card" ClipToBounds="True"
+              Width="380" HorizontalAlignment="Right" IsVisible="{Binding ShowDetailsPanel}"
+              ZIndex="20" Margin="0,0,10,0">
         <Grid RowDefinitions="Auto,*">
           <Border Grid.Row="0" Background="{DynamicResource PanelBackground}"
                   BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="10,5">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="详情面板" Classes="section" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Content="»" Click="ToggleRightPanel_Click"
-                      FontSize="11" Padding="6,1" MinHeight="22"
-                      ToolTip.Tip="收起右栏（可从顶部「面板」恢复）" />
+              <Button Grid.Column="1" Content="×" Click="CloseDetailsPanel_Click"
+                      FontSize="15" Padding="7,1" MinHeight="24"
+                      ToolTip.Tip="关闭详情抽屉" />
             </Grid>
           </Border>
           <StackPanel Grid.Row="1" IsVisible="{Binding !HasSelection}"

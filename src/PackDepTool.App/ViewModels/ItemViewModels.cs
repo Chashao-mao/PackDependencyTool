@@ -102,6 +102,11 @@ public sealed partial class NodeItemViewModel : ObservableObject
     public string Name => !string.IsNullOrWhiteSpace(Model.NameZh)
         ? Model.NameZh!
         : (string.IsNullOrWhiteSpace(Model.Name) ? Model.Id : Model.Name);
+    public string Description => Model.Description?.Trim() ?? string.Empty;
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
+    public string AuthorsText => string.IsNullOrWhiteSpace(Model.Authors) ? string.Empty : "作者 " + Model.Authors;
+    public bool HasAuthors => !string.IsNullOrWhiteSpace(AuthorsText);
+    public string CardDescription => HasDescription ? Description : Subtitle;
     public string Subtitle => (!string.IsNullOrWhiteSpace(Model.NameZh)
         ? $"{Model.Name} · {Model.DisplayVersion}"
         : $"{Model.Id} · {Model.DisplayVersion}") + $" · {CategoryText}";
@@ -450,15 +455,30 @@ public sealed record ViewOption(string Value, string Label)
     ];
 }
 
+public enum ModTreeNodeKind { Node, Reference, Cycle }
+
 public sealed class ModTreeNodeViewModel
 {
-    public ModTreeNodeViewModel(NodeItemViewModel node)
+    public ModTreeNodeViewModel(NodeItemViewModel node, ModTreeNodeKind kind = ModTreeNodeKind.Node, int depth = 0)
     {
         Node = node;
+        Kind = kind;
+        Depth = depth;
         Children = [];
     }
 
     public NodeItemViewModel Node { get; }
+    public ModTreeNodeKind Kind { get; }
+    public int Depth { get; }
+    public bool IsReference => Kind == ModTreeNodeKind.Reference;
+    public bool IsCycle => Kind == ModTreeNodeKind.Cycle;
+    public bool IsSpecial => Kind != ModTreeNodeKind.Node;
+    public string KindText => Kind switch
+    {
+        ModTreeNodeKind.Reference => "已在上方展开",
+        ModTreeNodeKind.Cycle => "循环引用",
+        _ => string.Empty,
+    };
     public ObservableCollection<ModTreeNodeViewModel> Children { get; }
     public string Name => Node.Name;
     public string Subtitle => Node.Subtitle;
