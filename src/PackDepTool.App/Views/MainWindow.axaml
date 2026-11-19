@@ -3,6 +3,7 @@
         xmlns:scanning="using:PackDepTool.Core.Scanning"
         xmlns:vm="using:PackDepTool.App.ViewModels"
         xmlns:controls="using:PackDepTool.App.Controls"
+        xmlns:views="using:PackDepTool.App.Views"
         x:Class="PackDepTool.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Pack Dependency Tool"
@@ -46,9 +47,9 @@
                      Foreground="{DynamicResource TextMuted}" />
           <Button Content="首页" Command="{Binding NavigateCommand}" CommandParameter="home"
                   Classes="nav" Classes.active="{Binding IsHomePage}" FontSize="12" MinHeight="36" />
-          <Button Content="发现内容" Command="{Binding DownloadModsCommand}"
-                  Classes="nav" FontSize="12" MinHeight="36"
-                  ToolTip.Tip="下载模组、整合包、资源包" />
+          <Button Content="发现内容" Command="{Binding OpenDiscoverCommand}"
+                  Classes="nav" Classes.active="{Binding IsDiscoverPage}" FontSize="12" MinHeight="36"
+                  ToolTip.Tip="搜索并下载模组、整合包、资源包" />
           <Button Content="实例管理" Command="{Binding OpenInstancesCommand}"
                   Classes="nav" FontSize="12" MinHeight="36"
                   ToolTip.Tip="浏览、切换和管理实例" />
@@ -1367,6 +1368,9 @@
         </ScrollViewer>
       </Border>
 
+      <Border IsVisible="{Binding IsDiscoverPage}">
+        <views:DiscoverPage DataContext="{Binding Discover}" />
+      </Border>
       <Border IsVisible="{Binding IsHomePage}" Margin="10,10,10,6"
               Background="{DynamicResource AppBackground}">
         <Grid RowDefinitions="Auto,*">
@@ -1497,7 +1501,7 @@
                   <TextBlock Text="发现内容" Classes="section" />
                   <TextBlock Text="下载模组或整合包，安装后自动扫描。" Classes="caption" TextWrapping="Wrap" />
                   <WrapPanel Margin="0,3,0,0">
-                    <Button Content="下载模组…" Command="{Binding DownloadModsCommand}" Margin="0,0,6,6" />
+                    <Button Content="浏览发现页…" Command="{Binding OpenDiscoverCommand}" Margin="0,0,6,6" />
                     <Button Content="下载整合包…" Command="{Binding DownloadModpackCommand}" Margin="0,0,0,6" />
                   </WrapPanel>
                 </StackPanel>

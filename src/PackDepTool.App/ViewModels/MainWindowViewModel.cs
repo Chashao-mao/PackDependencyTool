@@ -140,9 +140,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _fileChangeText = string.Empty;
     [ObservableProperty] private bool _isOverviewMode = true;
     [ObservableProperty] private string _activePage = "home";
+    [ObservableProperty] private DownloadCenterViewModel? _discover;
     public string ActivePageSubtitle => ActivePage switch
     {
         "instances" => "管理实例、启动游戏和查看日志",
+        "discover" => "搜索并下载模组、整合包和资源",
         "mods" => "模组清单、依赖关系和批量操作",
         "diagnostics" => "崩溃、冲突、性能和数据包诊断",
         "server" => "服务端模组筛选、部署和打包",
@@ -151,6 +153,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 
     public bool IsHomePage => string.Equals(ActivePage, "home", StringComparison.OrdinalIgnoreCase);
+    public bool IsDiscoverPage => string.Equals(ActivePage, "discover", StringComparison.OrdinalIgnoreCase);
     public bool IsInstancesPage => string.Equals(ActivePage, "instances", StringComparison.OrdinalIgnoreCase);
     public bool IsModsPage => string.Equals(ActivePage, "mods", StringComparison.OrdinalIgnoreCase);
     public bool IsDiagnosticsPage => string.Equals(ActivePage, "diagnostics", StringComparison.OrdinalIgnoreCase);
@@ -158,6 +161,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string ActivePageTitle => ActivePage switch
     {
         "instances" => "实例",
+        "discover" => "发现内容",
         "mods" => "模组",
         "diagnostics" => "诊断",
         "server" => "服务端",
@@ -2983,6 +2987,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenDiscover()
+    {
+        ActivePage = "discover";
+        IsOverviewMode = false;
+        var packRoot = _scanResult?.RootPath;
+        if (Discover is not null && string.Equals(_discoverPackRoot, packRoot, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Discover?.Dispose();
+        _discoverPackRoot = packRoot;
+        var context = new DownloadCenterContext
+        {
+            InitialType = DownloadProjectType.Mod,
+            PackRoot = packRoot,
+            McVersion = _scanResult?.Profile.McVersion,
+            Loader = _scanResult?.Profile.Loader ?? LoaderKind.Unknown,
+        };
+        Discover = new DownloadCenterViewModel(
+            _services.Downloader, _services.Importer, _services.Http, context,
+            () => _dialogs.PickFolderAsync("选择整合包导入目录"), _services.DownloadQueue);
+    }
+
+    private string? _discoverPackRoot;
+
+    [RelayCommand]
     private async Task LoadInstancesAsync()
     {
         if (IsLoadingInstances) return;
@@ -3273,6 +3302,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnActivePageChanged(string value)
     {
         OnPropertyChanged(nameof(IsHomePage));
+        OnPropertyChanged(nameof(IsDiscoverPage));
         OnPropertyChanged(nameof(IsInstancesPage));
         OnPropertyChanged(nameof(IsModsPage));
         OnPropertyChanged(nameof(IsDiagnosticsPage));

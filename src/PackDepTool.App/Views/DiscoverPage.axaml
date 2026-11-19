@@ -1,0 +1,273 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PackDepTool.App.ViewModels"
+             x:Class="PackDepTool.App.Views.DiscoverPage"
+             x:DataType="vm:DownloadCenterViewModel"
+             Background="{DynamicResource AppBackground}">
+<Grid RowDefinitions="Auto,*,Auto" Margin="20">
+    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
+      <TextBlock Text="下载中心" Classes="title" FontSize="18" />
+      <TextBlock Text="从 Modrinth / CurseForge 下载模组或整合包；整合包会先下载再导入并自动扫描。"
+                 Classes="caption" TextWrapping="Wrap" />
+      <Border Classes="chip" HorizontalAlignment="Left" Margin="0,5,0,0"
+              IsVisible="{Binding !IsModpack}">
+        <TextBlock Text="{Binding ContextText}" FontSize="10" />
+      </Border>
+    </StackPanel>
+
+    <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
+      <StackPanel Grid.Row="0" Spacing="8">
+        <ListBox ItemsSource="{Binding TypeOptions}"
+                 SelectedItem="{Binding SelectedType, Mode=TwoWay}"
+                 Background="Transparent" BorderThickness="0" Padding="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="2" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.Styles>
+            <Style Selector="ListBoxItem">
+              <Setter Property="Padding" Value="13,6" />
+              <Setter Property="Margin" Value="0,0,2,0" />
+              <Setter Property="CornerRadius" Value="14" />
+              <Setter Property="FontSize" Value="11" />
+            </Style>
+            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+              <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+              <Setter Property="CornerRadius" Value="14" />
+            </Style>
+          </ListBox.Styles>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DownloadTypeOption">
+              <TextBlock Text="{Binding Label}" FontSize="11" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <TextBox x:Name="SearchBox" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                   Watermark="搜索名称 / slug / 关键词" Height="38" />
+          <Button Grid.Column="1" Content="搜索" Classes="accent" Command="{Binding SearchCommand}" Height="38" />
+        </Grid>
+
+        <Grid ColumnDefinitions="140,160,*,Auto" ColumnSpacing="8">
+          <ComboBox ItemsSource="{Binding SourceOptions}"
+                    SelectedItem="{Binding SelectedSource, Mode=TwoWay}" Height="34">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:DownloadSourceOption">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}"
+                    SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Height="34"
+                    MaxDropDownHeight="320" ClipToBounds="True">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:DownloadCategoryItem">
+                <TextBlock Text="{Binding Label}" MaxWidth="148" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Content="上一页" Command="{Binding PreviousPageCommand}"
+                    IsEnabled="{Binding HasPreviousPage}" />
+            <TextBlock Text="{Binding PageText}" Width="52" TextAlignment="Center"
+                       VerticalAlignment="Center" FontSize="11" />
+            <Button Content="下一页" Command="{Binding NextPageCommand}"
+                    IsEnabled="{Binding HasNextPage}" />
+          </StackPanel>
+        </Grid>
+      </StackPanel>
+
+      <Grid Grid.Row="2" ColumnDefinitions="520,14,*">
+        <Border Grid.Column="0" Classes="card" Padding="10">
+          <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="搜索结果" Classes="section" Margin="4,2,0,7" />
+              <TextBlock Grid.Column="1" Text="{Binding Projects.Count, StringFormat='{}{0} 项'}"
+                         FontSize="9.5" Foreground="{DynamicResource TextMuted}" Margin="0,3,4,0" />
+            </Grid>
+            <ListBox Grid.Row="1" ItemsSource="{Binding Projects}"
+                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
+                     Background="Transparent" BorderThickness="0">
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                  <Setter Property="Padding" Value="11" />
+                  <Setter Property="Margin" Value="0,0,0,7" />
+                  <Setter Property="CornerRadius" Value="10" />
+                  <Setter Property="Background" Value="{DynamicResource PanelAlt}" />
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+                <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                  <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+                  <Setter Property="CornerRadius" Value="10" />
+                </Style>
+              </ListBox.Styles>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DownloadProjectItem">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border Width="58" Height="58" CornerRadius="10" Background="{DynamicResource PanelBackground}"
+                            ClipToBounds="True" VerticalAlignment="Center">
+                      <Grid>
+                        <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="SemiBold"
+                                   Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                        <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                      </Grid>
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                      <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Border Classes="chip" Padding="6,1" IsVisible="{Binding IsInstalled}">
+                          <TextBlock Text="已安装" FontSize="9" Foreground="{DynamicResource Success}" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Description}" FontSize="10.5"
+                                 Foreground="{DynamicResource TextSecondary}"
+                                 TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Meta}" FontSize="9"
+                                 Foreground="{DynamicResource TextMuted}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="›" FontSize="20"
+                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+          <Border Grid.Row="0" Classes="card" Padding="12" IsVisible="{Binding HasSelectedProject}">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+              <Border Width="44" Height="44" CornerRadius="8" Background="{DynamicResource PanelAlt}"
+                      ClipToBounds="True" VerticalAlignment="Center">
+                <Grid>
+                  <TextBlock Text="{Binding SelectedProject.Initial}" FontSize="18" FontWeight="SemiBold"
+                             Foreground="{Binding SelectedProject.AvatarBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             IsVisible="{Binding !SelectedProject.HasIcon}" />
+                  <Image Source="{Binding SelectedProject.Icon}" Stretch="UniformToFill"
+                         IsVisible="{Binding SelectedProject.HasIcon}" />
+                </Grid>
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="3">
+                <TextBlock Text="{Binding SelectedProject.Name}" FontSize="14" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedProject.Meta}" Classes="caption" />
+                <TextBlock Text="{Binding SelectedProject.Description}" FontSize="10.5"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" MaxHeight="48"
+                           TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1" RowDefinitions="Auto,*">
+            <TextBlock Text="可用版本" Classes="section" Margin="2,0,0,5" IsVisible="{Binding HasSelectedProject}" />
+            <ListBox Grid.Row="1" ItemsSource="{Binding Versions}"
+                     SelectedItem="{Binding SelectedVersion, Mode=TwoWay}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DownloadVersionItem">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Meta}" FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                      <TextBlock Text="{Binding FileName}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding RequiredDependenciesText}" FontSize="9.5"
+                                 Foreground="{DynamicResource Warning}" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasRequiredDependencies}" />
+                      <TextBlock Text="{Binding OptionalDependenciesText}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                                 IsVisible="{Binding HasOptionalDependencies}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding CompatibilityText}" FontSize="9.5" FontWeight="SemiBold"
+                                 Foreground="{Binding CompatibilityBrush}" HorizontalAlignment="Right" />
+                      <TextBlock Text="{Binding SizeText}" FontSize="9" Foreground="{DynamicResource TextMuted}"
+                                 HorizontalAlignment="Right" />
+                    </StackPanel>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+
+          <StackPanel Grid.Row="2" Spacing="7">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" IsVisible="{Binding IsModpack}">
+              <TextBlock Text="导入目录" Classes="caption" VerticalAlignment="Center" />
+              <TextBox Grid.Column="1" Text="{Binding DestinationFolder}" IsReadOnly="True" Height="32" />
+              <Button Grid.Column="2" Content="选择…" Command="{Binding BrowseDestinationCommand}" Height="32" />
+            </Grid>
+
+            <TextBlock Text="{Binding TargetText}" Classes="caption" TextWrapping="Wrap" />
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBlock Text="{Binding StatusText}" FontSize="10.5"
+                         Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
+                         TextWrapping="Wrap" MaxHeight="40" />
+              <Button Grid.Column="1" Content="{Binding DownloadButtonText}" Classes="accent"
+                      Command="{Binding DownloadCommand}" Height="36" MinWidth="150" />
+            </Grid>
+
+            <ProgressBar IsVisible="{Binding IsBusy}" IsIndeterminate="False"
+                         Value="{Binding ProgressValue}" Maximum="1" Height="5" />
+            <TextBlock Text="{Binding ProgressText}" Classes="caption" IsVisible="{Binding IsBusy}"
+                       TextTrimming="CharacterEllipsis" />
+
+            <Border IsVisible="{Binding HasQueue}" Background="{DynamicResource PanelAlt}"
+                    BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                    CornerRadius="8" Padding="8">
+              <Grid RowDefinitions="Auto,*" RowSpacing="4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="下载队列" Classes="section" />
+                  <TextBlock Grid.Column="1" Text="{Binding Queue.Count, StringFormat='共 {0} 项'}"
+                             FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+                </Grid>
+                <ListBox Grid.Row="1" ItemsSource="{Binding Queue}" MaxHeight="165"
+                         Background="Transparent">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DownloadQueueRow">
+                      <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="5" Margin="0,2">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                          <TextBlock Text="{Binding Title}" FontSize="10.5" FontWeight="SemiBold"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding ProgressText}" FontSize="9"
+                                     Foreground="{DynamicResource TextMuted}" />
+                          <ProgressBar Value="{Binding Fraction}" Maximum="1" Height="3" />
+                          <TextBlock Text="{Binding ErrorText}" FontSize="9"
+                                     Foreground="{DynamicResource Danger}"
+                                     IsVisible="{Binding HasError}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="9.5"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="3">
+                          <Button Content="{Binding ToggleText}" Command="{Binding ToggleCommand}"
+                                  IsVisible="{Binding CanToggle}" FontSize="9" Padding="5,1" MinHeight="22" />
+                          <Button Content="取消" Command="{Binding CancelCommand}"
+                                  IsVisible="{Binding CanToggle}" FontSize="9" Padding="5,1" MinHeight="22" />
+                          <Button Content="重试" Command="{Binding RetryCommand}"
+                                  IsVisible="{Binding CanRetry}" FontSize="9" Padding="5,1" MinHeight="22" />
+                        </StackPanel>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Grid>
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <TextBlock Grid.Row="2" Text="下载源：Modrinth / CurseForge 官方 API；CurseForge 需要本地 API Key。"
+               Classes="caption" Margin="0,12,0,0" VerticalAlignment="Center" />
+  </Grid>
+
+
+</UserControl>
