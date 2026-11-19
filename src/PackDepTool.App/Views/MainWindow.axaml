@@ -358,6 +358,7 @@
                                 IsVisible="{Binding !IsCheckingUpdates}"
                                 IsEnabled="{Binding !IsBusy}" FontSize="9.5" Padding="7,1" MinHeight="24" />
                       </Grid>
+                      <CheckBox Content="显示旧版依赖轨道线" FontSize="10" IsChecked="{Binding ShowDependencyLines, Mode=TwoWay}" />
                       <Grid ColumnDefinitions="52,*,Auto" ColumnSpacing="6" IsVisible="{Binding IsListView}">
                         <TextBlock Text="依赖线" Classes="caption" VerticalAlignment="Center" />
                         <ComboBox Grid.Column="1" ItemsSource="{Binding ConnectionLineOptions}"
@@ -689,7 +690,7 @@
                 </ListBox.ItemTemplate>
               </ListBox>
 
-              <Canvas Grid.Row="2" x:Name="DependencyRailOverlay"
+              <Canvas Grid.Row="2" x:Name="DependencyRailOverlay" IsVisible="{Binding ShowDependencyLines}"
                       IsHitTestVisible="False" ClipToBounds="True" />
 
               <Border Grid.Row="3" IsVisible="{Binding ShowMissingSection}"
@@ -1329,7 +1330,7 @@
 
       <Border IsVisible="{Binding IsDiagnosticsPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="12" Margin="24,22,24,24">
+          <StackPanel MaxWidth="1200" HorizontalAlignment="Center" Spacing="12" Margin="24,22,24,24">
             <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
               <Border Classes="card" Padding="14,10" CornerRadius="9">
                 <StackPanel Spacing="2">
@@ -1408,7 +1409,7 @@
 
       <Border IsVisible="{Binding IsServerPage}" Margin="10,10,10,6">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <StackPanel MaxWidth="1600" HorizontalAlignment="Stretch" Spacing="12" Margin="24,22,24,24">
+          <StackPanel MaxWidth="1200" HorizontalAlignment="Center" Spacing="12" Margin="24,22,24,24">
             <Grid ColumnDefinitions="1.35*,*" ColumnSpacing="12">
               <Border Classes="card" Padding="18" CornerRadius="10">
                 <StackPanel Spacing="8">

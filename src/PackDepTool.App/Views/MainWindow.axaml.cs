@@ -54,7 +54,7 @@ public partial class MainWindow : Window
         var available = Bounds.Width - 92;
         if (available <= 0) available = HomeScroll.Bounds.Width;
         if (available <= 0) return;
-        HomeContent.Width = Math.Max(0, Math.Min(1600, available - 48));
+        HomeContent.Width = Math.Max(0, Math.Min(1200, available - 48));
     }
 
     public void AttachViewModel(

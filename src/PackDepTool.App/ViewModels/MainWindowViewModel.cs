@@ -1993,9 +1993,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     // ------------------------------------------------------------------ selection wiring
 
-    public GridLength DetailsColumnWidth => SelectedNodeItem is null
-        ? new GridLength(0)
-        : new GridLength(310);
+    public GridLength DetailsColumnWidth => new(330);
+    [ObservableProperty] private bool _showDependencyLines;
 
     partial void OnSelectedTreeNodeChanged(ModTreeNodeViewModel? value)
     {

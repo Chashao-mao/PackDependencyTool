@@ -86,7 +86,7 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBlock Grid.Row="1" Text="{Binding HistorySummary}" Classes="caption"
+              <TextBlock Grid.Row="2" Text="{Binding HistorySummary}" Classes="caption"
                          TextWrapping="Wrap" />
               <ListBox Grid.Row="3" ItemsSource="{Binding HistoryChanges}" Background="Transparent">
                 <ListBox.ItemTemplate>
