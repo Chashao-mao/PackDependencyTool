@@ -175,6 +175,10 @@
     <Setter Property="MinHeight" Value="26" />
   </Style>
 
+  <Style Selector="ToggleButton">
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
   <Style Selector="ToggleButton.filterChip">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
@@ -191,12 +195,36 @@
     <Setter Property="Foreground" Value="{DynamicResource AccentText}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource PanelAlt}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="MinHeight" Value="30" />
+  </Style>
+  <Style Selector="ComboBoxItem">
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="Margin" Value="2,1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ComboBoxItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource PanelAlt}" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+    <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+  </Style>
   <Style Selector="ToggleButton.selectMark">
-    <Setter Property="Width" Value="18" />
-    <Setter Property="Height" Value="18" />
-    <Setter Property="MinHeight" Value="18" />
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="MinHeight" Value="14" />
     <Setter Property="Padding" Value="0" />
-    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource CardBorder}" />
     <Setter Property="BorderThickness" Value="1.5" />

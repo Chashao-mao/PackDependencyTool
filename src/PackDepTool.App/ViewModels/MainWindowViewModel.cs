@@ -1993,7 +1993,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     // ------------------------------------------------------------------ selection wiring
 
-    public GridLength DetailsColumnWidth => new(330);
+    public GridLength DetailsColumnWidth => ShowDetailsPanel ? new GridLength(330) : new GridLength(0);
+    [ObservableProperty] private bool _showDetailsPanel;
     [ObservableProperty] private bool _showDependencyLines;
 
     partial void OnSelectedTreeNodeChanged(ModTreeNodeViewModel? value)
@@ -2001,9 +2002,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (value is not null) SelectedNodeItem = value.Node;
     }
 
+    partial void OnShowDetailsPanelChanged(bool value) =>
+        OnPropertyChanged(nameof(DetailsColumnWidth));
+
     partial void OnSelectedNodeItemChanged(NodeItemViewModel? value)
     {
-        OnPropertyChanged(nameof(DetailsColumnWidth));
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
     }

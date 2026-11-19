@@ -31,10 +31,11 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         ModuleList.AddHandler(PointerPressedEvent, OnModuleListPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         HomeScroll.SizeChanged += (_, _) => ConstrainHomeContent();
-        SizeChanged += (_, _) => ConstrainHomeContent();
+        SizeChanged += (_, _) => { ConstrainHomeContent(); ConstrainWorkspace(); };
         Loaded += (_, _) =>
         {
             ConstrainHomeContent();
+            ConstrainWorkspace();
             LoadRailState();
             QueueDependencyRailOverlayUpdate();
             DispatcherTimer.RunOnce(QueueDependencyRailOverlayUpdate, TimeSpan.FromMilliseconds(300));
@@ -55,6 +56,12 @@ public partial class MainWindow : Window
         if (available <= 0) available = HomeScroll.Bounds.Width;
         if (available <= 0) return;
         HomeContent.Width = Math.Max(0, Math.Min(1200, available - 48));
+    }
+
+    private void ConstrainWorkspace()
+    {
+        var available = Bounds.Width - 92 - 20;
+        if (available > 0) MainContentGrid.Width = available;
     }
 
     public void AttachViewModel(
