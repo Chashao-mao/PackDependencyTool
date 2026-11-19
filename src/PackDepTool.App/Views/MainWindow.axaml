@@ -529,15 +529,13 @@
               <Border Grid.Row="0" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
                       BorderThickness="0,0,0,1" Padding="12,6">
                 <StackPanel Spacing="4">
-                <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96">
+                <Grid ColumnDefinitions="26,36,48,*,80,76,86">
                   <TextBlock Text="选" Grid.Column="0" Classes="section" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Text="#" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="4" Text="模组" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="5" Text="加载器" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="6" Text="版本" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="7" Text="依赖关系" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="8" Text="侧" Classes="section" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="9" Text="状态" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="模组" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="4" Text="加载器" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="5" Text="版本" Classes="section" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="6" Text="状态" Classes="section" VerticalAlignment="Center" />
                 </Grid>
                 </StackPanel>
               </Border>
@@ -580,13 +578,13 @@
                     <TextBlock Text="{Binding GroupHeader}" IsVisible="{Binding HasGroupHeader}"
                                FontSize="9.5" FontWeight="SemiBold" Margin="42,7,0,2"
                                Foreground="{DynamicResource Accent}" />
-                    <Grid ColumnDefinitions="26,36,46,48,*,100,96,110,66,96" ToolTip.Tip="{Binding Tooltip}">
+                    <Grid ColumnDefinitions="26,36,48,*,80,76,86" ToolTip.Tip="{Binding Tooltip}">
 
                       <CheckBox Grid.Column="0" IsChecked="{Binding IsChecked, Mode=TwoWay}" VerticalAlignment="Center"
                                 MinWidth="0" Margin="0,0,2,0" />
                       <TextBlock Grid.Column="1" Text="{Binding IndexText}" FontSize="10.5" Foreground="{DynamicResource TextMuted}"
                                  VerticalAlignment="Center" />
-                      <Grid Grid.Column="3" Width="44" Height="44" VerticalAlignment="Center"
+                      <Grid Grid.Column="2" Width="44" Height="44" VerticalAlignment="Center"
                             HorizontalAlignment="Center">
                         <Border Width="42" Height="42" CornerRadius="9" Background="{DynamicResource PanelAlt}"
                                 BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
@@ -603,7 +601,7 @@
                                  VerticalAlignment="Bottom" Margin="0,0,1,1"
                                  Stroke="{DynamicResource GraphBackground}" StrokeThickness="2" />
                       </Grid>
-                      <StackPanel Grid.Column="4" Spacing="1" VerticalAlignment="Center">
+                      <StackPanel Grid.Column="3" Spacing="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Subtitle}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}"
                                    TextTrimming="CharacterEllipsis" />
@@ -612,19 +610,12 @@
                                 MinHeight="20" HorizontalAlignment="Left" Margin="0,1,0,0"
                                 ToolTip.Tip="展开 / 收起这个模组内嵌的 JAR" />
                       </StackPanel>
-                      <Border Grid.Column="5" Classes="chip" Padding="6,1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                      <Border Grid.Column="4" Classes="chip" Padding="6,1" HorizontalAlignment="Left" VerticalAlignment="Center">
                         <TextBlock Text="{Binding LoaderText}" FontSize="10.5" />
                       </Border>
-                      <TextBlock Grid.Column="6" Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
+                      <TextBlock Grid.Column="5" Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
                                  TextTrimming="CharacterEllipsis" />
-                      <TextBlock Grid.Column="7" Text="{Binding DependencySummary}" FontSize="10.5"
-                                 Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"
-                                 TextTrimming="CharacterEllipsis" />
-                      <Border Grid.Column="8" Classes="chip" Padding="5,1" HorizontalAlignment="Left"
-                              VerticalAlignment="Center" ToolTip.Tip="{Binding SideTooltip}">
-                        <TextBlock Text="{Binding SideText}" FontSize="9.5" Foreground="{Binding SideBrush}" />
-                      </Border>
-                      <StackPanel Grid.Column="9" Spacing="1" VerticalAlignment="Center">
+                      <StackPanel Grid.Column="6" Spacing="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusTextBrush}"
                                    FontSize="11" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="可选已装" FontSize="9.5"
@@ -641,7 +632,7 @@
 
                     <ItemsControl ItemsSource="{Binding EmbeddedChildren}"
                                   IsVisible="{Binding IsEmbeddedExpanded}"
-                                  Margin="108,0,0,4">
+                                  Margin="62,0,0,4">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:NodeItemViewModel">
                           <Button Classes="embeddedChild" Click="EmbeddedItem_Click"
