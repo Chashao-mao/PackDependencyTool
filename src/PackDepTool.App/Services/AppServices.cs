@@ -58,6 +58,7 @@ public sealed class AppServices : IDisposable
         ModListHistory = new ModListHistoryService();
         PackMerge = new PackMergeService();
         InstanceCatalog = new InstanceCatalogService();
+        Axolotl = new AxolotlLauncherService();
         FileChanges = new FileChangeMonitor();
         Launcher = new MinecraftLaunchService();
         Resolver = new ModProjectResolver(modrinth, curseForge, keys);
@@ -100,6 +101,7 @@ public sealed class AppServices : IDisposable
     public ModListHistoryService ModListHistory { get; }
     public PackMergeService PackMerge { get; }
     public InstanceCatalogService InstanceCatalog { get; }
+    public AxolotlLauncherService Axolotl { get; }
     public FileChangeMonitor FileChanges { get; }
     public MinecraftLaunchService Launcher { get; }
     public ModProjectResolver Resolver { get; }

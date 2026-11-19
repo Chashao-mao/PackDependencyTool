@@ -2,37 +2,37 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Dark">
-      <SolidColorBrush x:Key="AppBackground" Color="#0A0F17" />
-      <Color x:Key="SystemAccentColor">#3B82F6</Color>
-      <Color x:Key="SystemAccentColorDark1">#2563EB</Color>
-      <Color x:Key="SystemAccentColorDark2">#1D4ED8</Color>
-      <Color x:Key="SystemAccentColorDark3">#1E40AF</Color>
-      <Color x:Key="SystemAccentColorLight1">#60A5FA</Color>
-      <Color x:Key="SystemAccentColorLight2">#93C5FD</Color>
-      <Color x:Key="SystemAccentColorLight3">#BFDBFE</Color>
-      <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#3B82F6" />
-      <SolidColorBrush x:Key="HeaderBackground" Color="#121B28" />
-      <SolidColorBrush x:Key="PanelBackground" Color="#111A28" />
-      <SolidColorBrush x:Key="PanelAlt" Color="#1A2638" />
-      <SolidColorBrush x:Key="CardBorder" Color="#2A3A50" />
-      <SolidColorBrush x:Key="TextPrimary" Color="#E9EFF8" />
-      <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8" />
-      <SolidColorBrush x:Key="TextMuted" Color="#64748B" />
-      <SolidColorBrush x:Key="Accent" Color="#3B82F6" />
-      <SolidColorBrush x:Key="AccentHover" Color="#60A5FA" />
-      <SolidColorBrush x:Key="AccentSoft" Color="#172A46" />
+      <SolidColorBrush x:Key="AppBackground" Color="#0C0D10" />
+      <Color x:Key="SystemAccentColor">#D75A8A</Color>
+      <Color x:Key="SystemAccentColorDark1">#BE4775</Color>
+      <Color x:Key="SystemAccentColorDark2">#9F3762</Color>
+      <Color x:Key="SystemAccentColorDark3">#7E2B4E</Color>
+      <Color x:Key="SystemAccentColorLight1">#E57BA3</Color>
+      <Color x:Key="SystemAccentColorLight2">#F0A6C0</Color>
+      <Color x:Key="SystemAccentColorLight3">#F7D2E0</Color>
+      <SolidColorBrush x:Key="SystemControlHighlightAccentBrush" Color="#D75A8A" />
+      <SolidColorBrush x:Key="HeaderBackground" Color="#131419" />
+      <SolidColorBrush x:Key="PanelBackground" Color="#16171C" />
+      <SolidColorBrush x:Key="PanelAlt" Color="#1E2027" />
+      <SolidColorBrush x:Key="CardBorder" Color="#2B2E37" />
+      <SolidColorBrush x:Key="TextPrimary" Color="#ECEDEF" />
+      <SolidColorBrush x:Key="TextSecondary" Color="#A2A6B0" />
+      <SolidColorBrush x:Key="TextMuted" Color="#6F7480" />
+      <SolidColorBrush x:Key="Accent" Color="#D75A8A" />
+      <SolidColorBrush x:Key="AccentHover" Color="#E57BA3" />
+      <SolidColorBrush x:Key="AccentSoft" Color="#2D1D25" />
       <SolidColorBrush x:Key="AccentText" Color="#FFFFFF" />
-      <SolidColorBrush x:Key="Danger" Color="#E5534B" />
-      <SolidColorBrush x:Key="Warning" Color="#F0A63C" />
-      <SolidColorBrush x:Key="Success" Color="#34D399" />
-      <SolidColorBrush x:Key="Gold" Color="#F5C542" />
-      <SolidColorBrush x:Key="GraphBackground" Color="#0C131E" />
-      <SolidColorBrush x:Key="GraphGrid" Color="#16202F" />
-      <SolidColorBrush x:Key="NodeFill" Color="#17222F" />
-      <SolidColorBrush x:Key="NodeBorder" Color="#2B3A4F" />
-      <SolidColorBrush x:Key="ChipBackground" Color="#182232" />
-      <SolidColorBrush x:Key="HoverOverlay" Color="#1E2A3A" />
-      <SolidColorBrush x:Key="OverlayScrim" Color="#E60B111A" />
+      <SolidColorBrush x:Key="Danger" Color="#E0665D" />
+      <SolidColorBrush x:Key="Warning" Color="#E0A43A" />
+      <SolidColorBrush x:Key="Success" Color="#4CC38A" />
+      <SolidColorBrush x:Key="Gold" Color="#E9C46A" />
+      <SolidColorBrush x:Key="GraphBackground" Color="#0E1014" />
+      <SolidColorBrush x:Key="GraphGrid" Color="#1B1E25" />
+      <SolidColorBrush x:Key="NodeFill" Color="#171A20" />
+      <SolidColorBrush x:Key="NodeBorder" Color="#323641" />
+      <SolidColorBrush x:Key="ChipBackground" Color="#20222A" />
+      <SolidColorBrush x:Key="HoverOverlay" Color="#262933" />
+      <SolidColorBrush x:Key="OverlayScrim" Color="#E60B0C10" />
       <SolidColorBrush x:Key="RowAlt" Color="#0AFFFFFF" />
     </ResourceDictionary>
 
@@ -53,8 +53,8 @@
       <SolidColorBrush x:Key="TextPrimary" Color="#17202B" />
       <SolidColorBrush x:Key="TextSecondary" Color="#56657A" />
       <SolidColorBrush x:Key="TextMuted" Color="#6E7D91" />
-      <SolidColorBrush x:Key="Accent" Color="#2563EB" />
-      <SolidColorBrush x:Key="AccentHover" Color="#3B82F6" />
+      <SolidColorBrush x:Key="Accent" Color="#BE4775" />
+      <SolidColorBrush x:Key="AccentHover" Color="#D75A8A" />
       <SolidColorBrush x:Key="AccentSoft" Color="#E8F0FE" />
       <SolidColorBrush x:Key="AccentText" Color="#FFFFFF" />
       <SolidColorBrush x:Key="Danger" Color="#D64545" />

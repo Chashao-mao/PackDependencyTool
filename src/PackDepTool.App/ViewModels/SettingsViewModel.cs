@@ -73,6 +73,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         AutoMemory = _settings.AutoMemory;
         DebugMode = _settings.DebugMode;
         JavaPath = _settings.JavaPath ?? string.Empty;
+        AxolotlPath = _settings.AxolotlPath ?? string.Empty;
 
         HasStoredKey = hasStoredKey;
         IsFromEnvironment = keys.IsFromEnvironment;
@@ -120,6 +121,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _autoMemory = true;
     [ObservableProperty] private bool _debugMode;
     [ObservableProperty] private string _javaPath = string.Empty;
+    [ObservableProperty] private string _axolotlPath = string.Empty;
 
     [ObservableProperty] private string _keyInput = string.Empty;
     [ObservableProperty] private string _keyStatusText = string.Empty;
@@ -161,6 +163,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _settings.AutoMemory = AutoMemory;
         _settings.DebugMode = DebugMode;
         _settings.JavaPath = string.IsNullOrWhiteSpace(JavaPath) ? null : JavaPath.Trim();
+        _settings.AxolotlPath = string.IsNullOrWhiteSpace(AxolotlPath) ? null : AxolotlPath.Trim();
         Completed?.Invoke(_settings);
     }
 

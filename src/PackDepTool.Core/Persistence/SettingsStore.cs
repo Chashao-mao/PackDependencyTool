@@ -8,14 +8,14 @@ public sealed class AppSettings
     public string? LastPackPath { get; set; }
     public List<string> RecentPacks { get; set; } = [];
 
-    public string Theme { get; set; } = "Light";
+    public string Theme { get; set; } = "Dark";
     public bool NetworkEnabled { get; set; } = true;
     public string? ModrinthContact { get; set; }
 
     // Edge type visibility. Defaults follow the product spec: requires + incompatible only.
     public bool ShowOptional { get; set; }
     public bool ShowEmbedded { get; set; }
-    public int SettingsVersion { get; set; }
+    public int SettingsVersion { get; set; } = 2;
     public bool ShowRecommends { get; set; }
     public bool ShowManual { get; set; } = true;
     public bool HideIsolated { get; set; }
@@ -56,6 +56,7 @@ public sealed class AppSettings
     public bool AutoMemory { get; set; } = true;
     public bool DebugMode { get; set; }
     public string? JavaPath { get; set; }
+    public string? AxolotlPath { get; set; }
 
     public AppSettings Clone()
     {
@@ -105,6 +106,7 @@ public sealed class AppSettings
         AutoMemory = other.AutoMemory;
         DebugMode = other.DebugMode;
         JavaPath = other.JavaPath;
+        AxolotlPath = other.AxolotlPath;
     }
 }
 
@@ -123,11 +125,12 @@ public sealed class SettingsStore
         try
         {
             var settings = JsonDefaults.Deserialize<AppSettings>(text) ?? new AppSettings();
-            if (settings.SettingsVersion < 1)
+            if (settings.SettingsVersion < 2)
             {
-                // The old default expanded JiJ content; new installs start collapsed.
+                // New shell defaults: dark low-contrast theme, JiJ collapsed.
                 settings.ShowEmbedded = false;
-                settings.SettingsVersion = 1;
+                settings.Theme = "Dark";
+                settings.SettingsVersion = 2;
             }
             return settings;
         }

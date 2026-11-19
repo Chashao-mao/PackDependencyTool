@@ -3004,8 +3004,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var result = await _services.InstanceCatalog.ScanAsync(versions);
             Instances.Clear();
             foreach (var instance in result.Instances) Instances.Add(instance);
+
+            _services.Axolotl.Detect(_services.Settings.AxolotlPath);
+            var axolotlInstances = _services.Axolotl.ListInstances();
+            foreach (var external in axolotlInstances)
+            {
+                if (Instances.Any(instance =>
+                        string.Equals(instance.Path, external.Path, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(instance.EffectiveRoot, external.Path, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                Instances.Add(_services.Axolotl.ToCatalog(external));
+            }
             ApplyInstanceFilter();
             InstancesRootText = result.VersionsDirectory ?? "尚未定位 versions 目录";
+            if (axolotlInstances.Count > 0)
+                InstancesRootText += $" · Axolotl {axolotlInstances.Count} 个实例";
             SelectedInstance = Instances.FirstOrDefault(instance =>
                 string.Equals(instance.Path, _scanResult?.RootPath, StringComparison.OrdinalIgnoreCase));
             _suppressHomeInstanceChange = true;
@@ -3850,6 +3863,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         var instancePath = _scanResult.RootPath;
+        var axolotlInstance = Instances.FirstOrDefault(instance =>
+            !string.IsNullOrWhiteSpace(instance.ExternalId) &&
+            (string.Equals(instance.Path, instancePath, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(instance.EffectiveRoot, instancePath, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(instance.GameDirectory, instancePath, StringComparison.OrdinalIgnoreCase)));
+        if (axolotlInstance?.ExternalId is { Length: > 0 } axolotlId)
+        {
+            StatusText = _services.Axolotl.Launch(axolotlId)
+                ? $"已请求 Axolotl 启动「{axolotlInstance.Name}」；请在启动器中确认。"
+                : "无法调用 Axolotl URL Scheme，请确认已安装并注册 axolotl:// 协议。";
+            return;
+        }
+
         var versionsDirectory = Directory.GetParent(instancePath);
         var gameRoot = versionsDirectory?.Parent;
         if (versionsDirectory is null || gameRoot is null ||

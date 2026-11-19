@@ -61,6 +61,19 @@
 
         <Border Classes="card" Padding="16">
           <StackPanel Spacing="10">
+            <TextBlock Text="外部启动器" Classes="section" />
+            <TextBlock Text="自动识别 Axolotl Launcher：读取其实例数据库，并在首页提供“沿 Axolotl 启动”。启动动作通过 axolotl://launch 完成，不修改 Axolotl 文件。"
+                       Classes="caption" TextWrapping="Wrap" />
+            <TextBlock Text="Axolotl Launcher.exe（留空自动探测）" Classes="caption" />
+            <TextBox Text="{Binding AxolotlPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Watermark="例如 E:\Axolotl\AxolotlLauncher\Axolotl Launcher.exe" />
+            <TextBlock Text="实例数据库：%APPDATA%\red.ghs.axolotl\release\app.db"
+                       Classes="caption" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card" Padding="16">
+          <StackPanel Spacing="10">
             <TextBlock Text="网络与 API" Classes="section" />
 
             <Grid ColumnDefinitions="*,Auto">

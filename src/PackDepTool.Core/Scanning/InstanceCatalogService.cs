@@ -16,10 +16,14 @@ public sealed class MinecraftInstanceInfo
     public int DisabledModCount { get; init; }
     public DateTimeOffset ModifiedAt { get; init; }
     public bool HasJson { get; init; }
+    public string? ExternalLauncher { get; init; }
+    public string? ExternalId { get; init; }
+    public bool IsExternal => !string.IsNullOrWhiteSpace(ExternalLauncher);
     public bool HasSeparateGameDirectory =>
         !string.Equals(Path, EffectiveRoot, StringComparison.OrdinalIgnoreCase);
 
-    public string Detail => $"{MinecraftVersion} · {LoaderText(Loader)} · {ModCount} 个模组";
+    public string Detail => $"{MinecraftVersion} · {LoaderText(Loader)} · {ModCount} 个模组" +
+                            (IsExternal ? $" · {ExternalLauncher}" : string.Empty);
     public string LoaderLabel => LoaderText(Loader);
     public string CountText => $"{ModCount} 个模组";
     public string ModifiedText => ModifiedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
