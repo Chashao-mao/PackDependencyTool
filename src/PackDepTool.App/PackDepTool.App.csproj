@@ -6,8 +6,8 @@
     <RootNamespace>PackDepTool.App</RootNamespace>
     <AssemblyName>PackDependencyTool</AssemblyName>
     <Version>1.1.2</Version>
-    <AssemblyTitle>Pack Dependency Tool</AssemblyTitle>
-    <Product>Pack Dependency Tool</Product>
+    <AssemblyTitle>ModLens</AssemblyTitle>
+    <Product>ModLens</Product>
     <Description>Minecraft mod relationship manager for Windows: scan modpacks, inspect dependencies, conflicts and manual links.</Description>
     <Authors>PackDependencyTool</Authors>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>

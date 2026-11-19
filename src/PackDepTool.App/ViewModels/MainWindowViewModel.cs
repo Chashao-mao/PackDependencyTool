@@ -141,10 +141,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isOverviewMode = true;
     [ObservableProperty] private string _activePage = "home";
     [ObservableProperty] private DownloadCenterViewModel? _discover;
+    [ObservableProperty] private BackupCenterViewModel? _backupCenter;
+    [ObservableProperty] private InstanceManagerViewModel? _instancesManager;
+    [ObservableProperty] private SettingsViewModel? _settingsPage;
     public string ActivePageSubtitle => ActivePage switch
     {
         "instances" => "管理实例、启动游戏和查看日志",
         "discover" => "搜索并下载模组、整合包和资源",
+        "backup" => "文件快照、模组列表历史和变更日志",
+        "settings" => "外观、启动、下载和更新设置",
         "mods" => "模组清单、依赖关系和批量操作",
         "diagnostics" => "崩溃、冲突、性能和数据包诊断",
         "server" => "服务端模组筛选、部署和打包",
@@ -154,6 +159,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool IsHomePage => string.Equals(ActivePage, "home", StringComparison.OrdinalIgnoreCase);
     public bool IsDiscoverPage => string.Equals(ActivePage, "discover", StringComparison.OrdinalIgnoreCase);
+    public bool IsBackupPage => string.Equals(ActivePage, "backup", StringComparison.OrdinalIgnoreCase);
+    public bool IsSettingsPage => string.Equals(ActivePage, "settings", StringComparison.OrdinalIgnoreCase);
     public bool IsInstancesPage => string.Equals(ActivePage, "instances", StringComparison.OrdinalIgnoreCase);
     public bool IsModsPage => string.Equals(ActivePage, "mods", StringComparison.OrdinalIgnoreCase);
     public bool IsDiagnosticsPage => string.Equals(ActivePage, "diagnostics", StringComparison.OrdinalIgnoreCase);
@@ -162,6 +169,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         "instances" => "实例",
         "discover" => "发现内容",
+        "backup" => "备份与历史",
+        "settings" => "设置",
         "mods" => "模组",
         "diagnostics" => "诊断",
         "server" => "服务端",
@@ -315,7 +324,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string DataDirectory => _services.Paths.DataDirectory;
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
     public string NetworkStatusText => IsOffline ? "离线模式" : "联网可用";
-    public string VersionLabel => "v1.0.6";
+    public string VersionLabel => $"v{typeof(MainWindowViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.0.0"}";
     public string IssueSummary => $"错误 {ErrorCount} · 警告 {WarningCount} · 提示 {InfoCount}";
     public bool ShowOptionalSection => ShowUninstalledOptional && HasOptionalNodeItems;
     public bool ShowMissingSection => ShowMissing && HasMissingNodeItems;
@@ -407,6 +416,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (_services.Settings.CheckUpdatesOnStartup)
             _ = CheckForUpdatesAsync();
+
+        var previewPage = Environment.GetEnvironmentVariable("PDT_PAGE");
+        if (!string.IsNullOrWhiteSpace(previewPage))
+        {
+            if (string.Equals(previewPage, "discover", StringComparison.OrdinalIgnoreCase))
+                await OpenDiscoverAsync();
+            else if (string.Equals(previewPage, "instances", StringComparison.OrdinalIgnoreCase))
+                await OpenInstancesAsync();
+            else if (string.Equals(previewPage, "backup", StringComparison.OrdinalIgnoreCase))
+                await OpenBackupCenterAsync();
+            else if (string.Equals(previewPage, "settings", StringComparison.OrdinalIgnoreCase))
+                await OpenSettingsAsync();
+            else
+                Navigate(previewPage);
+        }
     }
 
     public void AttachWindow(Window window)
@@ -1827,10 +1851,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenSettingsAsync()
     {
-        var previousLayout = _services.Settings.LayoutAlgorithm;
-        var updated = await _dialogs.ShowSettingsAsync(_services.Settings);
-        if (updated is null) return;
+        ActivePage = "settings";
+        IsOverviewMode = false;
+        var hasStoredKey = await _services.Keys.HasStoredKeyAsync();
+        SettingsPage = new SettingsViewModel(
+            _services.Settings, _services.Paths, _services.Keys, _services.CurseForge, hasStoredKey);
+        SettingsPage.Completed += updated => _ = ApplySettingsPageAsync(updated);
+    }
 
+    private async Task ApplySettingsPageAsync(Core.Persistence.AppSettings? updated)
+    {
+        if (updated is null)
+        {
+            ActivePage = "home";
+            IsOverviewMode = true;
+            return;
+        }
+
+        var previousLayout = _services.Settings.LayoutAlgorithm;
         _services.Settings.CopyFrom(updated);
         ApplyTheme();
         IsOffline = !_services.Settings.NetworkEnabled;
@@ -1847,6 +1885,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (!string.IsNullOrWhiteSpace(_services.Settings.ModrinthContact))
                 StatusText += "（Modrinth User-Agent 将在下次启动生效）";
         }
+        ActivePage = "home";
+        IsOverviewMode = true;
     }
 
     [RelayCommand]
@@ -2987,7 +3027,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenDiscover()
+    private async Task OpenDiscoverAsync()
     {
         ActivePage = "discover";
         IsOverviewMode = false;
@@ -3007,6 +3047,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Discover = new DownloadCenterViewModel(
             _services.Downloader, _services.Importer, _services.Http, context,
             () => _dialogs.PickFolderAsync("选择整合包导入目录"), _services.DownloadQueue);
+        await Discover.InitializeAsync();
     }
 
     private string? _discoverPackRoot;
@@ -3303,6 +3344,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsHomePage));
         OnPropertyChanged(nameof(IsDiscoverPage));
+        OnPropertyChanged(nameof(IsBackupPage));
+        OnPropertyChanged(nameof(IsSettingsPage));
         OnPropertyChanged(nameof(IsInstancesPage));
         OnPropertyChanged(nameof(IsModsPage));
         OnPropertyChanged(nameof(IsDiagnosticsPage));
@@ -3419,12 +3462,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenBackupCenterAsync()
     {
-        if (_scanResult is null) return;
-        var result = await _dialogs.ShowBackupCenterAsync(_scanResult.RootPath, _scanResult, _graph);
-        if (result?.NeedsRescan == true)
-            await ScanAsync();
-        else
-            RefreshBackupState();
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个整合包。";
+            return;
+        }
+        await Task.CompletedTask;
+        ActivePage = "backup";
+        IsOverviewMode = false;
+        BackupCenter = new BackupCenterViewModel(
+            _services.Backups, _scanResult.RootPath,
+            (title, message) => _dialogs.ConfirmAsync(title, message, "确认"),
+            _services.ModListHistory, _scanResult, _graph, null,
+            (title, suggested) => _dialogs.PickSaveFileAsync(title, suggested, "md", "Markdown 变更日志"));
     }
 
     [RelayCommand]
@@ -3751,12 +3801,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenInstancesAsync()
     {
+        ActivePage = "instances";
+        IsOverviewMode = false;
         var folders = _services.Settings.VersionsDirectories.Count > 0
             ? _services.Settings.VersionsDirectories.ToList()
             : string.IsNullOrWhiteSpace(_services.Settings.VersionsDirectory)
                 ? []
                 : [_services.Settings.VersionsDirectory!];
-        var result = await _dialogs.ShowInstanceManagerAsync(folders, _services.Settings.VersionsDirectory);
+        if (_scanResult is not null)
+        {
+            var parent = Directory.GetParent(_scanResult.RootPath)?.FullName;
+            if (!string.IsNullOrWhiteSpace(parent) &&
+                string.Equals(Path.GetFileName(parent), "versions", StringComparison.OrdinalIgnoreCase) &&
+                !folders.Contains(parent, StringComparer.OrdinalIgnoreCase))
+                folders.Insert(0, parent);
+        }
+        InstancesManager = new InstanceManagerViewModel(
+            _services.InstanceCatalog, _services.PclLocator, folders,
+            _services.Settings.VersionsDirectory,
+            title => _dialogs.PickFolderAsync(title),
+            candidates => _dialogs.ShowPclDirectoryPickerAsync(candidates));
+        InstancesManager.Completed += result => _ = ApplyInstanceManagerResultAsync(result);
+        await InstancesManager.InitializeAsync();
+
+    }
+
+    private async Task ApplyInstanceManagerResultAsync(InstanceManagerResult? result)
+    {
         if (result is null) return;
 
         _services.Settings.VersionsDirectories = result.VersionsDirectories.ToList();
@@ -3791,8 +3862,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        // A startup/background scan may still own the busy gate. Cancel and wait
-        // before switching so the new instance is not silently ignored.
         if (IsBusy)
         {
             _operationCts?.Cancel();

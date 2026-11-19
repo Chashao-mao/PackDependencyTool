@@ -1,6 +1,6 @@
-# Pack Dependency Tool
+# ModLens
 
-一个面向 Windows 的 **Minecraft 实例 / 模组关系工作台**。
+**ModLens** 是一个面向 Windows 的 Minecraft 实例 / 模组关系工作台。
 
 它不只是画依赖图：把实例管理、模组下载、依赖诊断、崩溃日志分析、备份历史和 Axolotl 伴生启动放在同一个界面里，尽量少开弹窗、少来回切工具。
 

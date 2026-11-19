@@ -28,7 +28,9 @@ public static class ModIconCache
             try
             {
                 using var stream = new MemoryStream(node.IconData, writable: false);
-                bitmap = new Bitmap(stream);
+                // Icons are displayed at 34–64 px. Decoding a 512 px logo for
+                // every list row wastes memory and causes visible scroll jank.
+                bitmap = Bitmap.DecodeToWidth(stream, 96);
             }
             catch (Exception)
             {

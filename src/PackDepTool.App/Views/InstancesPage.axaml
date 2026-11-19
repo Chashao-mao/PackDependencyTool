@@ -1,0 +1,181 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PackDepTool.App.ViewModels"
+             xmlns:scan="using:PackDepTool.Core.Scanning"
+             x:Class="PackDepTool.App.Views.InstancesPage"
+             x:DataType="vm:InstanceManagerViewModel"
+             Background="{DynamicResource AppBackground}">
+<Grid RowDefinitions="*,Auto" Margin="20">
+
+
+    <Grid Grid.Row="0" ColumnDefinitions="320,*" ColumnSpacing="14">
+      <Border Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+              BorderThickness="1" CornerRadius="12" Padding="12">
+        <Grid RowDefinitions="Auto,Auto,Auto,12,Auto,*" RowSpacing="7">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+            <TextBlock Text="实例来源" Classes="section" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="打开整合包…" Command="{Binding OpenPackCommand}"
+                    FontSize="10" Padding="8,3" MinHeight="27"
+                    ToolTip.Tip="打开任意包含 mods 的整合包文件夹" />
+            <Button Grid.Column="2" Content="＋ 添加来源 ▾" Classes="accent"
+                    FontSize="10" Padding="8,3" MinHeight="27">
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="选择 versions 文件夹…" Command="{Binding AddFolderCommand}" />
+                  <MenuItem Header="扫描启动器" Command="{Binding ScanLaunchersCommand}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+          </Grid>
+
+          <ListBox Grid.Row="1" Height="112" ItemsSource="{Binding Folders}"
+                   SelectedItem="{Binding SelectedFolder, Mode=TwoWay}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:VersionsFolderItem">
+                <Grid ColumnDefinitions="*,Auto" Margin="2,3">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding DisplayName}" FontSize="11.5" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Path}" FontSize="9"
+                               Foreground="{DynamicResource TextMuted}"
+                               TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="chip" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding InstanceCount}" FontSize="9.5" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <Grid Grid.Row="2" ColumnDefinitions="Auto">
+            <Button Content="移除目录" Command="{Binding RemoveFolderCommand}"
+                    IsEnabled="{Binding CanRemoveFolder}" FontSize="9.5" Padding="8,2" MinHeight="25" />
+          </Grid>
+
+          <Border Grid.Row="3" Height="1" Background="{DynamicResource CardBorder}" />
+
+          <Grid Grid.Row="4" ColumnDefinitions="*,Auto">
+            <TextBlock Text="实例列表" Classes="section" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="刷新" Command="{Binding RescanCommand}"
+                    FontSize="9.5" Padding="8,2" MinHeight="25" />
+          </Grid>
+
+          <Grid Grid.Row="5">
+            <ListBox x:Name="InstanceList" ItemsSource="{Binding Instances}"
+                     SelectedItem="{Binding Selected, Mode=TwoWay}"
+                     SelectionChanged="OnInstanceSelectionChanged"
+                     DoubleTapped="OnInstanceDoubleTapped" Background="Transparent">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="scan:MinecraftInstanceInfo">
+                  <Grid ColumnDefinitions="*,Auto" Margin="2,4">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Detail}" FontSize="9.5"
+                                 Foreground="{DynamicResource TextMuted}"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding MinecraftVersion}" FontSize="9.5"
+                               Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Text="{Binding EmptyText}" Classes="caption"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding !HasInstances}" />
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Background="{DynamicResource PanelAlt}" BorderBrush="{DynamicResource CardBorder}"
+              BorderThickness="1" CornerRadius="12" Padding="16">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="10">
+          <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+            <TextBlock Text="实例详情" Classes="section" VerticalAlignment="Center" />
+            <Border Grid.Column="1" Classes="chip" IsVisible="{Binding HasSelection}">
+              <TextBlock Text="{Binding Selected.LoaderLabel}" FontSize="9.5" />
+            </Border>
+          </Grid>
+
+          <StackPanel Grid.Row="1" Spacing="3">
+            <TextBlock Text="{Binding Selected.Name, FallbackValue='未选择实例'}"
+                       FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Text="从左侧选择一个实例查看详情。" Classes="caption"
+                       IsVisible="{Binding !HasSelection}" />
+          </StackPanel>
+
+          <Grid Grid.Row="2" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8"
+                ColumnSpacing="8" IsVisible="{Binding HasSelection}">
+            <Border Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="Minecraft" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.MinecraftVersion}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="加载器" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.LoaderLabel}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Row="1" Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="模组" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.ModCount}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Grid.Row="1" Grid.Column="1" Classes="card" Padding="10,8">
+              <StackPanel Spacing="1">
+                <TextBlock Text="禁用" Classes="caption" FontSize="9" />
+                <TextBlock Text="{Binding Selected.DisabledModCount}" FontSize="13" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Grid Grid.Row="3" ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto"
+                RowSpacing="5" ColumnSpacing="8" IsVisible="{Binding HasSelection}">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="实例目录" Classes="caption" FontSize="9.5" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Selected.Path}"
+                       FontSize="9.5" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="游戏目录" Classes="caption" FontSize="9.5"
+                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Selected.EffectiveRoot}"
+                       FontSize="9.5" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
+                       IsVisible="{Binding Selected.HasSeparateGameDirectory}" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="最后修改" Classes="caption" FontSize="9.5" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Selected.ModifiedText}"
+                       FontSize="9.5" Foreground="{DynamicResource TextMuted}" />
+          </Grid>
+
+          <Border Grid.Row="4" VerticalAlignment="Bottom" Background="{DynamicResource PanelBackground}"
+                  CornerRadius="7" Padding="9,7">
+            <TextBlock Text="{Binding StatusText}" Classes="caption" TextWrapping="Wrap" />
+          </Border>
+
+          <TextBlock Grid.Row="5" Text="切换实例会重新扫描整合包；不会修改游戏文件。双击实例也可直接打开。"
+                     Classes="caption" TextWrapping="Wrap" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+      <TextBlock Text="选择实例后点击打开，或直接双击实例。" Classes="caption"
+                 VerticalAlignment="Center" />
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button Content="新建" Command="{Binding CreateNewCommand}" />
+        <Button Content="重命名" Click="OnRenameInstanceClick" IsEnabled="{Binding CanOpen}" />
+        <Button Content="打开目录" Command="{Binding OpenFolderCommand}" IsEnabled="{Binding CanOpen}" />
+        <Button Content="复制" Click="OnCopyInstanceClick" IsEnabled="{Binding CanOpen}" />
+        <Button Content="删除" Classes="danger" Click="OnDeleteInstanceClick" IsEnabled="{Binding CanOpen}" />
+        <Button Content="启动游戏" Command="{Binding LaunchCommand}"
+                IsEnabled="{Binding CanOpen}" ToolTip.Tip="使用设置中的离线玩家名启动选中实例" />
+        <Button Content="打开选中实例" Classes="accent" Click="OnOpenSelectedClick"
+                IsEnabled="{Binding CanOpen}" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+
+
+</UserControl>

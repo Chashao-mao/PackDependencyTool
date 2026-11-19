@@ -5,16 +5,6 @@
              x:DataType="vm:DownloadCenterViewModel"
              Background="{DynamicResource AppBackground}">
 <Grid RowDefinitions="Auto,*,Auto" Margin="20">
-    <StackPanel Grid.Row="0" Spacing="3" Margin="0,0,0,12">
-      <TextBlock Text="下载中心" Classes="title" FontSize="18" />
-      <TextBlock Text="从 Modrinth / CurseForge 下载模组或整合包；整合包会先下载再导入并自动扫描。"
-                 Classes="caption" TextWrapping="Wrap" />
-      <Border Classes="chip" HorizontalAlignment="Left" Margin="0,5,0,0"
-              IsVisible="{Binding !IsModpack}">
-        <TextBlock Text="{Binding ContextText}" FontSize="10" />
-      </Border>
-    </StackPanel>
-
     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" RowSpacing="8">
       <StackPanel Grid.Row="0" Spacing="8">
         <ListBox ItemsSource="{Binding TypeOptions}"
@@ -64,7 +54,7 @@
 
           <ComboBox Grid.Column="1" ItemsSource="{Binding Categories}"
                     SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" Height="34"
-                    MaxDropDownHeight="320" ClipToBounds="True">
+                    MaxDropDownHeight="320" MinWidth="160">
             <ComboBox.ItemTemplate>
               <DataTemplate x:DataType="vm:DownloadCategoryItem">
                 <TextBlock Text="{Binding Label}" MaxWidth="148" TextTrimming="CharacterEllipsis" />
@@ -83,7 +73,7 @@
         </Grid>
       </StackPanel>
 
-      <Grid Grid.Row="2" ColumnDefinitions="520,14,*">
+      <Grid Grid.Row="2" ColumnDefinitions="*,14,420">
         <Border Grid.Column="0" Classes="card" Padding="10">
           <Grid RowDefinitions="Auto,*">
             <Grid ColumnDefinitions="*,Auto">
@@ -111,12 +101,14 @@
                 <DataTemplate x:DataType="vm:DownloadProjectItem">
                   <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                     <Border Width="58" Height="58" CornerRadius="10" Background="{DynamicResource PanelBackground}"
+                            BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
                             ClipToBounds="True" VerticalAlignment="Center">
                       <Grid>
                         <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="SemiBold"
                                    Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
                                    VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
-                        <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}" />
+                        <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}"
+                               RenderOptions.BitmapInterpolationMode="HighQuality" />
                       </Grid>
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
@@ -143,6 +135,13 @@
         </Border>
 
         <Grid Grid.Column="2" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+          <Border Grid.Row="0" Classes="card" Padding="18" IsVisible="{Binding !HasSelectedProject}">
+            <StackPanel Spacing="6">
+              <TextBlock Text="选择一个项目" FontSize="15" FontWeight="SemiBold" />
+              <TextBlock Text="从左侧选择模组或整合包，这里会显示简介、可用版本和下载按钮。"
+                         Classes="caption" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
           <Border Grid.Row="0" Classes="card" Padding="12" IsVisible="{Binding HasSelectedProject}">
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
               <Border Width="44" Height="44" CornerRadius="8" Background="{DynamicResource PanelAlt}"

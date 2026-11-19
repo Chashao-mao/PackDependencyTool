@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PackDepTool.App.ViewModels"
+             xmlns:persistence="using:PackDepTool.Core.Persistence"
+             x:Class="PackDepTool.App.Views.BackupPage"
+             x:DataType="vm:BackupCenterViewModel"
+             Background="{DynamicResource AppBackground}">
+<Grid RowDefinitions="*,Auto" Margin="20">
+
+
+    <Grid Grid.Row="0" ColumnDefinitions="340,*" ColumnSpacing="12">
+      <Border Classes="card" Padding="8">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="快照列表" Classes="section" Margin="4,2,4,6" />
+          <Grid Grid.Row="1">
+          <ListBox ItemsSource="{Binding Backups}"
+                   SelectedItem="{Binding Selected, Mode=TwoWay}" Background="Transparent">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="persistence:PackBackupInfo">
+                <StackPanel Spacing="2" Margin="2,3">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <Border Grid.Column="1" Classes="chip" Padding="5,0">
+                      <TextBlock Text="{Binding FileCount}" FontSize="9" />
+                    </Border>
+                  </Grid>
+                  <TextBlock Text="{Binding Detail}" FontSize="9.5"
+                             Foreground="{DynamicResource TextMuted}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <StackPanel IsVisible="{Binding !HasBackups}" VerticalAlignment="Center"
+                      HorizontalAlignment="Center" Spacing="6" Margin="18">
+            <TextBlock Text="还没有修复快照" FontSize="12" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="禁用/删除模组或手动备份 config 后，会在这里出现快照。"
+                       Classes="caption" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="220" />
+            <Button Content="备份 config…" Command="{Binding BackupConfigCommand}"
+                    HorizontalAlignment="Center" Margin="0,4,0,0" />
+          </StackPanel>
+          </Grid>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="card" Padding="14">
+        <TabControl>
+          <TabItem Header="文件差异">
+            <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="8">
+              <TextBlock Grid.Row="0" Text="文件差异" Classes="section" />
+              <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Classes="caption" TextWrapping="Wrap" />
+              <ListBox Grid.Row="2" ItemsSource="{Binding Diff}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="persistence:PackBackupDiffEntry">
+                    <Grid ColumnDefinitions="*,Auto" Margin="2,3">
+                      <TextBlock Text="{Binding RelativePath}" FontSize="10.5"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding StateText}" FontSize="10"
+                                 Foreground="{DynamicResource TextSecondary}" Margin="8,0,0,0" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Grid.Row="3" Text="{Binding StatusText}" Classes="caption"
+                         TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
+              <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8">
+                <Button Content="删除快照" Command="{Binding DeleteCommand}" IsVisible="{Binding CanRestore}" />
+                <Button Content="恢复选中" Classes="accent" Command="{Binding RestoreCommand}"
+                        IsVisible="{Binding CanRestore}" />
+                <TextBlock Text="快照恢复会覆盖当前同名文件。" Classes="caption"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="模组列表历史">
+            <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" RowSpacing="8">
+              <TextBlock Grid.Row="0" Text="与当前模组列表对比" Classes="section" />
+              <ComboBox Grid.Row="1" ItemsSource="{Binding HistorySnapshots}"
+                        SelectedItem="{Binding SelectedHistory, Mode=TwoWay}"
+                        HorizontalAlignment="Stretch" FontSize="10.5">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ModListHistoryItem">
+                    <TextBlock Text="{Binding Display}" FontSize="10.5" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Grid.Row="1" Text="{Binding HistorySummary}" Classes="caption"
+                         TextWrapping="Wrap" />
+              <ListBox Grid.Row="3" ItemsSource="{Binding HistoryChanges}" Background="Transparent">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="persistence:ModListChange">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="2,3">
+                      <TextBlock Text="{Binding KindText}" FontSize="10" Width="46"
+                                 Foreground="{DynamicResource Accent}" />
+                      <StackPanel Grid.Column="1" Spacing="1">
+                        <TextBlock Text="{Binding Name}" FontSize="10.5" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ModId}" FontSize="9"
+                                   Foreground="{DynamicResource TextMuted}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="1" HorizontalAlignment="Right">
+                        <TextBlock Text="{Binding Before}" FontSize="9"
+                                   Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right" />
+                        <TextBlock Text="{Binding After}" FontSize="9"
+                                   Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Right" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Grid.Row="4" Text="每次扫描会自动记录模组列表；可尝试从本地旧 JAR 还原。"
+                         Classes="caption" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
+              <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8">
+                <Button Content="导出变更日志" Command="{Binding ExportHistoryCommand}"
+                        FontSize="11" Padding="12,6" />
+                <Button Content="还原到该模组列表" Command="{Binding RestoreHistoryCommand}"
+                        FontSize="11" Padding="12,6" />
+              </StackPanel>
+            </Grid>
+          </TabItem>
+        </TabControl>
+      </Border>
+    </Grid>
+
+    <TextBlock Grid.Row="2" Text="文件快照可恢复；模组列表历史只用于对比，不修改文件。"
+               Classes="caption" Margin="0,12,0,0" VerticalAlignment="Center" />
+  </Grid>
+
+
+</UserControl>

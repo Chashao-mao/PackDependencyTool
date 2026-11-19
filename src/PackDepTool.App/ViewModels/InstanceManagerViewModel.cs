@@ -82,6 +82,9 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
 
     public bool HasFolders => Folders.Count > 0;
     public bool HasInstances => Instances.Count > 0;
+    public string EmptyText => !HasFolders
+        ? "还没有添加 versions 文件夹"
+        : "此目录下没有实例";
     public bool HasSelection => Selected is not null;
     public bool ShowEmptyInstances => HasFolders && !HasInstances;
     public bool CanOpen => Selected is not null;
@@ -477,6 +480,7 @@ public sealed partial class InstanceManagerViewModel : ObservableObject
             Selected = Instances.FirstOrDefault();
             OnPropertyChanged(nameof(HasInstances));
             OnPropertyChanged(nameof(ShowEmptyInstances));
+            OnPropertyChanged(nameof(EmptyText));
             OnPropertyChanged(nameof(HasSelection));
             OnPropertyChanged(nameof(CanOpen));
             OnPropertyChanged(nameof(SummaryText));

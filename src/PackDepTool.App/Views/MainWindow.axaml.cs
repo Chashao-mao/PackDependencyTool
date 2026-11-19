@@ -30,8 +30,11 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         ModuleList.AddHandler(PointerPressedEvent, OnModuleListPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+        HomeScroll.SizeChanged += (_, _) => ConstrainHomeContent();
+        SizeChanged += (_, _) => ConstrainHomeContent();
         Loaded += (_, _) =>
         {
+            ConstrainHomeContent();
             LoadRailState();
             QueueDependencyRailOverlayUpdate();
             DispatcherTimer.RunOnce(QueueDependencyRailOverlayUpdate, TimeSpan.FromMilliseconds(300));
@@ -41,6 +44,17 @@ public partial class MainWindow : Window
         ModuleList.AddHandler(ScrollViewer.ScrollChangedEvent,
             (_, _) => QueueDependencyRailOverlayUpdate(), RoutingStrategies.Bubble, handledEventsToo: true);
         Closing += (_, _) => _viewModel?.SaveWindowState(this);
+    }
+
+    private void ConstrainHomeContent()
+    {
+        // ScrollViewer measures its content with an infinite width when the
+        // horizontal bar is disabled. Use the window client width instead so
+        // the 1.45*/1* card grid cannot overflow to the right.
+        var available = Bounds.Width - 92;
+        if (available <= 0) available = HomeScroll.Bounds.Width;
+        if (available <= 0) return;
+        HomeContent.Width = Math.Max(0, Math.Min(1600, available - 48));
     }
 
     public void AttachViewModel(
