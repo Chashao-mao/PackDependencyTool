@@ -308,8 +308,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IReadOnlyList<CategoryFilterOption> CategoryFilters => CategoryFilterOption.All;
     public IReadOnlyList<ViewOption> ViewOptions => ViewOption.All;
     public IReadOnlyList<GroupModeOption> GroupModes => GroupModeOption.All;
+    public ObservableCollection<ModTreeNodeViewModel> DependencyTreeRoots { get; } = [];
+    [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
 
-    public bool IsListView => !string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
+    public bool IsListView => string.Equals(SelectedViewOption?.Value, "list", StringComparison.OrdinalIgnoreCase);
+    public bool IsTreeView => string.Equals(SelectedViewOption?.Value, "tree", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
 
     public bool IsActiveConflict(DependencyEdge edge)
@@ -418,6 +421,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         if (_services.Settings.CheckUpdatesOnStartup)
             _ = CheckForUpdatesAsync();
+
+        var previewView = Environment.GetEnvironmentVariable("PDT_VIEW");
+        if (!string.IsNullOrWhiteSpace(previewView) &&
+            ViewOptions.FirstOrDefault(option => option.Value == previewView) is { } previewOption)
+            SelectedViewOption = previewOption;
 
         var previewPage = Environment.GetEnvironmentVariable("PDT_PAGE");
         if (!string.IsNullOrWhiteSpace(previewPage))
@@ -1985,8 +1993,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     // ------------------------------------------------------------------ selection wiring
 
+    public GridLength DetailsColumnWidth => SelectedNodeItem is null
+        ? new GridLength(0)
+        : new GridLength(310);
+
+    partial void OnSelectedTreeNodeChanged(ModTreeNodeViewModel? value)
+    {
+        if (value is not null) SelectedNodeItem = value.Node;
+    }
+
     partial void OnSelectedNodeItemChanged(NodeItemViewModel? value)
     {
+        OnPropertyChanged(nameof(DetailsColumnWidth));
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
     }
@@ -2012,7 +2030,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedViewOptionChanged(ViewOption value)
     {
         OnPropertyChanged(nameof(IsListView));
+        OnPropertyChanged(nameof(IsTreeView));
         OnPropertyChanged(nameof(IsGraphView));
+        if (IsTreeView) BuildDependencyTree();
 
         if (IsGraphView)
         {
@@ -5028,6 +5048,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         foreach (var node in optional)
             OptionalNodeItems.Add(new NodeItemViewModel(node.Model, _graph, 0, IssueCountFor(node.Id)));
 
+        BuildDependencyTree();
+
         HasMissingNodeItems = MissingNodeItems.Count > 0;
         HasOptionalNodeItems = OptionalNodeItems.Count > 0;
         OnPropertyChanged(nameof(ShowMissingSection));
@@ -5506,6 +5528,59 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         await _window.Clipboard.SetTextAsync(nodeId);
         StatusText = $"已复制 modId：{nodeId}";
+    }
+
+    private void BuildDependencyTree()
+    {
+        DependencyTreeRoots.Clear();
+        if (_graph is null || NodeItems.Count == 0) return;
+        var nodes = NodeItems
+            .Where(item => !item.Model.IsSynthetic)
+            .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        if (nodes.Count == 0) return;
+        var incoming = _graph.Edges
+            .Where(edge => edge.Type == EdgeType.Requires &&
+                           nodes.ContainsKey(edge.From) && nodes.ContainsKey(edge.To))
+            .Select(edge => edge.To)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var childrenByParent = _graph.Edges
+            .Where(edge => edge.Type == EdgeType.Requires &&
+                           nodes.ContainsKey(edge.From) && nodes.ContainsKey(edge.To))
+            .GroupBy(edge => edge.From, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key,
+                group => group.Select(edge => edge.To).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var roots = nodes.Values
+            .Where(item => !incoming.Contains(item.Id))
+            .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (roots.Count == 0) roots = [.. nodes.Values.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)];
+        foreach (var root in roots.Take(100))
+            DependencyTreeRoots.Add(BuildTreeNode(root, nodes, childrenByParent, [], 0));
+    }
+
+    private static ModTreeNodeViewModel BuildTreeNode(
+        NodeItemViewModel node,
+        IReadOnlyDictionary<string, NodeItemViewModel> nodes,
+        IReadOnlyDictionary<string, List<string>> childrenByParent,
+        HashSet<string> path,
+        int depth)
+    {
+        var branch = new ModTreeNodeViewModel(node);
+        if (depth >= 12 || !path.Add(node.Id)) return branch;
+        if (childrenByParent.TryGetValue(node.Id, out var childIds))
+        {
+            foreach (var id in childIds)
+            {
+                if (string.IsNullOrWhiteSpace(id)) continue;
+                if (!nodes.TryGetValue(id, out var child)) continue;
+                branch.Children.Add(BuildTreeNode(child, nodes, childrenByParent, path, depth + 1));
+            }
+        }
+        path.Remove(node.Id);
+        return branch;
     }
 
     // ------------------------------------------------------------------ helpers

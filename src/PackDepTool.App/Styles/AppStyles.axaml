@@ -204,9 +204,9 @@
     <Setter Property="CornerRadius" Value="5" />
   </Style>
   <Style Selector="ToggleButton.consoleChip:checked">
-    <Setter Property="Background" Value="#142878D0" />
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
     <Setter Property="Foreground" Value="{DynamicResource Accent}" />
-    <Setter Property="BorderBrush" Value="#552878D0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
   <Style Selector="Button.severity">

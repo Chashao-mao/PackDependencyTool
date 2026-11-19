@@ -247,12 +247,12 @@
         <ColumnDefinition Width="5" />
         <ColumnDefinition Width="*" MinWidth="400" />
         <ColumnDefinition Width="5" />
-        <ColumnDefinition Width="310" MinWidth="230" MaxWidth="440" />
+        <ColumnDefinition Width="{Binding DetailsColumnWidth}" MinWidth="0" MaxWidth="440" />
       </Grid.ColumnDefinitions>
 
       <!-- Left: search + filters + issue/mod navigator -->
       <Border Grid.Column="0" x:Name="LeftPanelBorder" Classes="card" Padding="12" ClipToBounds="True">
-        <Grid RowDefinitions="Auto,Auto,*" RowSpacing="9">
+        <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="9">
           <Grid ColumnDefinitions="*,Auto">
             <TextBlock Text="筛选与问题" Classes="section" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
@@ -271,7 +271,14 @@
                    FontSize="11"
                    ToolTip.Tip="空格分隔多个条件；前缀 - 或 ! 表示排除" />
 
-          <TabControl Grid.Row="2">
+          <WrapPanel Grid.Row="2" Orientation="Horizontal">
+            <ToggleButton Content="只看问题" Classes="consoleChip" IsChecked="{Binding OnlyProblems, Mode=TwoWay}" Margin="0,0,4,4" />
+            <ToggleButton Content="缺失" Classes="consoleChip" IsChecked="{Binding ShowMissing, Mode=TwoWay}" Margin="0,0,4,4" />
+            <ToggleButton Content="可更新" Classes="consoleChip" IsChecked="{Binding OnlyUpdatable, Mode=TwoWay}" Margin="0,0,4,4" />
+            <ToggleButton Content="内嵌" Classes="consoleChip" IsChecked="{Binding ShowEmbedded, Mode=TwoWay}" Margin="0,0,4,4" />
+          </WrapPanel>
+
+          <TabControl Grid.Row="3">
             <TabItem Header="筛选">
               <ScrollViewer x:Name="FilterScrollViewer" VerticalScrollBarVisibility="Auto"
                             HorizontalScrollBarVisibility="Disabled" Margin="0,6,0,0">
@@ -473,6 +480,7 @@
                             ToolTip.Tip="单击查看详情 · 双击定位 · 右键快捷连接">
                   <TextBlock Text="模组清单" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsListView}" />
                   <TextBlock Text="依赖图" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsGraphView}" />
+                  <TextBlock Text="关系树" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsTreeView}" />
                   <TextBlock Text="{Binding CountSummary}" Classes="caption" VerticalAlignment="Center" />
                   <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRelationFocus}">
                     <TextBlock Text="{Binding RelationFocusTitle}" FontSize="10"
@@ -509,6 +517,7 @@
                 <ComboBox ItemsSource="{Binding GroupModes}"
                           SelectedItem="{Binding SelectedGroupMode, Mode=TwoWay}"
                           Width="110" Height="28" FontSize="10" Margin="0,0,6,0"
+                          IsVisible="{Binding IsListView}"
                           ToolTip.Tip="按分类 / 加载器 / 状态 / 侧分组">
                   <ComboBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:GroupModeOption">
@@ -758,6 +767,44 @@
                   </ListBox>
                 </Grid>
               </Border>
+            </Grid>
+
+            <!-- Dependency tree -->
+            <Grid IsVisible="{Binding IsTreeView}" Background="{DynamicResource GraphBackground}">
+              <TreeView ItemsSource="{Binding DependencyTreeRoots}"
+                        SelectedItem="{Binding SelectedTreeNode, Mode=TwoWay}"
+                        Background="Transparent" BorderThickness="0" Padding="8">
+                <TreeView.ItemTemplate>
+                  <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="vm:ModTreeNodeViewModel">
+                    <Grid ColumnDefinitions="Auto,42,*,Auto" ColumnSpacing="9" Margin="2,4">
+                      <Border Width="36" Height="36" CornerRadius="8" Background="{DynamicResource PanelAlt}"
+                              BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" ClipToBounds="True"
+                              VerticalAlignment="Center">
+                        <Grid>
+                          <TextBlock Text="{Binding Initial}" FontSize="13" FontWeight="SemiBold"
+                                     Foreground="{Binding AvatarBrush}" HorizontalAlignment="Center"
+                                     VerticalAlignment="Center" IsVisible="{Binding !HasIcon}" />
+                          <Image Source="{Binding Icon}" Stretch="UniformToFill" IsVisible="{Binding HasIcon}"
+                                 RenderOptions.BitmapInterpolationMode="HighQuality" />
+                        </Grid>
+                      </Border>
+                      <StackPanel Grid.Column="2" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Subtitle}" FontSize="9.5"
+                                   Foreground="{DynamicResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Border Classes="chip" Padding="5,1"><TextBlock Text="{Binding LoaderText}" FontSize="9" /></Border>
+                        <TextBlock Text="{Binding Version}" FontSize="9.5"
+                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" FontSize="9.5"
+                                   Foreground="{Binding StatusBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Grid>
+                  </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+              </TreeView>
             </Grid>
 
             <!-- Graph canvas -->

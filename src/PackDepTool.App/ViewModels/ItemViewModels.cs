@@ -445,8 +445,32 @@ public sealed record ViewOption(string Value, string Label)
     public static IReadOnlyList<ViewOption> All { get; } =
     [
         new("list", "模组清单"),
+        new("tree", "关系树"),
         new("graph", "依赖图"),
     ];
+}
+
+public sealed class ModTreeNodeViewModel
+{
+    public ModTreeNodeViewModel(NodeItemViewModel node)
+    {
+        Node = node;
+        Children = [];
+    }
+
+    public NodeItemViewModel Node { get; }
+    public ObservableCollection<ModTreeNodeViewModel> Children { get; }
+    public string Name => Node.Name;
+    public string Subtitle => Node.Subtitle;
+    public string Version => Node.Version;
+    public string LoaderText => Node.LoaderText;
+    public string StatusText => Node.StatusText;
+    public IBrush StatusBrush => Node.StatusBrush;
+    public Bitmap? Icon => Node.Icon;
+    public string Initial => Node.Initial;
+    public IBrush AvatarBrush => Node.AvatarBrush;
+    public bool HasIcon => Node.HasIcon;
+    public int ChildCount => Children.Count;
 }
 
 public sealed record GroupModeOption(string Value, string Label)
