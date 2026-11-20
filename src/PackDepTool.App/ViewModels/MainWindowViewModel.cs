@@ -336,6 +336,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
     public bool IsStarView => string.Equals(SelectedViewOption?.Value, "star", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphSurface => IsGraphView || IsStarView;
+    public int InstalledModCount => _graph?.Nodes.Count(node => !node.IsEmbedded && !node.IsSynthetic) ?? 0;
 
     public bool IsActiveConflict(DependencyEdge edge)
     {
@@ -583,7 +584,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var curseForgeMirror = !string.IsNullOrWhiteSpace(_services.Settings.CurseForgeApiBaseUrl);
         var plan = new EnrichmentPlan
         {
-            InstalledCount = _graph.Nodes.Count(node => !node.IsSynthetic),
+            InstalledCount = _graph.Nodes.Count(node => !node.IsSynthetic && !node.IsEmbedded),
             MissingCount = _graph.Nodes.Count(node => node.Status == ModStatus.Missing),
             HasCurseForgeAccess = !string.IsNullOrWhiteSpace(curseForgeKey) || curseForgeMirror,
             UsesCurseForgeMirror = curseForgeMirror,
@@ -4770,6 +4771,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             Algorithm = algorithm,
             CenterNodeId = IsStarView ? (_selectedNodeId ?? graph.Nodes.FirstOrDefault()?.Id) : null,
+            StarNodeLimit = IsStarView ? 16 : 80,
+            StarDepth = 2,
         };
 
         var positions = await Task.Run(
@@ -4848,7 +4851,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 Algorithm = LayoutAlgorithm.Star,
                 CenterNodeId = _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
                 StarDepth = 2,
-                StarNodeLimit = 24,
+                StarNodeLimit = 16,
             });
             _positions = new Dictionary<string, LayoutPoint>(starPositions, StringComparer.OrdinalIgnoreCase);
             _starVisibleIds = starPositions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -4929,6 +4932,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 IsSearchMatch = MatchesSearch(node, term),
                 EmbeddedCount = embeddedCounts.GetValueOrDefault(node.Id),
+                IsStarCenter = IsStarView && string.Equals(node.Id,
+                    _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
+                    StringComparison.OrdinalIgnoreCase),
             });
         }
 
@@ -4964,21 +4970,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Edges = edgeVms,
             SearchTerm = term,
             ShowLabels = ShowLabels,
-            FocusEdgesOnly = FocusEdgesOnly,
+            FocusEdgesOnly = IsStarView ? false : FocusEdgesOnly,
         };
         HasGraph = nodeVms.Count > 0;
         var optionalVisible = nodeVms.Count(node =>
             node.Model.IsOptionalDependency || node.Model.IsRecommendedDependency);
         CountSummary = optionalVisible > 0
-            ? $"已安装 {nodeVms.Count - optionalVisible} · 可选 {optionalVisible} / {_graph.Nodes.Count} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系"
-            : $"显示 {nodeVms.Count} / {_graph.Nodes.Count} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系";
+            ? $"已安装 {nodeVms.Count - optionalVisible} · 可选 {optionalVisible} / {InstalledModCount} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系"
+            : $"显示 {nodeVms.Count} / {InstalledModCount} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系";
+        OnPropertyChanged(nameof(InstalledModCount));
 
         RebuildNodeList(nodeVms, term);
         if (IsStarView)
         {
-            Dispatcher.UIThread.Post(() => _graphView?.FitToView(allowTiny: true), DispatcherPriority.Loaded);
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(allowTiny: true), TimeSpan.FromMilliseconds(250));
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(allowTiny: true), TimeSpan.FromMilliseconds(800));
+            Dispatcher.UIThread.Post(() => _graphView?.FitToView(), DispatcherPriority.Loaded);
+            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(250));
+            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(800));
         }
     }
 

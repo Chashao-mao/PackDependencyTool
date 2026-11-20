@@ -118,6 +118,7 @@ public sealed class GraphNodeVm
     public bool IsHovered { get; set; }
     public int EmbeddedCount { get; set; }
     public int HubInDegree { get; set; }
+    public bool IsStarCenter { get; set; }
 
     public string Id => Model.Id;
     public string Title => !string.IsNullOrWhiteSpace(Model.NameZh)

@@ -856,7 +856,7 @@ public sealed class DependencyGraphView : Control
     private void DrawNode(DrawingContext context, GraphNodeVm node, bool selected, bool hovered)
     {
         var model = node.Model;
-        var rect = node.Bounds;
+        var rect = node.IsStarCenter ? node.Bounds.Inflate(9) : node.Bounds;
         var statusColor = GraphPalette.StatusColor(model.Status);
         var loaderColor = GraphPalette.LoaderColor(model.Loader);
 
@@ -876,10 +876,10 @@ public sealed class DependencyGraphView : Control
         if (selected && !missingNode) borderColor = IsLightTheme ? Color.Parse("#17202B") : Colors.White;
         else if (hovered && !missingNode) borderColor = GraphPalette.Accent;
 
-        if (selected)
+        if (selected || node.IsStarCenter)
         {
             context.DrawRectangle(
-                GetBrush(GraphPalette.Accent, 55), null,
+                GetBrush(GraphPalette.Accent, node.IsStarCenter ? (byte)90 : (byte)55), null,
                 rect.Inflate(5), 13, 13);
         }
 
@@ -892,7 +892,7 @@ public sealed class DependencyGraphView : Control
         var optional = model.IsOptionalDependency || model.IsRecommendedDependency;
         var borderPen = new Pen(
             GetBrush(missingNode ? GraphPalette.Danger : optional ? GraphPalette.EdgeOptional : borderColor),
-            selected ? 2.2 : 1.5,
+            selected ? 2.2 : node.IsStarCenter ? 2.6 : 1.5,
             missingNode || optional ? DashStyle.Dash : null);
         context.DrawRectangle(null, borderPen, rect, 11, 11);
 
@@ -933,7 +933,8 @@ public sealed class DependencyGraphView : Control
             if (_scale >= 0.4 || selected)
             {
                 const double textX = 53;
-                var title = GetText(Ellipsize(node.Title, 23), 12.5, Semibold, textColor);
+                var title = GetText(Ellipsize(node.Title, node.IsStarCenter ? 20 : 23),
+                    node.IsStarCenter ? 14 : 12.5, Semibold, textColor);
                 context.DrawText(title, new Point(rect.X + textX, rect.Y + 12));
 
                 var subtitle = GetText(Ellipsize(node.Subtitle, 27), 10, Regular, secondaryColor);
