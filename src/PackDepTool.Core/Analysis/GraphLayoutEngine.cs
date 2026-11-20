@@ -109,16 +109,23 @@ public sealed class GraphLayoutEngine
         foreach (var layer in depth.Where(pair => pair.Value > 0).GroupBy(pair => pair.Value))
         {
             var ids = layer.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToList();
-            // Nodes are rectangles, not points: the circumference must be large
-            // enough for every node width before angular spacing can work.
-            var required = ids.Count * (options.NodeWidth + 32) / (2 * Math.PI);
-            var radius = Math.Max(250.0 * layer.Key, required);
-            for (var i = 0; i < ids.Count; i++)
+            // Keep each ring readable: at most 10 cards per ring, then step outward.
+            // A single 53-card circumference becomes unreadably large after fit-to-view.
+            const int perRing = 10;
+            var baseRadius = 250.0 * layer.Key;
+            for (var start = 0; start < ids.Count; start += perRing)
             {
-                var angle = 2 * Math.PI * i / Math.Max(1, ids.Count) - Math.PI / 2;
-                positions[ids[i].Key] = new LayoutPoint(
-                    Math.Cos(angle) * radius,
-                    Math.Sin(angle) * radius);
+                var ring = ids.Skip(start).Take(perRing).ToList();
+                var ringIndex = start / perRing;
+                var radius = baseRadius + ringIndex * 250;
+                var offset = ringIndex * 0.28;
+                for (var i = 0; i < ring.Count; i++)
+                {
+                    var angle = 2 * Math.PI * i / Math.Max(1, ring.Count) - Math.PI / 2 + offset;
+                    positions[ring[i].Key] = new LayoutPoint(
+                        Math.Cos(angle) * radius,
+                        Math.Sin(angle) * radius);
+                }
             }
         }
         ResolveOverlaps(

@@ -4848,6 +4848,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 Algorithm = LayoutAlgorithm.Star,
                 CenterNodeId = _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
                 StarDepth = 2,
+                StarNodeLimit = 24,
             });
             _positions = new Dictionary<string, LayoutPoint>(starPositions, StringComparer.OrdinalIgnoreCase);
             _starVisibleIds = starPositions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -4974,7 +4975,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         RebuildNodeList(nodeVms, term);
         if (IsStarView)
+        {
             Dispatcher.UIThread.Post(() => _graphView?.FitToView(), DispatcherPriority.Loaded);
+            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(250));
+            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(800));
+        }
     }
 
     private void RebuildNodeList(IReadOnlyList<GraphNodeVm> visibleNodes, string term)
