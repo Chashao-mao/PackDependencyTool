@@ -22,6 +22,7 @@ public sealed class JarContentConflictAnalyzer
     public DiagnosticReport Analyze(ScanResult scan, CancellationToken cancellationToken = default)
     {
         var findings = new List<DiagnosticFinding>();
+        var conflicts = new List<JarConflict>();
         var classes = new Dictionary<string, JarOwner>(StringComparer.OrdinalIgnoreCase);
         var resources = new Dictionary<string, JarOwner>(StringComparer.OrdinalIgnoreCase);
         var mixinConfigs = new Dictionary<string, JarOwner>(StringComparer.OrdinalIgnoreCase);
@@ -43,6 +44,21 @@ public sealed class JarContentConflictAnalyzer
                     var path = entry.FullName.Replace('\\', '/');
                     if (string.IsNullOrWhiteSpace(path) || path.EndsWith('/')) continue;
 
+                    if (path.EndsWith("accesstransformer.cfg", StringComparison.OrdinalIgnoreCase) ||
+                        path.EndsWith("access_transformer.cfg", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Register(classes, path, owner, (existing, current) =>
+                        {
+                            AddFinding(findings, "duplicate-access-transformer", DiagnosticSeverity.Error,
+                                "重复的 Access Transformer 配置",
+                                $"`{path}` 同时存在于 {existing.Jar} 和 {current.Jar}，AT 规则可能只应用其中一个。",
+                                path, owner);
+                            AddConflict(conflicts, JarConflictKind.AccessTransformer, true,
+                                existing, current, path);
+                        });
+                        continue;
+                    }
+
                     var isMixin = IsMixinConfig(path);
                     if (isMixin)
                     {
@@ -61,10 +77,14 @@ public sealed class JarContentConflictAnalyzer
                         !path.EndsWith("package-info.class", StringComparison.OrdinalIgnoreCase))
                     {
                         Register(classes, path, owner, (existing, current) =>
+                        {
                             AddFinding(findings, "duplicate-class", DiagnosticSeverity.Error,
                                 "重复的类路径",
                                 $"`{path}` 同时存在于 {existing.Jar} 和 {current.Jar}，可能导致类加载冲突。",
-                                path, owner));
+                                path, owner);
+                            AddConflict(conflicts, JarConflictKind.DuplicateClass, true,
+                                existing, current, path);
+                        });
                     }
                     else if ((path.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) ||
                               path.StartsWith("data/", StringComparison.OrdinalIgnoreCase)) &&
@@ -104,6 +124,9 @@ public sealed class JarContentConflictAnalyzer
                 $"目标类 `{target}` 被 {string.Join("、", distinct.Select(owner => owner.ModName))} 同时注入，" +
                 "需要确认 Mixin 优先级和是否兼容。",
                 target, distinct[0], distinct.SelectMany(owner => owner.ModIds).Distinct().ToList());
+            for (var i = 1; i < distinct.Count; i++)
+                AddConflict(conflicts, JarConflictKind.MixinTarget, true,
+                    distinct[0], distinct[i], target);
         }
 
         var summary = findings.Count == 0
@@ -118,6 +141,7 @@ public sealed class JarContentConflictAnalyzer
             SourcePath = scan.RootPath,
             Summary = summary,
             Findings = findings.Take(MaxFindings).ToList(),
+            Conflicts = conflicts.Take(MaxFindings).ToList(),
         };
     }
 
@@ -186,6 +210,23 @@ public sealed class JarContentConflictAnalyzer
         path.EndsWith(".mixins.json", StringComparison.OrdinalIgnoreCase) ||
         (path.StartsWith("mixins.", StringComparison.OrdinalIgnoreCase) &&
          path.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+
+    private static void AddConflict(
+        List<JarConflict> conflicts,
+        JarConflictKind kind,
+        bool highRisk,
+        JarOwner primary,
+        JarOwner secondary,
+        string evidence)
+    {
+        if (conflicts.Count >= MaxFindings) return;
+        if (string.Equals(primary.Jar, secondary.Jar, StringComparison.OrdinalIgnoreCase)) return;
+        conflicts.Add(new JarConflict(
+            kind, highRisk,
+            primary.ModId, primary.ModName,
+            secondary.ModId, secondary.ModName,
+            evidence));
+    }
 
     private static void AddFinding(
         List<DiagnosticFinding> findings,

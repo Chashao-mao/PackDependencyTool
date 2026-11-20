@@ -309,6 +309,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public IReadOnlyList<ViewOption> ViewOptions => ViewOption.All;
     public IReadOnlyList<GroupModeOption> GroupModes => GroupModeOption.All;
     public ObservableCollection<ModTreeNodeViewModel> DependencyTreeRoots { get; } = [];
+    public ObservableCollection<JarConflict> SelectedConflicts { get; } = [];
+    public bool HasSelectedConflicts => SelectedConflicts.Count > 0;
+    [ObservableProperty] private string _blastRadiusText = string.Empty;
+    [ObservableProperty] private string _blastRadiusDetail = string.Empty;
+    private IReadOnlyList<JarConflict> _jarConflicts = [];
     [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
     [ObservableProperty] private string _treeDirection = "requires";
     public bool TreeUsesRequires => string.Equals(TreeDirection, "requires", StringComparison.OrdinalIgnoreCase);
@@ -2019,6 +2024,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedNodeItemChanged(NodeItemViewModel? value)
     {
+        RefreshNodeInsights();
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
     }
@@ -3415,6 +3421,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             var report = await new JarContentConflictAnalyzer().AnalyzeAsync(_scanResult);
+            _jarConflicts = report.Conflicts;
+            RefreshNodeInsights();
             StatusText = report.Findings.Count == 0
                 ? "内容冲突扫描完成：没有发现问题。"
                 : $"内容冲突扫描完成：{report.Findings.Count} 条线索。";
@@ -5596,6 +5604,56 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         path.Remove(node.Id);
         return branch;
+    }
+
+    private void RefreshNodeInsights()
+    {
+        SelectedConflicts.Clear();
+        var selected = SelectedNodeItem;
+        if (selected is not null)
+        {
+            foreach (var conflict in _jarConflicts.Where(conflict =>
+                         string.Equals(conflict.PrimaryModId, selected.Id, StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(conflict.SecondaryModId, selected.Id, StringComparison.OrdinalIgnoreCase)))
+                SelectedConflicts.Add(conflict);
+        }
+        OnPropertyChanged(nameof(HasSelectedConflicts));
+
+        if (selected is null || _graph is null)
+        {
+            BlastRadiusText = string.Empty;
+            BlastRadiusDetail = string.Empty;
+            return;
+        }
+
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in NodeItems) names[item.Id] = item.Name;
+        var dependents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var queue = new Queue<string>();
+        queue.Enqueue(selected.Id);
+        while (queue.Count > 0 && dependents.Count < 200)
+        {
+            var current = queue.Dequeue();
+            foreach (var edge in _graph.Edges.Where(edge =>
+                         edge.Type == EdgeType.Requires &&
+                         string.Equals(edge.To, current, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!dependents.Add(edge.From)) continue;
+                queue.Enqueue(edge.From);
+            }
+        }
+        var labels = dependents
+            .Select(id => names.GetValueOrDefault(id, id))
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .Take(8)
+            .ToList();
+        BlastRadiusText = dependents.Count == 0
+            ? "没有被其他模组依赖"
+            : $"{dependents.Count} 个模组直接或间接依赖它";
+        BlastRadiusDetail = labels.Count == 0
+            ? string.Empty
+            : string.Join("、", labels) + (dependents.Count > labels.Count ? "…" : string.Empty);
     }
 
     // ------------------------------------------------------------------ helpers

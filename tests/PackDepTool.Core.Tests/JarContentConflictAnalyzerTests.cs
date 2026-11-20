@@ -31,6 +31,26 @@ public sealed class JarContentConflictAnalyzerTests
         Assert.Contains(report.Findings, finding => finding.RuleId == "resource-override");
         Assert.Contains(report.Findings, finding => finding.RuleId == "mixin-target-overlap");
         Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("first"));
+        Assert.Contains(report.Conflicts, conflict => conflict.Kind == JarConflictKind.DuplicateClass);
+        Assert.Contains(report.Conflicts, conflict => conflict.Kind == JarConflictKind.MixinTarget);
+    }
+
+    [Fact]
+    public async Task ReportsAccessTransformerConflict()
+    {
+        using var temp = new TempDir();
+        var first = temp.Combine("mods", "first.jar");
+        var second = temp.Combine("mods", "second.jar");
+        TestJar.Write(first, ("META-INF/accesstransformer.cfg", "public a.B"));
+        TestJar.Write(second, ("META-INF/accesstransformer.cfg", "public c.D"));
+
+        var scan = new ScanResult { RootPath = temp.Path, ModsDirectory = temp.Combine("mods") };
+        scan.Jars.Add(Jar(first, "first", "First"));
+        scan.Jars.Add(Jar(second, "second", "Second"));
+
+        var report = await new JarContentConflictAnalyzer().AnalyzeAsync(scan);
+        Assert.Contains(report.Findings, finding => finding.RuleId == "duplicate-access-transformer");
+        Assert.Contains(report.Conflicts, conflict => conflict.Kind == JarConflictKind.AccessTransformer);
     }
 
     [Fact]

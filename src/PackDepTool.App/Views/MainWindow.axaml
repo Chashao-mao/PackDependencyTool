@@ -4,6 +4,7 @@
         xmlns:vm="using:PackDepTool.App.ViewModels"
         xmlns:controls="using:PackDepTool.App.Controls"
         xmlns:views="using:PackDepTool.App.Views"
+        xmlns:analysis="using:PackDepTool.Core.Analysis"
         x:Class="PackDepTool.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="ModLens"
@@ -1035,6 +1036,44 @@
                               <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11.5"
                                          TextWrapping="Wrap" />
                             </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+
+                  <!-- Blast radius and content conflicts -->
+                  <Border Classes="detailCard" IsVisible="{Binding IsNodeSelected}">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="影响范围" Classes="section" />
+                      <TextBlock Text="{Binding BlastRadiusText}" FontSize="11.5" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding BlastRadiusDetail}" Classes="caption"
+                                 TextWrapping="Wrap" IsVisible="{Binding BlastRadiusDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                  </Border>
+
+                  <Border Classes="detailCard" IsVisible="{Binding HasSelectedConflicts}">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="字节码 / 内容冲突" Classes="section" />
+                      <ItemsControl ItemsSource="{Binding SelectedConflicts}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="analysis:JarConflict">
+                            <Border Background="{DynamicResource PanelAlt}" CornerRadius="6"
+                                    Padding="7,5" Margin="0,0,0,5">
+                              <StackPanel Spacing="2">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                  <TextBlock Text="{Binding KindText}" FontSize="10" FontWeight="SemiBold"
+                                             Foreground="{DynamicResource Warning}" />
+                                  <TextBlock Text="{Binding SeverityText}" FontSize="8.5"
+                                             Foreground="{DynamicResource Danger}" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding Evidence}" FontSize="9"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding SecondaryName}" FontSize="9"
+                                           Foreground="{DynamicResource TextMuted}" />
+                              </StackPanel>
+                            </Border>
                           </DataTemplate>
                         </ItemsControl.ItemTemplate>
                       </ItemsControl>

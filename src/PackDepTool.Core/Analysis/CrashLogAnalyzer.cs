@@ -53,6 +53,7 @@ public sealed class DiagnosticReport
     public string Summary { get; init; } = string.Empty;
     public CrashFacts? Facts { get; init; }
     public List<DiagnosticFinding> Findings { get; init; } = [];
+    public List<JarConflict> Conflicts { get; init; } = [];
 }
 
 public sealed class DiagnosticLogFile
