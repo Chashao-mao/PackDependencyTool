@@ -105,28 +105,85 @@ public sealed class GraphLayoutEngine
             }
         }
 
+        // Fixed-center force layout, modelled after ECharts graph force:
+        // repulsion spreads siblings, springs keep edges near 220px, gravity
+        // pulls the whole star toward the selected node.
         positions[centerId] = new LayoutPoint(0, 0);
-        foreach (var layer in depth.Where(pair => pair.Value > 0).GroupBy(pair => pair.Value))
+        var ids = depth.Keys.Where(id => !string.Equals(id, centerId, StringComparison.OrdinalIgnoreCase)).ToList();
+        var random = new Random(options.Seed);
+        var velocity = ids.ToDictionary(id => id, _ => new LayoutPoint(0, 0), StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < ids.Count; i++)
         {
-            var ids = layer.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToList();
-            // Keep each ring readable: at most 10 cards per ring, then step outward.
-            // A single 53-card circumference becomes unreadably large after fit-to-view.
-            const int perRing = 10;
-            var baseRadius = 250.0 * layer.Key;
-            for (var start = 0; start < ids.Count; start += perRing)
+            var angle = 2 * Math.PI * i / Math.Max(1, ids.Count);
+            var radius = 180 + random.NextDouble() * 140;
+            positions[ids[i]] = new LayoutPoint(Math.Cos(angle) * radius, Math.Sin(angle) * radius);
+        }
+
+        var visible = positions.Keys.ToList();
+        var links = graph.Edges
+            .Where(edge => edge.Type != EdgeType.Incompatible &&
+                           positions.ContainsKey(edge.From) && positions.ContainsKey(edge.To))
+            .Select(edge => (edge.From, edge.To))
+            .ToList();
+
+        for (var iteration = 0; iteration < 220; iteration++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var forces = visible.ToDictionary(id => id, _ => new LayoutPoint(0, 0), StringComparer.OrdinalIgnoreCase);
+
+            for (var i = 0; i < visible.Count; i++)
             {
-                var ring = ids.Skip(start).Take(perRing).ToList();
-                var ringIndex = start / perRing;
-                var radius = baseRadius + ringIndex * 250;
-                var offset = ringIndex * 0.28;
-                for (var i = 0; i < ring.Count; i++)
+                for (var j = i + 1; j < visible.Count; j++)
                 {
-                    var angle = 2 * Math.PI * i / Math.Max(1, ring.Count) - Math.PI / 2 + offset;
-                    positions[ring[i].Key] = new LayoutPoint(
-                        Math.Cos(angle) * radius,
-                        Math.Sin(angle) * radius);
+                    var a = visible[i];
+                    var b = visible[j];
+                    var pa = positions[a];
+                    var pb = positions[b];
+                    var dx = pb.X - pa.X;
+                    var dy = pb.Y - pa.Y;
+                    var distance = Math.Max(1, Math.Sqrt(dx * dx + dy * dy));
+                    // ECharts repulsion=900 in screen pixels; scale by node area.
+                    var force = 900 * 900 / (distance * distance);
+                    var fx = dx / distance * force;
+                    var fy = dy / distance * force;
+                    var fa = forces[a];
+                    var fb = forces[b];
+                    forces[a] = new LayoutPoint(fa.X - fx, fa.Y - fy);
+                    forces[b] = new LayoutPoint(fb.X + fx, fb.Y + fy);
                 }
             }
+
+            foreach (var (from, to) in links)
+            {
+                var pa = positions[from];
+                var pb = positions[to];
+                var dx = pb.X - pa.X;
+                var dy = pb.Y - pa.Y;
+                var distance = Math.Max(1, Math.Sqrt(dx * dx + dy * dy));
+                var force = (distance - 220) * 0.06;
+                var fx = dx / distance * force;
+                var fy = dy / distance * force;
+                var fa = forces[from];
+                var fb = forces[to];
+                forces[from] = new LayoutPoint(fa.X + fx, fa.Y + fy);
+                forces[to] = new LayoutPoint(fb.X - fx, fb.Y - fy);
+            }
+
+            foreach (var id in ids)
+            {
+                var p = positions[id];
+                var f = forces[id];
+                // gravity 0.1 toward the center
+                f = new LayoutPoint(f.X - p.X * 0.1, f.Y - p.Y * 0.1);
+                var v = velocity[id];
+                v = new LayoutPoint((v.X + f.X) * 0.8, (v.Y + f.Y) * 0.8);
+                velocity[id] = v;
+                var maxStep = 45.0;
+                var stepX = Math.Clamp(v.X, -maxStep, maxStep);
+                var stepY = Math.Clamp(v.Y, -maxStep, maxStep);
+                positions[id] = new LayoutPoint(p.X + stepX, p.Y + stepY);
+            }
+            positions[centerId] = new LayoutPoint(0, 0);
         }
         ResolveOverlaps(
             nodes.Where(node => positions.ContainsKey(node.Id)).ToList(),

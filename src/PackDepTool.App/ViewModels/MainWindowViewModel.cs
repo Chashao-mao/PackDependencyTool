@@ -4976,9 +4976,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RebuildNodeList(nodeVms, term);
         if (IsStarView)
         {
-            Dispatcher.UIThread.Post(() => _graphView?.FitToView(), DispatcherPriority.Loaded);
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(250));
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(800));
+            Dispatcher.UIThread.Post(() => _graphView?.FitToView(allowTiny: true), DispatcherPriority.Loaded);
+            DispatcherTimer.RunOnce(() => _graphView?.FitToView(allowTiny: true), TimeSpan.FromMilliseconds(250));
+            DispatcherTimer.RunOnce(() => _graphView?.FitToView(allowTiny: true), TimeSpan.FromMilliseconds(800));
         }
     }
 
