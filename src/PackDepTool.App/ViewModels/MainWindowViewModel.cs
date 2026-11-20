@@ -3444,6 +3444,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task SolveCurrentSetAsync()
+    {
+        if (_graph is null)
+        {
+            StatusText = "请先扫描整合包。";
+            return;
+        }
+        var result = VersionSetSolver.Solve(_graph);
+        var report = new DiagnosticReport
+        {
+            SourcePath = _scanResult?.RootPath ?? string.Empty,
+            Summary = result.Summary,
+            Findings = result.Issues.Select(issue => new DiagnosticFinding
+            {
+                RuleId = issue.RuleId,
+                Severity = issue.Severity,
+                Title = issue.Severity == DiagnosticSeverity.Error ? "版本约束不满足" : "版本约束警告",
+                Message = issue.Message,
+                Evidence = issue.Explanation,
+                SuggestedFix = "优先调整冲突范围中的模组版本；不要只删除依赖方。",
+                RelatedModIds = issue.RelatedModIds,
+            }).ToList(),
+        };
+        StatusText = result.Summary;
+        await _dialogs.ShowDiagnosticReportAsync(report);
+    }
+
+    [RelayCommand]
     private async Task DiagnoseCrashAsync()
     {
         var path = _scanResult is null
