@@ -9,6 +9,7 @@ public enum LayoutAlgorithm
     Auto,
     ForceDirected,
     Layered,
+    Star,
 }
 
 public sealed class LayoutOptions
@@ -22,6 +23,9 @@ public sealed class LayoutOptions
     public int Seed { get; set; } = 20240501;
     /// <summary>Kept for callers that explicitly request force layout; auto now prefers layered.</summary>
     public int ForceNodeLimit { get; set; } = 350;
+    public string? CenterNodeId { get; set; }
+    public int StarDepth { get; set; } = 2;
+    public int StarNodeLimit { get; set; } = 80;
 }
 
 /// <summary>
@@ -45,14 +49,81 @@ public sealed class GraphLayoutEngine
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var positions = algorithm == LayoutAlgorithm.Layered
-            ? ComputeLayered(graph, nodes, options, cancellationToken)
-            : ComputeForceDirected(graph, nodes, options, cancellationToken);
+        var positions = algorithm switch
+        {
+            LayoutAlgorithm.Star => ComputeStar(graph, nodes, options, cancellationToken),
+            LayoutAlgorithm.Layered => ComputeLayered(graph, nodes, options, cancellationToken),
+            _ => ComputeForceDirected(graph, nodes, options, cancellationToken),
+        };
 
         if (algorithm == LayoutAlgorithm.ForceDirected)
             ResolveOverlaps(nodes, positions, options, cancellationToken);
 
         Normalize(positions, options.Margin);
+        return positions;
+    }
+
+    private static Dictionary<string, LayoutPoint> ComputeStar(
+        GraphDocument graph,
+        List<ModNode> nodes,
+        LayoutOptions options,
+        CancellationToken cancellationToken)
+    {
+        var centerId = options.CenterNodeId;
+        if (string.IsNullOrWhiteSpace(centerId) || !nodes.Any(node =>
+                string.Equals(node.Id, centerId, StringComparison.OrdinalIgnoreCase)))
+            centerId = nodes.FirstOrDefault()?.Id;
+        var positions = new Dictionary<string, LayoutPoint>(StringComparer.OrdinalIgnoreCase);
+        if (centerId is null) return positions;
+
+        var byId = nodes.ToDictionary(node => node.Id, StringComparer.OrdinalIgnoreCase);
+        var adjacency = nodes.ToDictionary(node => node.Id, _ => new List<string>(), StringComparer.OrdinalIgnoreCase);
+        foreach (var edge in graph.Edges.Where(edge => edge.Type != EdgeType.Incompatible && edge.From != edge.To))
+        {
+            if (!byId.ContainsKey(edge.From) || !byId.ContainsKey(edge.To)) continue;
+            if (!adjacency[edge.From].Contains(edge.To, StringComparer.OrdinalIgnoreCase))
+                adjacency[edge.From].Add(edge.To);
+            if (!adjacency[edge.To].Contains(edge.From, StringComparer.OrdinalIgnoreCase))
+                adjacency[edge.To].Add(edge.From);
+        }
+
+        var depth = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { [centerId] = 0 };
+        var queue = new Queue<string>();
+        queue.Enqueue(centerId);
+        while (queue.Count > 0 && depth.Count < options.StarNodeLimit)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = queue.Dequeue();
+            var currentDepth = depth[current];
+            if (currentDepth >= options.StarDepth) continue;
+            foreach (var next in adjacency[current])
+            {
+                if (depth.ContainsKey(next)) continue;
+                depth[next] = currentDepth + 1;
+                queue.Enqueue(next);
+                if (depth.Count >= options.StarNodeLimit) break;
+            }
+        }
+
+        positions[centerId] = new LayoutPoint(0, 0);
+        foreach (var layer in depth.Where(pair => pair.Value > 0).GroupBy(pair => pair.Value))
+        {
+            var ids = layer.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase).ToList();
+            // Nodes are rectangles, not points: the circumference must be large
+            // enough for every node width before angular spacing can work.
+            var required = ids.Count * (options.NodeWidth + 32) / (2 * Math.PI);
+            var radius = Math.Max(250.0 * layer.Key, required);
+            for (var i = 0; i < ids.Count; i++)
+            {
+                var angle = 2 * Math.PI * i / Math.Max(1, ids.Count) - Math.PI / 2;
+                positions[ids[i].Key] = new LayoutPoint(
+                    Math.Cos(angle) * radius,
+                    Math.Sin(angle) * radius);
+            }
+        }
+        ResolveOverlaps(
+            nodes.Where(node => positions.ContainsKey(node.Id)).ToList(),
+            positions, options, cancellationToken);
         return positions;
     }
 
@@ -321,8 +392,8 @@ public sealed class GraphLayoutEngine
                 {
                     var a = nodes[i].Id;
                     var b = nodes[j].Id;
-                    var pa = positions[a];
-                    var pb = positions[b];
+                    if (!positions.TryGetValue(a, out var pa) ||
+                        !positions.TryGetValue(b, out var pb)) continue;
                     var dx = pb.X - pa.X;
                     var dy = pb.Y - pa.Y;
 

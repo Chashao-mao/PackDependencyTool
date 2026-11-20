@@ -43,6 +43,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private List<LocalRule> _localRules = [];
     private Dictionary<string, string> _translationOverrides = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, LayoutPoint> _positions = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _starVisibleIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CachedModUpdate>
         _updateCheckCache = new(StringComparer.OrdinalIgnoreCase);
@@ -316,7 +317,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private IReadOnlyList<JarConflict> _jarConflicts = [];
     [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
     [ObservableProperty] private string _treeDirection = "requires";
+    [ObservableProperty] private bool _treeOnlyConnected;
     public bool TreeUsesRequires => string.Equals(TreeDirection, "requires", StringComparison.OrdinalIgnoreCase);
+    partial void OnTreeOnlyConnectedChanged(bool value) => BuildDependencyTree();
 
     [RelayCommand]
     private void SetTreeDirection(string direction)
@@ -331,6 +334,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsListView => string.Equals(SelectedViewOption?.Value, "list", StringComparison.OrdinalIgnoreCase);
     public bool IsTreeView => string.Equals(SelectedViewOption?.Value, "tree", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
+    public bool IsStarView => string.Equals(SelectedViewOption?.Value, "star", StringComparison.OrdinalIgnoreCase);
+    public bool IsGraphSurface => IsGraphView || IsStarView;
 
     public bool IsActiveConflict(DependencyEdge edge)
     {
@@ -442,7 +447,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var previewView = Environment.GetEnvironmentVariable("PDT_VIEW");
         if (!string.IsNullOrWhiteSpace(previewView) &&
             ViewOptions.FirstOrDefault(option => option.Value == previewView) is { } previewOption)
+        {
             SelectedViewOption = previewOption;
+            if (IsStarView) await RelayoutAsync();
+        }
 
         var previewPage = Environment.GetEnvironmentVariable("PDT_PAGE");
         if (!string.IsNullOrWhiteSpace(previewPage))
@@ -2025,6 +2033,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedNodeItemChanged(NodeItemViewModel? value)
     {
         RefreshNodeInsights();
+        if (IsStarView && value is not null && !_suppressSelectionSync)
+            _ = RelayoutAsync();
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
     }
@@ -2052,7 +2062,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsListView));
         OnPropertyChanged(nameof(IsTreeView));
         OnPropertyChanged(nameof(IsGraphView));
+        OnPropertyChanged(nameof(IsStarView));
+        OnPropertyChanged(nameof(IsGraphSurface));
         if (IsTreeView) BuildDependencyTree();
+        if (IsStarView) _ = RelayoutWhenIdleAsync();
 
         if (IsGraphView)
         {
@@ -4739,18 +4752,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _graphView?.InvalidateVisual();
     }
 
+    private async Task RelayoutWhenIdleAsync()
+    {
+        for (var attempt = 0; attempt < 100 && IsBusy; attempt++)
+            await Task.Delay(100);
+        if (!IsStarView || _graph is null) return;
+        await RelayoutAsync();
+    }
+
     private async Task LayoutAsync(bool fit, CancellationToken cancellationToken)
     {
         if (_graph is null) return;
 
-        var algorithm = _services.Settings.LayoutAlgorithm;
+        var algorithm = IsStarView ? LayoutAlgorithm.Star : _services.Settings.LayoutAlgorithm;
         var graph = _graph;
-        var options = new LayoutOptions { Algorithm = algorithm };
+        var options = new LayoutOptions
+        {
+            Algorithm = algorithm,
+            CenterNodeId = IsStarView ? (_selectedNodeId ?? graph.Nodes.FirstOrDefault()?.Id) : null,
+        };
 
         var positions = await Task.Run(
             () => _services.Layout.Compute(graph, options, cancellationToken),
             cancellationToken);
 
+        _starVisibleIds = IsStarView
+            ? positions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         _positions = new Dictionary<string, LayoutPoint>(positions, StringComparer.OrdinalIgnoreCase);
         BuildScene();
 
@@ -4812,6 +4840,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        if (IsStarView &&
+            (_starVisibleIds.Count == 0 || _starVisibleIds.Count >= _graph.Nodes.Count - 1))
+        {
+            var starPositions = _services.Layout.Compute(_graph, new LayoutOptions
+            {
+                Algorithm = LayoutAlgorithm.Star,
+                CenterNodeId = _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
+                StarDepth = 2,
+            });
+            _positions = new Dictionary<string, LayoutPoint>(starPositions, StringComparer.OrdinalIgnoreCase);
+            _starVisibleIds = starPositions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
         var term = SearchText.Trim();
         var byId = _graph.Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
         var edgeTypeVisible = EdgeTypeVisible();
@@ -4825,6 +4866,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             !node.IsEmbedded &&
             (!node.IsOptionalDependency || ShowUninstalledOptional) &&
             (!node.IsRecommendedDependency || ShowUninstalledOptional) &&
+            (!IsStarView || _starVisibleIds.Count == 0 || _starVisibleIds.Contains(node.Id)) &&
             (!IsRelationFocus || _relationFocusIds.Contains(node.Id)) &&
             MatchesStatusFilter(node.Status) &&
             MatchesSideFilter(node.Side) &&
@@ -4931,6 +4973,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             : $"显示 {nodeVms.Count} / {_graph.Nodes.Count} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系";
 
         RebuildNodeList(nodeVms, term);
+        if (IsStarView)
+            Dispatcher.UIThread.Post(() => _graphView?.FitToView(), DispatcherPriority.Loaded);
     }
 
     private void RebuildNodeList(IReadOnlyList<GraphNodeVm> visibleNodes, string term)
@@ -5601,8 +5645,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         var roots = nodes.Values
             .Where(item => !incoming.Contains(item.Id))
-            .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(item => childrenByParent.GetValueOrDefault(item.Id)?.Count ?? 0)
+            .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        if (TreeOnlyConnected)
+            roots = roots.Where(item => childrenByParent.GetValueOrDefault(item.Id)?.Count > 0).ToList();
         if (roots.Count == 0) roots = [.. nodes.Values.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)];
         var expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in roots.Take(100))

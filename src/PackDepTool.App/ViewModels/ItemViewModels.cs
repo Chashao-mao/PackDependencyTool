@@ -452,6 +452,7 @@ public sealed record ViewOption(string Value, string Label)
         new("list", "模组清单"),
         new("tree", "关系树"),
         new("graph", "依赖图"),
+        new("star", "星图"),
     ];
 }
 
@@ -491,6 +492,7 @@ public sealed class ModTreeNodeViewModel
     public IBrush AvatarBrush => Node.AvatarBrush;
     public bool HasIcon => Node.HasIcon;
     public int ChildCount => Children.Count;
+    public string ChildCountText => ChildCount > 0 ? $"依赖 {ChildCount}" : string.Empty;
 }
 
 public sealed record GroupModeOption(string Value, string Label)

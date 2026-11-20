@@ -250,7 +250,7 @@
         <ColumnDefinition Width="0" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="0" />
-        <ColumnDefinition Width="0" />
+        <ColumnDefinition Width="{Binding DetailsColumnWidth}" MinWidth="0" MaxWidth="440" />
       </Grid.ColumnDefinitions>
 
       <!-- Left: search + filters + issue/mod navigator -->
@@ -491,6 +491,7 @@
                             ToolTip.Tip="单击查看详情 · 双击定位 · 右键快捷连接">
                   <TextBlock Text="模组清单" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsListView}" />
                   <TextBlock Text="依赖图" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsGraphView}" />
+                  <TextBlock Text="星图" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsStarView}" />
                   <TextBlock Text="关系树" FontWeight="SemiBold" FontSize="12.5" IsVisible="{Binding IsTreeView}" />
                   <TextBlock Text="{Binding CountSummary}" Classes="caption" VerticalAlignment="Center" />
                   <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding IsRelationFocus}">
@@ -812,6 +813,7 @@
                         CommandParameter="requires" Classes.active="{Binding TreeUsesRequires}" />
                 <Button Content="被依赖项" Classes="filterChip" Command="{Binding SetTreeDirectionCommand}"
                         CommandParameter="requiredBy" Classes.active="{Binding !TreeUsesRequires}" />
+                <ToggleButton Content="仅看有关系" Classes="filterChip" IsChecked="{Binding TreeOnlyConnected, Mode=TwoWay}" />
                 <TextBlock Text="箭头方向：当前对象 → 它使用的依赖 / 使用它的对象" Classes="caption"
                            VerticalAlignment="Center" Foreground="{DynamicResource TextMuted}" />
               </StackPanel>
@@ -848,6 +850,8 @@
                           <TextBlock Text="{Binding KindText}" FontSize="8.5"
                                      Foreground="{DynamicResource Warning}" />
                         </Border>
+                        <TextBlock Text="{Binding ChildCountText}" FontSize="8.5"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
                       </StackPanel>
                     </Grid>
                   </TreeDataTemplate>
@@ -856,7 +860,7 @@
             </Grid>
 
             <!-- Graph canvas -->
-            <Grid IsVisible="{Binding IsGraphView}">
+            <Grid IsVisible="{Binding IsGraphSurface}">
               <controls:DependencyGraphView x:Name="GraphView"
                                             Scene="{Binding Scene}"
                                             Background="{DynamicResource GraphBackground}" />
@@ -938,9 +942,8 @@
       <GridSplitter Grid.Column="3" x:Name="RightPanelSplitter" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" IsVisible="False" />
 
       <!-- Right: details / report / manual links -->
-      <Border Grid.ColumnSpan="5" x:Name="RightPanelBorder" Classes="card" ClipToBounds="True"
-              Width="380" HorizontalAlignment="Right" IsVisible="{Binding ShowDetailsPanel}"
-              ZIndex="20" Margin="0,0,10,0">
+      <Border Grid.Column="4" x:Name="RightPanelBorder" Classes="card" ClipToBounds="True"
+              IsVisible="{Binding ShowDetailsPanel}">
         <Grid RowDefinitions="Auto,*">
           <Border Grid.Row="0" Background="{DynamicResource PanelBackground}"
                   BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="10,5">
