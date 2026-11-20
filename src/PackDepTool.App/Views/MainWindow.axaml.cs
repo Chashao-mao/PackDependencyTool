@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         ModuleList.AddHandler(ScrollViewer.ScrollChangedEvent,
             (_, _) => QueueDependencyRailOverlayUpdate(), RoutingStrategies.Bubble, handledEventsToo: true);
         Closing += (_, _) => _viewModel?.SaveWindowState(this);
+        Closed += (_, _) => Environment.Exit(0);
     }
 
     private void QueueStarWebReload()

@@ -5659,9 +5659,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             StarScene = null;
             return;
         }
-        var nodes = NodeItems
-            .Where(item => !item.Model.IsSynthetic)
-            .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
+        var nodes = _graph.Nodes
+            .Where(node => !node.IsSynthetic && !node.IsEmbedded)
+            .GroupBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
         if (nodes.Count == 0)
         {
@@ -5699,14 +5699,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             depth.TryAdd(id, 99);
 
         var visible = nodes.Values
-            .OrderBy(item => depth[item.Id])
-            .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(node => depth[node.Id])
+            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var center = visible.First(item => string.Equals(item.Id, centerId, StringComparison.OrdinalIgnoreCase));
-        var starNodes = visible.Select(item => new StarNodeVm
+        var center = visible.First(node => string.Equals(node.Id, centerId, StringComparison.OrdinalIgnoreCase));
+        var starNodes = visible.Select(node => new StarNodeVm
         {
-            Model = item.Model,
-            Ring = depth[item.Id],
+            Model = node,
+            Ring = depth[node.Id],
         }).ToList();
         var byId = starNodes.ToDictionary(node => node.Model.Id, StringComparer.OrdinalIgnoreCase);
         var starEdges = _graph.Edges

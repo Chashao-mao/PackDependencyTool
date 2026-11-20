@@ -172,8 +172,8 @@ for (let index = 0; index < clusters.length; index++) {
       const deg = degree.get(list[i].id) || 0;
       list[i].symbolSize = Math.min(24, 11 + Math.min(10, deg * 0.7));
       list[i].label = {
-        show: deg >= 8,
-        position: 'bottom', color: '#E5E7EB', fontSize: 9,
+        show: true,
+        position: 'bottom', color: '#DCE3EE', fontSize: 9,
         fontWeight: 'normal', formatter: '{b}'
       };
     }
@@ -195,7 +195,7 @@ chart.setOption({
   series: [{
     type: 'graph',
     layout: 'none',
-    zoom: 0.46,
+    zoom: 0.58,
     roam: true,
     draggable: true,
     focusNodeAdjacency: true,
@@ -203,7 +203,8 @@ chart.setOption({
     links: raw.links,
     edgeSymbol: ['none', 'arrow'],
     edgeSymbolSize: [0, 6],
-    label: { show: false },
+    label: { show: true, position: 'bottom', fontSize: 9, color: '#DCE3EE' },
+    labelLayout: { hideOverlap: true },
     lineStyle: { color: '#3b82f6', width: 0.9, opacity: 0.35, curveness: 0.08 },
     emphasis: { focus: 'adjacency', lineStyle: { width: 2.2, opacity: 1 } }
   }]
