@@ -92,60 +92,94 @@ public static class StarWebViewHtml
 <script>
 const raw = {{json}};
 const degree = new Map(raw.nodes.map(n => [n.id, 0]));
-const parentOf = new Map();
+const adjacency = new Map(raw.nodes.map(n => [n.id, []]));
 for (const link of raw.links) {
   degree.set(link.source, (degree.get(link.source) || 0) + 1);
   degree.set(link.target, (degree.get(link.target) || 0) + 1);
-  if (!parentOf.has(link.source)) parentOf.set(link.source, link.target);
+  adjacency.get(link.source).push(link.target);
+  adjacency.get(link.target).push(link.source);
 }
-const childrenOf = new Map(raw.nodes.map(n => [n.id, []]));
-for (const [child, parent] of parentOf) {
-  if (childrenOf.has(parent)) childrenOf.get(parent).push(child);
-}
-const depth = new Map(raw.nodes.map(n => [n.id, 0]));
-const roots = raw.nodes.filter(n => !parentOf.has(n.id)).map(n => n.id);
-const queue = roots.length ? roots.slice() : [raw.nodes[0] && raw.nodes[0].id];
-for (const id of queue) depth.set(id, 0);
-while (queue.length) {
-  const current = queue.shift();
-  for (const child of (childrenOf.get(current) || [])) {
-    if (depth.get(child) > depth.get(current) + 1) continue;
-    depth.set(child, depth.get(current) + 1);
-    queue.push(child);
-  }
-}
-const layers = new Map();
-for (const node of raw.nodes) {
-  const d = depth.get(node.id) ?? 0;
-  if (!layers.has(d)) layers.set(d, []);
-  layers.get(d).push(node);
-}
-const maxDepth = Math.max(1, ...layers.keys());
-for (const [d, list] of layers) {
-  const radius = d === 0 ? 0 : 130 + d * Math.max(80, 520 / maxDepth);
-  for (let i = 0; i < list.length; i++) {
-    const angle = list.length === 1 ? 0 : (Math.PI * 2 * i / list.length) - Math.PI / 2;
-    list[i].x = Math.cos(angle) * radius;
-    list[i].y = Math.sin(angle) * radius;
-    list[i].symbolSize = d === 0 ? 46 : Math.min(30, 10 + Math.min(14, (degree.get(list[i].id) || 0) * 1.2));
-    list[i].label = {
-      show: d <= 1 || (degree.get(list[i].id) || 0) >= 6,
-      position: 'bottom',
-      color: '#E5E7EB',
-      fontSize: d === 0 ? 13 : 10,
-      fontWeight: d === 0 ? 'bold' : 'normal',
-      formatter: '{b}'
-    };
-  }
-}
-raw.nodes.forEach((node, index) => {
-  const d = depth.get(node.id) ?? 0;
-  if (d === 0) {
-    const angle = (Math.PI * 2 * index / Math.max(1, layers.get(0).length)) - Math.PI / 2;
-    node.x = Math.cos(angle) * 36;
-    node.y = Math.sin(angle) * 36;
-  }
+
+// Pick the strongest prerequisites as galaxy cores.
+const hubs = raw.nodes
+  .slice()
+  .sort((a, b) => (degree.get(b.id) || 0) - (degree.get(a.id) || 0))
+  .filter(n => (degree.get(n.id) || 0) >= 2)
+  .slice(0, Math.min(8, Math.max(2, Math.ceil(raw.nodes.length / 45))));
+if (hubs.length === 0 && raw.nodes.length) hubs.push(raw.nodes[0]);
+
+const clusterOf = new Map();
+const depth = new Map();
+const queue = [];
+hubs.forEach((hub, index) => {
+  clusterOf.set(hub.id, index);
+  depth.set(hub.id, 0);
+  queue.push(hub.id);
 });
+for (let head = 0; head < queue.length; head++) {
+  const current = queue[head];
+  const owner = clusterOf.get(current);
+  const d = depth.get(current) || 0;
+  for (const next of adjacency.get(current)) {
+    if (clusterOf.has(next)) continue;
+    clusterOf.set(next, owner);
+    depth.set(next, d + 1);
+    queue.push(next);
+  }
+}
+for (const node of raw.nodes) {
+  if (!clusterOf.has(node.id)) {
+    clusterOf.set(node.id, 0);
+    depth.set(node.id, 1);
+  }
+}
+
+const clusters = hubs.map((hub, index) => ({
+  hub,
+  members: raw.nodes.filter(n => clusterOf.get(n.id) === index && n.id !== hub.id)
+}));
+const maxMemberCount = Math.max(1, ...clusters.map(c => c.members.length));
+const clusterRadius = Math.max(180, maxMemberCount * 26 / (2 * Math.PI));
+const columns = Math.min(3, clusters.length);
+const rows = Math.ceil(clusters.length / columns);
+const cell = clusterRadius * 2.2 + 80;
+for (let index = 0; index < clusters.length; index++) {
+  const cluster = clusters[index];
+  const cx = ((index % columns) - (columns - 1) / 2) * cell;
+  const cy = (Math.floor(index / columns) - (rows - 1) / 2) * cell;
+  cluster.hub.x = cx;
+  cluster.hub.y = cy;
+  cluster.hub.symbolSize = 52;
+  cluster.hub.label = {
+    show: true, position: 'top', color: '#F3F5F8', fontSize: 13,
+    fontWeight: 'bold', formatter: '{b}'
+  };
+
+  const rings = [];
+  for (const node of cluster.members) {
+    const d = Math.max(1, (depth.get(node.id) || 1) - (depth.get(cluster.hub.id) || 0));
+    if (!rings[d]) rings[d] = [];
+    rings[d].push(node);
+  }
+  for (const dText of Object.keys(rings)) {
+    const d = Number(dText);
+    const list = rings[d];
+    const radius = 100 + d * 85 + list.length * 8 / (2 * Math.PI);
+    for (let i = 0; i < list.length; i++) {
+      const angle = 2 * Math.PI * i / list.length + d * 0.4;
+      list[i].x = cx + Math.cos(angle) * radius;
+      list[i].y = cy + Math.sin(angle) * radius;
+      const deg = degree.get(list[i].id) || 0;
+      list[i].symbolSize = Math.min(24, 11 + Math.min(10, deg * 0.7));
+      list[i].label = {
+        show: deg >= 8,
+        position: 'bottom', color: '#E5E7EB', fontSize: 9,
+        fontWeight: 'normal', formatter: '{b}'
+      };
+    }
+  }
+}
+
 const chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas' });
 chart.setOption({
   backgroundColor: '#0c0e12',
@@ -161,7 +195,7 @@ chart.setOption({
   series: [{
     type: 'graph',
     layout: 'none',
-    zoom: 0.62,
+    zoom: 0.46,
     roam: true,
     draggable: true,
     focusNodeAdjacency: true,
