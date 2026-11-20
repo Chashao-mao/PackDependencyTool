@@ -67,12 +67,25 @@ public partial class MainWindow : Window
             if (File.Exists(source) && !File.Exists(target)) File.Copy(source, target);
             var htmlPath = Path.Combine(directory, "star.html");
             File.WriteAllText(htmlPath, StarWebViewHtml.Build(scene, scene.Center.Model.Id));
-            StarWeb.Address = new Uri(htmlPath).AbsoluteUri;
+            try
+            {
+                StarWeb.RegisterJavascriptObject("pdt", new StarBridge(_viewModel));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+            {
+            }
+            StarWeb.Address = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.UtcNow.Ticks;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // The star view is optional; keep the rest of the window usable.
         }
+    }
+
+    private sealed class StarBridge(MainWindowViewModel viewModel)
+    {
+        public void recenter(string id) =>
+            Dispatcher.UIThread.Post(() => viewModel.RecenterStar(id));
     }
 
     private void ConstrainHomeContent()
@@ -114,6 +127,7 @@ public partial class MainWindow : Window
         bool openToolbox = false)
     {
         _viewModel = viewModel;
+        StarWeb.Loaded += (_, _) => QueueStarWebReload();
         _viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainWindowViewModel.StarScene))

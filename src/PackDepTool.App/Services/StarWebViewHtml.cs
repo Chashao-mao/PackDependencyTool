@@ -35,11 +35,12 @@ public static class StarWebViewHtml
             label = new
             {
                 show = true,
-                color = "#F3F5F8",
+                formatter = "{b}\n{c}",
+                position = "bottom",
+                color = "#E5E7EB",
                 fontSize = ReferenceEquals(node, scene.Center) ? 13 : 11,
                 fontWeight = ReferenceEquals(node, scene.Center) ? "bold" : "normal",
-                formatter = "{b}",
-                position = "bottom",
+                lineHeight = 15,
             },
         }).ToList();
 
@@ -89,46 +90,79 @@ public static class StarWebViewHtml
 {{hidden}}
 <script>
 const raw = {{json}};
+const byId = new Map(raw.nodes.map(n => [n.id, Object.assign({}, n, { children: [] })]));
+const parentOf = new Map();
+for (const link of raw.links) {
+  if (!parentOf.has(link.source) && byId.has(link.source) && byId.has(link.target)) {
+    parentOf.set(link.source, link.target);
+  }
+}
+const childrenOf = new Map(raw.nodes.map(n => [n.id, []]));
+const roots = [];
+for (const node of raw.nodes) {
+  const parent = parentOf.get(node.id);
+  if (parent) childrenOf.get(parent).push(node.id);
+  else roots.push(node.id);
+}
+if (roots.length === 0 && raw.nodes.length) roots.push(raw.nodes[0].id);
+
+function attach(id, seen, depth) {
+  if (seen.has(id)) return null;
+  seen.add(id);
+  const node = byId.get(id);
+  if (!node) return null;
+  const childIds = (childrenOf.get(id) || []).filter(child => !seen.has(child));
+  node.children = childIds.map(child => attach(child, seen, depth + 1)).filter(Boolean);
+  node.symbolSize = Math.min(30, 7 + (childrenOf.get(id) || []).length * 1.8);
+  node.label = {
+    show: depth <= 1 || (childrenOf.get(id) || []).length > 1,
+    position: 'top',
+    color: '#E5E7EB',
+    fontSize: depth <= 1 ? 12 : 10,
+    fontWeight: depth <= 1 ? 'bold' : 'normal'
+  };
+  return node;
+}
+const seen = new Set();
+const galaxy = {
+  id: '__pack__',
+  name: '整合包',
+  value: raw.nodes.length + ' 个模组',
+  symbolSize: 30,
+  itemStyle: { color: '#D75A8A', borderColor: '#F3F5F8', borderWidth: 2 },
+  label: { show: true, position: 'top', color: '#F3F5F8', fontSize: 14, fontWeight: 'bold' },
+  children: roots.map(id => attach(id, seen, 1)).filter(Boolean)
+};
 const chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas' });
 chart.setOption({
   backgroundColor: '#0c0e12',
-  animationDuration: 450,
+  animationDuration: 900,
   animationEasingUpdate: 'quinticInOut',
   tooltip: {
     backgroundColor: 'rgba(18,23,32,.96)',
     borderColor: '#334155',
     textStyle: { color: '#e5e7eb', fontSize: 11 },
-    formatter: p => p.dataType === 'node'
-      ? '<b>' + p.data.name + '</b><br/>' + p.data.value
-      : (p.data.source + ' → ' + p.data.target)
+    formatter: p => '<b>' + p.data.name + '</b><br/>' + (p.data.value || '')
   },
   series: [{
-    type: 'graph',
-    layout: 'force',
+    type: 'tree',
+    layout: 'radial',
+    data: [galaxy],
     roam: true,
-    draggable: true,
-    focusNodeAdjacency: true,
-    data: raw.nodes,
-    links: raw.links,
-    edgeSymbol: ['none', 'arrow'],
-    edgeSymbolSize: [0, 7],
-    label: { show: true, position: 'bottom', fontSize: 11, color: '#e5e7eb' },
-    lineStyle: { color: '#3b82f6', width: 1.4, opacity: 0.8, curveness: 0 },
-    emphasis: { focus: 'adjacency', lineStyle: { width: 3, opacity: 1 } },
-    force: {
-      initLayout: 'circular',
-      repulsion: 900,
-      edgeLength: 220,
-      gravity: 0.1,
-      friction: 0.2,
-      layoutAnimation: true,
-      attract: { damping: 0.9 }
-    }
+    expandAndCollapse: false,
+    initialTreeDepth: -1,
+    symbol: 'circle',
+    edgeShape: 'curve',
+    lineStyle: { color: '#3b82f6', width: 1.1, opacity: 0.55, curveness: 0.15 },
+    label: { show: true, position: 'top', color: '#E5E7EB', fontSize: 10 },
+    emphasis: { focus: 'descendant', lineStyle: { width: 2.5, opacity: 1 } },
+    animationDuration: 900,
+    top: '6%', left: '6%', right: '6%', bottom: '6%'
   }]
 });
 chart.on('click', p => {
-  if (p.dataType !== 'node' || !p.data || !p.data.id) return;
-  window.location.href = 'pdt://recenter?' + encodeURIComponent(p.data.id);
+  if (!p.data || !p.data.id || p.data.id === '__pack__') return;
+  try { if (window.pdt && typeof pdt.recenter === 'function') pdt.recenter(p.data.id); } catch (e) {}
 });
 window.addEventListener('resize', () => chart.resize());
 </script>

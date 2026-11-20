@@ -5682,25 +5682,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 adjacency[edge.To].Add(edge.From);
         }
 
-        const int limit = 32;
         var depth = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { [centerId] = 0 };
         var queue = new Queue<string>();
         queue.Enqueue(centerId);
-        while (queue.Count > 0 && depth.Count < limit)
+        while (queue.Count > 0)
         {
             var current = queue.Dequeue();
-            if (depth[current] >= 2) continue;
             foreach (var next in adjacency[current])
             {
                 if (depth.ContainsKey(next)) continue;
                 depth[next] = depth[current] + 1;
                 queue.Enqueue(next);
-                if (depth.Count >= limit) break;
             }
         }
+        foreach (var id in nodes.Keys)
+            depth.TryAdd(id, 99);
 
-        var visible = depth.Keys
-            .Select(id => nodes[id])
+        var visible = nodes.Values
             .OrderBy(item => depth[item.Id])
             .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -5726,7 +5724,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Center = byId[centerId],
             Nodes = starNodes,
             Edges = starEdges,
-            HiddenCount = Math.Max(0, nodes.Count - visible.Count),
+            HiddenCount = 0,
         };
     }
 
