@@ -105,6 +105,8 @@ public sealed class GraphLayoutEngine
             }
         }
 
+        positions[centerId] = new LayoutPoint(0, 0);
+
         // Controlled two-ring star: 8 direct relations on the inner ring,
         // 8 secondary relations outside. This keeps the center and spokes
         // readable instead of letting force layout scatter them.
