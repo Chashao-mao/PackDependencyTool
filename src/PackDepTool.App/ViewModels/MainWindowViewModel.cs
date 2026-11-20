@@ -2931,13 +2931,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_scanResult is null) return;
 
-        var path = CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
+        var reports = ProfilerReportDiscovery.Discover(_scanResult.RootPath);
+        var path = reports.FirstOrDefault()?.Path
+                   ?? CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
         if (string.IsNullOrWhiteSpace(path))
             path = await _dialogs.PickOpenFileAsync(
-                "选择 spark 报告或日志", ["txt", "log"], "性能日志");
+                "选择 Spark / Caliper 报告或日志", ["txt", "log", "json", "csv"], "性能报告");
         if (string.IsNullOrWhiteSpace(path))
         {
-            StatusText = "没有找到可分析的性能日志。";
+            StatusText = "没有找到 Spark / Caliper 报告或性能日志。";
             return;
         }
 
@@ -2946,10 +2948,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var text = await File.ReadAllTextAsync(path);
             if (text.Length > 4 * 1024 * 1024)
                 text = text[..(4 * 1024 * 1024)];
-            var report = PerformanceAttributionAnalyzer.Analyze(text, path, _graph);
+            var report = CaliperReportParser.TryParse(text, path, _graph)
+                         ?? PerformanceAttributionAnalyzer.Analyze(text, path, _graph);
+            var source = reports.FirstOrDefault(item =>
+                string.Equals(item.Path, path, StringComparison.OrdinalIgnoreCase))?.Kind;
             StatusText = report.Findings.Count == 0
-                ? "性能归因完成：没有识别到采样数据。"
-                : $"性能归因完成：{report.Findings.Count} 条线索。";
+                ? $"{source ?? "性能"}归因完成：没有识别到采样数据。"
+                : $"{source ?? "性能"}归因完成：{report.Findings.Count} 条线索。";
             await _dialogs.ShowDiagnosticReportAsync(report);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
