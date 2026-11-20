@@ -504,7 +504,7 @@
                 </StackPanel>
               </Grid>
 
-              <Grid Grid.Row="1" ColumnDefinitions="300,Auto,112,30,216,64,*" ColumnSpacing="6"
+              <Grid Grid.Row="1" ColumnDefinitions="300,Auto,112,30,288,64,*" ColumnSpacing="6"
                     VerticalAlignment="Center">
                 <TextBox Text="{Binding SearchText, Mode=TwoWay}" Height="30" FontSize="10.5"
                          Watermark="搜索模组 / modId / slug" ToolTip.Tip="Ctrl+F" />
@@ -577,7 +577,7 @@
 
                 <ListBox Grid.Column="4" ItemsSource="{Binding ViewOptions}"
                          SelectedItem="{Binding SelectedViewOption, Mode=TwoWay}"
-                         Width="216" Height="30" Background="Transparent" BorderThickness="0" Padding="0"
+                         Width="288" Height="30" Background="Transparent" BorderThickness="0" Padding="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          HorizontalAlignment="Right" ToolTip.Tip="切换模组清单 / 关系树 / 依赖图">
                   <ListBox.ItemsPanel>
