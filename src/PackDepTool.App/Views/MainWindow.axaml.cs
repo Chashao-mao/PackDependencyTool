@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private string? _startupPath;
     private DispatcherTimer? _pendingDeselectTimer;
     private string? _railStatePath;
+    private WebView? _starWeb;
 
     public MainWindow()
     {
@@ -54,10 +55,26 @@ public partial class MainWindow : Window
         DispatcherTimer.RunOnce(ReloadStarWeb, TimeSpan.FromMilliseconds(50));
     }
 
+    private void EnsureStarWeb()
+    {
+        if (_starWeb is not null) return;
+        _starWeb = new WebView();
+        _starWeb.Loaded += (_, _) => QueueStarWebReload();
+        StarHost.Content = _starWeb;
+    }
+
     private void ReloadStarWeb()
     {
-        var scene = _viewModel?.StarScene;
-        if (scene is null || _viewModel is null) return;
+        if (_viewModel?.IsStarView != true)
+        {
+            StarHost.Content = null;
+            _starWeb = null;
+            return;
+        }
+        var scene = _viewModel.StarScene;
+        if (scene is null) return;
+        EnsureStarWeb();
+        var web = _starWeb!;
         try
         {
             var directory = Path.Combine(_viewModel.DataDirectory, "star");
@@ -69,12 +86,12 @@ public partial class MainWindow : Window
             File.WriteAllText(htmlPath, StarWebViewHtml.Build(scene, scene.Center.Model.Id));
             try
             {
-                StarWeb.RegisterJavascriptObject("pdt", new StarBridge(_viewModel));
+                web.RegisterJavascriptObject("pdt", new StarBridge(_viewModel));
             }
             catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
             {
             }
-            StarWeb.Address = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.UtcNow.Ticks;
+            web.Address = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.UtcNow.Ticks;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -127,10 +144,10 @@ public partial class MainWindow : Window
         bool openToolbox = false)
     {
         _viewModel = viewModel;
-        StarWeb.Loaded += (_, _) => QueueStarWebReload();
         _viewModel.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(MainWindowViewModel.StarScene))
+            if (args.PropertyName is nameof(MainWindowViewModel.StarScene) or
+                nameof(MainWindowViewModel.SelectedViewOption))
                 QueueStarWebReload();
         };
         _startupPath = startupPath;

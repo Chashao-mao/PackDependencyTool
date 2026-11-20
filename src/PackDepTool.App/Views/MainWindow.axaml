@@ -862,7 +862,7 @@
 
             <!-- Graph canvas -->
             <Grid IsVisible="{Binding IsStarView}">
-              <wv:WebView x:Name="StarWeb" />
+              <ContentControl x:Name="StarHost" />
             </Grid>
 
             <Grid IsVisible="{Binding IsGraphView}">

@@ -21,7 +21,8 @@ public static class StarWebViewHtml
             id = node.Model.Id,
             name = node.Title,
             value = node.Subtitle,
-            symbolSize = ReferenceEquals(node, scene.Center) ? 54 : 34,
+            symbol = node.IconDataUrl is null ? "circle" : "image://" + node.IconDataUrl,
+            symbolSize = ReferenceEquals(node, scene.Center) ? 54 : 30,
             @fixed = ReferenceEquals(node, scene.Center),
             x = ReferenceEquals(node, scene.Center) ? 640 : (double?)null,
             y = ReferenceEquals(node, scene.Center) ? 380 : (double?)null,
@@ -90,74 +91,87 @@ public static class StarWebViewHtml
 {{hidden}}
 <script>
 const raw = {{json}};
-const byId = new Map(raw.nodes.map(n => [n.id, Object.assign({}, n, { children: [] })]));
+const degree = new Map(raw.nodes.map(n => [n.id, 0]));
 const parentOf = new Map();
 for (const link of raw.links) {
-  if (!parentOf.has(link.source) && byId.has(link.source) && byId.has(link.target)) {
-    parentOf.set(link.source, link.target);
-  }
+  degree.set(link.source, (degree.get(link.source) || 0) + 1);
+  degree.set(link.target, (degree.get(link.target) || 0) + 1);
+  if (!parentOf.has(link.source)) parentOf.set(link.source, link.target);
 }
 const childrenOf = new Map(raw.nodes.map(n => [n.id, []]));
-const roots = [];
+for (const [child, parent] of parentOf) {
+  if (childrenOf.has(parent)) childrenOf.get(parent).push(child);
+}
+const depth = new Map(raw.nodes.map(n => [n.id, 0]));
+const roots = raw.nodes.filter(n => !parentOf.has(n.id)).map(n => n.id);
+const queue = roots.length ? roots.slice() : [raw.nodes[0] && raw.nodes[0].id];
+for (const id of queue) depth.set(id, 0);
+while (queue.length) {
+  const current = queue.shift();
+  for (const child of (childrenOf.get(current) || [])) {
+    if (depth.get(child) > depth.get(current) + 1) continue;
+    depth.set(child, depth.get(current) + 1);
+    queue.push(child);
+  }
+}
+const layers = new Map();
 for (const node of raw.nodes) {
-  const parent = parentOf.get(node.id);
-  if (parent) childrenOf.get(parent).push(node.id);
-  else roots.push(node.id);
+  const d = depth.get(node.id) ?? 0;
+  if (!layers.has(d)) layers.set(d, []);
+  layers.get(d).push(node);
 }
-if (roots.length === 0 && raw.nodes.length) roots.push(raw.nodes[0].id);
-
-function attach(id, seen, depth) {
-  if (seen.has(id)) return null;
-  seen.add(id);
-  const node = byId.get(id);
-  if (!node) return null;
-  const childIds = (childrenOf.get(id) || []).filter(child => !seen.has(child));
-  node.children = childIds.map(child => attach(child, seen, depth + 1)).filter(Boolean);
-  node.symbolSize = Math.min(30, 7 + (childrenOf.get(id) || []).length * 1.8);
-  node.label = {
-    show: depth <= 1 || (childrenOf.get(id) || []).length > 1,
-    position: 'top',
-    color: '#E5E7EB',
-    fontSize: depth <= 1 ? 12 : 10,
-    fontWeight: depth <= 1 ? 'bold' : 'normal'
-  };
-  return node;
+const maxDepth = Math.max(1, ...layers.keys());
+for (const [d, list] of layers) {
+  const radius = d === 0 ? 0 : 130 + d * Math.max(80, 520 / maxDepth);
+  for (let i = 0; i < list.length; i++) {
+    const angle = list.length === 1 ? 0 : (Math.PI * 2 * i / list.length) - Math.PI / 2;
+    list[i].x = Math.cos(angle) * radius;
+    list[i].y = Math.sin(angle) * radius;
+    list[i].symbolSize = d === 0 ? 46 : Math.min(30, 10 + Math.min(14, (degree.get(list[i].id) || 0) * 1.2));
+    list[i].label = {
+      show: d <= 1 || (degree.get(list[i].id) || 0) >= 6,
+      position: 'bottom',
+      color: '#E5E7EB',
+      fontSize: d === 0 ? 13 : 10,
+      fontWeight: d === 0 ? 'bold' : 'normal',
+      formatter: '{b}'
+    };
+  }
 }
-const seen = new Set();
-const galaxy = {
-  id: '__pack__',
-  name: '整合包',
-  value: raw.nodes.length + ' 个模组',
-  symbolSize: 30,
-  itemStyle: { color: '#D75A8A', borderColor: '#F3F5F8', borderWidth: 2 },
-  label: { show: true, position: 'top', color: '#F3F5F8', fontSize: 14, fontWeight: 'bold' },
-  children: roots.map(id => attach(id, seen, 1)).filter(Boolean)
-};
+raw.nodes.forEach((node, index) => {
+  const d = depth.get(node.id) ?? 0;
+  if (d === 0) {
+    const angle = (Math.PI * 2 * index / Math.max(1, layers.get(0).length)) - Math.PI / 2;
+    node.x = Math.cos(angle) * 36;
+    node.y = Math.sin(angle) * 36;
+  }
+});
 const chart = echarts.init(document.getElementById('chart'), null, { renderer: 'canvas' });
 chart.setOption({
   backgroundColor: '#0c0e12',
-  animationDuration: 900,
-  animationEasingUpdate: 'quinticInOut',
+  animation: false,
   tooltip: {
     backgroundColor: 'rgba(18,23,32,.96)',
     borderColor: '#334155',
     textStyle: { color: '#e5e7eb', fontSize: 11 },
-    formatter: p => '<b>' + p.data.name + '</b><br/>' + (p.data.value || '')
+    formatter: p => p.dataType === 'node'
+      ? '<b>' + p.data.name + '</b><br/>' + (p.data.value || '')
+      : (p.data.source + ' → ' + p.data.target)
   },
   series: [{
-    type: 'tree',
-    layout: 'radial',
-    data: [galaxy],
+    type: 'graph',
+    layout: 'none',
+    zoom: 0.62,
     roam: true,
-    expandAndCollapse: false,
-    initialTreeDepth: -1,
-    symbol: 'circle',
-    edgeShape: 'curve',
-    lineStyle: { color: '#3b82f6', width: 1.1, opacity: 0.55, curveness: 0.15 },
-    label: { show: true, position: 'top', color: '#E5E7EB', fontSize: 10 },
-    emphasis: { focus: 'descendant', lineStyle: { width: 2.5, opacity: 1 } },
-    animationDuration: 900,
-    top: '6%', left: '6%', right: '6%', bottom: '6%'
+    draggable: true,
+    focusNodeAdjacency: true,
+    data: raw.nodes,
+    links: raw.links,
+    edgeSymbol: ['none', 'arrow'],
+    edgeSymbolSize: [0, 6],
+    label: { show: false },
+    lineStyle: { color: '#3b82f6', width: 0.9, opacity: 0.35, curveness: 0.08 },
+    emphasis: { focus: 'adjacency', lineStyle: { width: 2.2, opacity: 1 } }
   }]
 });
 chart.on('click', p => {

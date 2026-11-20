@@ -26,6 +26,9 @@ public sealed class StarNodeVm
     public string Subtitle => $"{Model.Id} · {Model.DisplayVersion}";
     public Color StatusColor => GraphPalette.StatusColor(Model.Status);
     public Color LoaderColor => GraphPalette.LoaderColor(Model.Loader);
+    public string? IconDataUrl => Model.IconData is { Length: > 0 }
+        ? "data:image/png;base64," + Convert.ToBase64String(Model.IconData)
+        : null;
 }
 
 public sealed class StarEdgeVm
