@@ -9,6 +9,7 @@ public sealed class AppPaths
 {
     public const string PortableFlagName = "portable.flag";
     public const string DataDirectoryEnvironmentVariable = "PACKDEP_DATA_DIR";
+    public const string PreferredDataDirectory = @"E:\PackDependencyTool\data";
 
     public AppPaths(string dataDirectory)
     {
@@ -41,6 +42,13 @@ public sealed class AppPaths
                 ? expanded
                 : Path.Combine(baseDirectory, expanded);
             return new AppPaths(resolved);
+        }
+
+        if (IsWritableDirectory(PreferredDataDirectory))
+        {
+            TryMigrateLegacyData(PreferredDataDirectory);
+            TryCopyFromPortableData(Path.Combine(baseDirectory, "data"), PreferredDataDirectory);
+            return new AppPaths(PreferredDataDirectory);
         }
 
         var portableFlag = Path.Combine(baseDirectory, PortableFlagName);
@@ -130,6 +138,22 @@ public sealed class AppPaths
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Migration is best effort; the app can start with fresh portable data.
+        }
+    }
+
+    private static void TryCopyFromPortableData(string source, string target)
+    {
+        try
+        {
+            if (!Directory.Exists(source) || !Directory.Exists(target)) return;
+            if (File.Exists(Path.Combine(target, "settings.json"))) return;
+            foreach (var file in Directory.EnumerateFiles(source))
+                CopyFile(file, Path.Combine(target, Path.GetFileName(file)));
+            foreach (var directory in Directory.EnumerateDirectories(source))
+                CopyDirectory(directory, Path.Combine(target, Path.GetFileName(directory)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
         }
     }
 

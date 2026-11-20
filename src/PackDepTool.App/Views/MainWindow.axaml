@@ -860,7 +860,11 @@
             </Grid>
 
             <!-- Graph canvas -->
-            <Grid IsVisible="{Binding IsGraphSurface}">
+            <Grid IsVisible="{Binding IsStarView}">
+              <controls:StarGraphView x:Name="StarGraph" Scene="{Binding StarScene}" />
+            </Grid>
+
+            <Grid IsVisible="{Binding IsGraphView}">
               <controls:DependencyGraphView x:Name="GraphView"
                                             Scene="{Binding Scene}"
                                             Background="{DynamicResource GraphBackground}" />

@@ -316,6 +316,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _blastRadiusDetail = string.Empty;
     private IReadOnlyList<JarConflict> _jarConflicts = [];
     [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
+    [ObservableProperty] private StarScene? _starScene;
     [ObservableProperty] private string _treeDirection = "requires";
     [ObservableProperty] private bool _treeOnlyConnected;
     public bool TreeUsesRequires => string.Equals(TreeDirection, "requires", StringComparison.OrdinalIgnoreCase);
@@ -408,6 +409,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (!string.IsNullOrWhiteSpace(last) && Directory.Exists(last))
                 target = last;
         }
+        var previewPack = Environment.GetEnvironmentVariable("PDT_PACK");
+        if (!string.IsNullOrWhiteSpace(previewPack) && Directory.Exists(previewPack))
+            target = previewPack;
 
         if (!string.IsNullOrWhiteSpace(target))
             await OpenPackAsync(target, autoScan: true);
@@ -2035,7 +2039,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         RefreshNodeInsights();
         if (IsStarView && value is not null && !_suppressSelectionSync)
-            _ = RelayoutAsync();
+            BuildStarScene();
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
     }
@@ -2066,7 +2070,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStarView));
         OnPropertyChanged(nameof(IsGraphSurface));
         if (IsTreeView) BuildDependencyTree();
-        if (IsStarView) _ = RelayoutWhenIdleAsync();
+        if (IsStarView)
+        {
+            ShowDetailsPanel = false;
+            BuildStarScene();
+        }
 
         if (IsGraphView)
         {
@@ -4981,6 +4989,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(InstalledModCount));
 
         RebuildNodeList(nodeVms, term);
+        if (IsStarView) BuildStarScene();
         if (IsStarView)
         {
             Dispatcher.UIThread.Post(() => _graphView?.FitToView(), DispatcherPriority.Loaded);
@@ -5630,6 +5639,95 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         await _window.Clipboard.SetTextAsync(nodeId);
         StatusText = $"已复制 modId：{nodeId}";
+    }
+
+    public void RecenterStar(string id)
+    {
+        var item = NodeItems.FirstOrDefault(node => string.Equals(node.Id, id, StringComparison.OrdinalIgnoreCase));
+        if (item is null) return;
+        _suppressSelectionSync = true;
+        SelectedNodeItem = item;
+        _suppressSelectionSync = false;
+        _selectedNodeId = item.Id;
+        BuildStarScene();
+    }
+
+    private void BuildStarScene()
+    {
+        if (_graph is null || NodeItems.Count == 0)
+        {
+            StarScene = null;
+            return;
+        }
+        var nodes = NodeItems
+            .Where(item => !item.Model.IsSynthetic)
+            .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        if (nodes.Count == 0)
+        {
+            StarScene = null;
+            return;
+        }
+        var centerId = _selectedNodeId;
+        if (string.IsNullOrWhiteSpace(centerId) || !nodes.ContainsKey(centerId))
+            centerId = nodes.Keys.First();
+
+        var adjacency = nodes.Keys.ToDictionary(id => id, _ => new List<string>(), StringComparer.OrdinalIgnoreCase);
+        foreach (var edge in _graph.Edges.Where(edge => edge.Type != EdgeType.Incompatible && edge.From != edge.To))
+        {
+            if (!adjacency.ContainsKey(edge.From) || !adjacency.ContainsKey(edge.To)) continue;
+            if (!adjacency[edge.From].Contains(edge.To, StringComparer.OrdinalIgnoreCase))
+                adjacency[edge.From].Add(edge.To);
+            if (!adjacency[edge.To].Contains(edge.From, StringComparer.OrdinalIgnoreCase))
+                adjacency[edge.To].Add(edge.From);
+        }
+
+        const int limit = 32;
+        var depth = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { [centerId] = 0 };
+        var queue = new Queue<string>();
+        queue.Enqueue(centerId);
+        while (queue.Count > 0 && depth.Count < limit)
+        {
+            var current = queue.Dequeue();
+            if (depth[current] >= 2) continue;
+            foreach (var next in adjacency[current])
+            {
+                if (depth.ContainsKey(next)) continue;
+                depth[next] = depth[current] + 1;
+                queue.Enqueue(next);
+                if (depth.Count >= limit) break;
+            }
+        }
+
+        var visible = depth.Keys
+            .Select(id => nodes[id])
+            .OrderBy(item => depth[item.Id])
+            .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var center = visible.First(item => string.Equals(item.Id, centerId, StringComparison.OrdinalIgnoreCase));
+        var starNodes = visible.Select(item => new StarNodeVm
+        {
+            Model = item.Model,
+            Ring = depth[item.Id],
+        }).ToList();
+        var byId = starNodes.ToDictionary(node => node.Model.Id, StringComparer.OrdinalIgnoreCase);
+        var starEdges = _graph.Edges
+            .Where(edge => byId.ContainsKey(edge.From) && byId.ContainsKey(edge.To))
+            .Select(edge => new StarEdgeVm
+            {
+                From = byId[edge.From],
+                To = byId[edge.To],
+                Type = edge.Type,
+                Manual = edge.ManualOverride,
+            })
+            .ToList();
+        StarScene = new StarScene
+        {
+            Center = byId[centerId],
+            Nodes = starNodes,
+            Edges = starEdges,
+            HiddenCount = Math.Max(0, nodes.Count - visible.Count),
+        };
     }
 
     private void BuildDependencyTree()

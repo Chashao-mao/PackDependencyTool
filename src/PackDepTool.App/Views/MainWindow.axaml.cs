@@ -106,6 +106,7 @@ public partial class MainWindow : Window
                 nameof(MainWindowViewModel.SelectedConnectionLineMode))
                 QueueDependencyRailOverlayUpdate();
         };
+        StarGraph.RecenterRequested += id => _viewModel?.RecenterStar(id);
         GraphView.QuickLinkToRequested += (fromId, toId, type) =>
             _ = viewModel.CreateManualLinkAsync(fromId, toId, type);
         _ = viewModel.InitializeAsync(
