@@ -4,6 +4,7 @@
         xmlns:vm="using:PackDepTool.App.ViewModels"
         xmlns:controls="using:PackDepTool.App.Controls"
         xmlns:views="using:PackDepTool.App.Views"
+        xmlns:wv="clr-namespace:WebViewControl;assembly=WebViewControl.Avalonia"
         xmlns:analysis="using:PackDepTool.Core.Analysis"
         x:Class="PackDepTool.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -861,7 +862,7 @@
 
             <!-- Graph canvas -->
             <Grid IsVisible="{Binding IsStarView}">
-              <controls:StarGraphView x:Name="StarGraph" Scene="{Binding StarScene}" />
+              <wv:WebView x:Name="StarWeb" />
             </Grid>
 
             <Grid IsVisible="{Binding IsGraphView}">

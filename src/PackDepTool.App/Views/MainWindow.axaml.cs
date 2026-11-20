@@ -9,7 +9,9 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using PackDepTool.App.Services;
 using PackDepTool.App.ViewModels;
+using WebViewControl;
 using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
 
@@ -45,6 +47,32 @@ public partial class MainWindow : Window
         ModuleList.AddHandler(ScrollViewer.ScrollChangedEvent,
             (_, _) => QueueDependencyRailOverlayUpdate(), RoutingStrategies.Bubble, handledEventsToo: true);
         Closing += (_, _) => _viewModel?.SaveWindowState(this);
+    }
+
+    private void QueueStarWebReload()
+    {
+        DispatcherTimer.RunOnce(ReloadStarWeb, TimeSpan.FromMilliseconds(50));
+    }
+
+    private void ReloadStarWeb()
+    {
+        var scene = _viewModel?.StarScene;
+        if (scene is null || _viewModel is null) return;
+        try
+        {
+            var directory = Path.Combine(_viewModel.DataDirectory, "star");
+            Directory.CreateDirectory(directory);
+            var source = Path.Combine(AppContext.BaseDirectory, "Assets", "echarts.min.js");
+            var target = Path.Combine(directory, "echarts.min.js");
+            if (File.Exists(source) && !File.Exists(target)) File.Copy(source, target);
+            var htmlPath = Path.Combine(directory, "star.html");
+            File.WriteAllText(htmlPath, StarWebViewHtml.Build(scene, scene.Center.Model.Id));
+            StarWeb.Address = new Uri(htmlPath).AbsoluteUri;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The star view is optional; keep the rest of the window usable.
+        }
     }
 
     private void ConstrainHomeContent()
@@ -86,6 +114,11 @@ public partial class MainWindow : Window
         bool openToolbox = false)
     {
         _viewModel = viewModel;
+        _viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.StarScene))
+                QueueStarWebReload();
+        };
         _startupPath = startupPath;
         _railStatePath = Path.Combine(viewModel.DataDirectory, "rail-state.json");
         viewModel.AttachGraph(GraphView);
@@ -106,12 +139,12 @@ public partial class MainWindow : Window
                 nameof(MainWindowViewModel.SelectedConnectionLineMode))
                 QueueDependencyRailOverlayUpdate();
         };
-        StarGraph.RecenterRequested += id => _viewModel?.RecenterStar(id);
         GraphView.QuickLinkToRequested += (fromId, toId, type) =>
             _ = viewModel.CreateManualLinkAsync(fromId, toId, type);
         _ = viewModel.InitializeAsync(
             startupPath, openSettings, addLinkFrom, openDownloadPack, openDownloadMod, downloadQuery,
             selectNodeId, exportPclPath, openGameSetup, installGameSpec, openLoaderSwitch, openGraph, openToolbox);
+        QueueStarWebReload();
     }
 
     private void OnNodeItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
