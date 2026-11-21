@@ -1100,60 +1100,29 @@ public sealed class StarGalaxyLayoutEngine
         };
         angles[cluster.HubId] = -Math.PI / 2;
 
-        var maxRing = rings.Values.DefaultIfEmpty(0).Max();
-        var placedBands = 0;
-        var previousRadius = 0.0;
-
-        for (var ring = 1; ring <= maxRing; ring++)
+        // Dandelion / phyllotaxis instead of rigid concentric orbits. Direct
+        // dependencies stay near the hub, deeper dependencies drift outward,
+        // but no two nodes share a visible "orbit" ring.
+        var ordered = cluster.NodeIds
+            .Where(id => !string.Equals(id, cluster.HubId, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(id => depths.GetValueOrDefault(id, maxDepth + 1))
+            .ThenByDescending(id => score.GetValueOrDefault(id))
+            .ThenBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        const double goldenAngle = 2.399963229728653;
+        var spacing = Math.Max(28, opt.MinNodeSpacing * 0.82);
+        for (var i = 0; i < ordered.Count; i++)
         {
-            var nodes = cluster.NodeIds
-                .Where(id => rings.GetValueOrDefault(id) == ring &&
-                             !string.Equals(id, cluster.HubId, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            if (nodes.Count == 0) continue;
-
-            var ordered = ring == 1
-                ? nodes.OrderByDescending(id => score.GetValueOrDefault(id))
-                    .ThenBy(id => id, StringComparer.OrdinalIgnoreCase)
-                : nodes.OrderBy(id => ParentAngle(id, ring, adjacency, rings, angles))
-                    .ThenBy(id => id, StringComparer.OrdinalIgnoreCase);
-
-            var list = ordered.ToList();
-
-            // Wide dependency layers are folded into concentric sub-rings so a
-            // hub with 50 direct children becomes a round spiral band instead of
-            // one gigantic, sparse circle.
-            var subRingCount = Math.Max(1,
-                (int)Math.Ceiling(list.Count / (double)Math.Max(1, opt.SubRingCapacity)));
-            var perSubRing = (int)Math.Ceiling(list.Count / (double)subRingCount);
-            for (var subRing = 0; subRing < subRingCount; subRing++)
-            {
-                var chunk = list.Skip(subRing * perSubRing).Take(perSubRing).ToList();
-                if (chunk.Count == 0) continue;
-
-                var fit = chunk.Count <= 1
-                    ? 0
-                    : opt.MinNodeSpacing / (2 * Math.Sin(Math.PI / chunk.Count));
-                var baseRadius = opt.BaseRingRadius + placedBands * opt.RingGap;
-                var radius = Math.Max(baseRadius, fit);
-                if (previousRadius > 0) radius = Math.Max(radius, previousRadius + opt.RingGap);
-
-                var phase = opt.Seed * 0.0001 + cluster.Index * 0.41 + placedBands * 0.17;
-                for (var i = 0; i < chunk.Count; i++)
-                {
-                    var angle = -Math.PI / 2 + 2 * Math.PI * i / chunk.Count + phase;
-                    angles[chunk[i]] = angle;
-                    positions[chunk[i]] = new LayoutPoint(Math.Cos(angle) * radius,
-                        Math.Sin(angle) * radius);
-                }
-                previousRadius = radius;
-                placedBands++;
-            }
+            var id = ordered[i];
+            var depth = Math.Min(depths.GetValueOrDefault(id, maxDepth + 1), 6);
+            var depthScale = 0.55 + Math.Min(depth, 5) * 0.16;
+            var radius = spacing * depthScale * Math.Sqrt(i + 1);
+            var angle = i * goldenAngle + cluster.Index * 0.37;
+            positions[id] = new LayoutPoint(Math.Cos(angle) * radius, Math.Sin(angle) * radius);
+            angles[id] = angle;
         }
 
         RelaxCollisions(cluster, positions, opt);
-        // 72px of breathing room covers the labels that extend past the node
-        // circles; otherwise neighboring galaxies visually touch their captions.
         var galaxyRadius = positions.Values
             .Select(point => Math.Sqrt(point.X * point.X + point.Y * point.Y))
             .DefaultIfEmpty(0)

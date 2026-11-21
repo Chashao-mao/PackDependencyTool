@@ -1307,16 +1307,22 @@ public sealed class StarGalaxyView : Control
             var border = Paint(dim ? WithAlpha(ToArgb(node.BorderColor), 70) : ToArgb(node.BorderColor),
                 true, node.IsHub ? 2.2f : 1.4f);
 
-            if (node.IsHub && !node.IsIsolatedGalaxy)
-                canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)(radius + 4),
-                    Paint(dim ? 0x1AF5C542u : 0x33F5C542u, true, 2f));
+            if (node.IsHub && !node.IsIsolatedGalaxy && zoom >= 0.55)
+                canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)(radius + 3),
+                    Paint(dim ? 0x14F5C542u : 0x22F5C542u, true, 1.6f));
 
             canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)radius, fill);
             canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)radius, border);
 
-            var innerRadius = Math.Max(2, radius - (node.IsHub ? 4 : 3));
+            var innerRadius = Math.Max(1.5, radius - (node.IsHub ? 3 : 2));
             var icon = index < frame.Icons.Length ? frame.Icons[index] : null;
-            if (icon is not null)
+            // L1/L2 are dot maps; icons only become the node body at L3/L4
+            // (or when the user is inspecting a specific node).
+            var showIcon = icon is not null &&
+                           (zoom >= 0.72 ||
+                            string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(node.Id, frame.HoverId, StringComparison.OrdinalIgnoreCase));
+            if (showIcon)
             {
                 canvas.Save();
                 using var clip = new SKPath();
@@ -1336,7 +1342,7 @@ public sealed class StarGalaxyView : Control
                 // additionally show the M/CJK initial.
                 canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)(innerRadius * 0.62),
                     Paint(WithAlpha(ToArgb(node.LoaderColor), dim ? (byte)100 : (byte)225), false));
-                if (radius >= 9)
+                if (radius >= 9 && zoom >= 0.72)
                 {
                     var initial = FirstGlyph(node.Title);
                     DrawScreenText(canvas, initial, (float)screen.X,
@@ -1345,9 +1351,9 @@ public sealed class StarGalaxyView : Control
                 }
             }
 
-            if (radius >= 9)
+            if (radius >= 7 && zoom >= 0.5)
             {
-                var dot = Math.Max(2.5f, (float)radius * 0.2f);
+                var dot = Math.Max(2.0f, (float)radius * 0.2f);
                 var dotCenter = new SKPoint((float)(screen.X + radius * 0.68), (float)(screen.Y - radius * 0.68));
                 canvas.DrawCircle(dotCenter, dot + 1.5f, Paint(0xFF10141C, false));
                 canvas.DrawCircle(dotCenter, dot,
@@ -1715,8 +1721,8 @@ public sealed class StarGalaxyView : Control
         // galaxy; keep its markers small so icons cannot dominate the canvas.
         if (node.IsIsolatedGalaxy)
             return (float)Math.Clamp(node.Radius * zoom * 0.55, 4.0, 9.0);
-        var minimum = node.IsHub ? 11.0 : 7.5;
-        var maximum = node.IsHub ? 40.0 : MaxScreenNodeRadius;
+        var minimum = node.IsHub ? 5.0 : 2.4;
+        var maximum = node.IsHub ? 26.0 : 14.0;
         return (float)Math.Clamp(node.Radius * zoom, minimum, maximum);
     }
 
