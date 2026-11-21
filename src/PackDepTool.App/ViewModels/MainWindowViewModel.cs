@@ -238,6 +238,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private int _errorCount;
     [ObservableProperty] private int _warningCount;
     [ObservableProperty] private int _infoCount;
+    [ObservableProperty] private int _relationCount;
+    [ObservableProperty] private int _dashboardHealthScore;
+    [ObservableProperty] private string _dashboardHealthLabel = "等待扫描";
+    public ObservableCollection<DashboardBarItem> DashboardBars { get; } = [];
+    public ObservableCollection<DashboardProblemItem> DashboardProblems { get; } = [];
+    public bool HasDashboardProblems => DashboardProblems.Count > 0;
+    public bool HasDashboardBars => DashboardBars.Count > 0;
+    public IBrush DashboardHealthBrush => DashboardHealthScore switch
+    {
+        >= 90 => new SolidColorBrush(Color.Parse("#4ADE80")),
+        >= 70 => new SolidColorBrush(Color.Parse("#FBBF24")),
+        _ => new SolidColorBrush(Color.Parse("#F87171")),
+    };
 
     [ObservableProperty] private string _detailTitle = "未选择";
     [ObservableProperty] private string _detailSubtitle = "在图中点选节点或关系查看详情";
@@ -5298,6 +5311,73 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedManualLink = null;
         SelectedIssue = null;
         _suppressSelectionSync = false;
+        RefreshDashboard();
+    }
+
+    private void RefreshDashboard()
+    {
+        if (_graph is null)
+        {
+            RelationCount = 0;
+            DashboardHealthScore = 0;
+            DashboardHealthLabel = "等待扫描";
+            DashboardBars.Clear();
+            DashboardProblems.Clear();
+            OnPropertyChanged(nameof(HasDashboardProblems));
+            OnPropertyChanged(nameof(HasDashboardBars));
+            return;
+        }
+
+        var required = _graph.Edges.Count(edge => edge.Type == EdgeType.Requires);
+        var optional = _graph.Edges.Count(edge => edge.Type == EdgeType.Optional);
+        var incompatible = _graph.Edges.Count(edge => edge.Type == EdgeType.Incompatible);
+        var embedded = _graph.Edges.Count(edge => edge.Type == EdgeType.Embedded);
+        RelationCount = _graph.Edges.Count;
+        DashboardBars.Clear();
+        var total = Math.Max(1, RelationCount);
+        AddBar("必需依赖", required, required * 100.0 / total, "#60A5FA");
+        AddBar("可选/推荐", optional, optional * 100.0 / total, "#34D399");
+        AddBar("不兼容", incompatible, incompatible * 100.0 / total, "#F87171");
+        AddBar("内嵌 JAR", embedded, embedded * 100.0 / total, "#A78BFA");
+        OnPropertyChanged(nameof(HasDashboardBars));
+
+        DashboardProblems.Clear();
+        foreach (var node in _graph.Nodes
+                     .Where(node => node.Status is ModStatus.Missing or ModStatus.Conflict or ModStatus.VersionMismatch)
+                     .OrderBy(node => node.Status)
+                     .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
+                     .Take(6))
+        {
+            var status = node.Status switch
+            {
+                ModStatus.Missing => "缺失",
+                ModStatus.Conflict => "冲突",
+                _ => "版本不匹配",
+            };
+            DashboardProblems.Add(new DashboardProblemItem(
+                node.Name, $"{node.DisplayVersion} · {node.Id}", status,
+                new SolidColorBrush(node.Status switch
+                {
+                    ModStatus.Missing => Color.Parse("#F87171"),
+                    ModStatus.Conflict => Color.Parse("#FBBF24"),
+                    _ => Color.Parse("#F97316"),
+                })));
+        }
+        OnPropertyChanged(nameof(HasDashboardProblems));
+
+        var penalties = MissingCount * 8 + ConflictCount * 6 + MismatchCount * 3;
+        DashboardHealthScore = Math.Clamp(100 - penalties, 0, 100);
+        DashboardHealthLabel = DashboardHealthScore switch
+        {
+            >= 90 => "状态良好",
+            >= 70 => "需要关注",
+            _ => "建议修复",
+        };
+        OnPropertyChanged(nameof(DashboardHealthBrush));
+
+        void AddBar(string label, int count, double percent, string color) =>
+            DashboardBars.Add(new DashboardBarItem(label, count, Math.Clamp(percent, 0, 100),
+                new SolidColorBrush(Color.Parse(color)), $"{count} / {RelationCount}"));
     }
 
     private bool IssueVisibleForFilters(AnalysisIssue issue)
