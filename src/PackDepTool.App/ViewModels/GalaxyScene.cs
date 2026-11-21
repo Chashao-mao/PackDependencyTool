@@ -94,6 +94,7 @@ public sealed class GalaxyScene
                 LabelRect = placement.LabelRect,
                 IsOptionalRelated = optional.Contains(model.Id) && !placement.IsHub,
                 IsIncompatible = incompatible.Contains(model.Id),
+                IsIsolatedGalaxy = layout.Galaxies[placement.GalaxyIndex].IsIsolated,
                 LabelRank = labelRanks.GetValueOrDefault(model.Id, 99),
             };
             nodeVms.Add(vm);
@@ -160,6 +161,7 @@ public sealed class GalaxyNodeVm
     public required LayoutRect LabelRect { get; set; }
     public bool IsOptionalRelated { get; init; }
     public bool IsIncompatible { get; init; }
+    public bool IsIsolatedGalaxy { get; init; }
 
     /// <summary>0 = hub, then by degree inside the galaxy. Used for overview-level labels.</summary>
     public int LabelRank { get; init; } = 99;
@@ -172,21 +174,25 @@ public sealed class GalaxyNodeVm
     public Color StatusColor => GraphPalette.StatusColor(Model.Status);
     public Color LoaderColor => GraphPalette.LoaderColor(Model.Loader);
 
-    public Color FillColor => IsHub
-        ? Blend(Color.Parse("#17120A"), Color.Parse("#F5C542"), 0.18)
-        : Blend(Color.Parse("#0E1118"), LoaderColor, Ring == 1 ? 0.26 : 0.16);
+    public Color FillColor => IsIsolatedGalaxy
+        ? Blend(Color.Parse("#0E1118"), LoaderColor, 0.12)
+        : IsHub
+            ? Blend(Color.Parse("#17120A"), Color.Parse("#F5C542"), 0.18)
+            : Blend(Color.Parse("#0E1118"), LoaderColor, Ring == 1 ? 0.26 : 0.16);
 
-    public Color BorderColor => IsIncompatible
-        ? Color.Parse("#F87171")
-        : IsDisabled
-            ? Color.Parse("#64748B")
-            : IsHub
-                ? Color.Parse("#F5C542")
-                : IsOptionalRelated
-                    ? Color.Parse("#34D399")
-                    : Ring == 1
-                        ? Color.Parse("#3B82F6")
-                        : Color.Parse("#64748B");
+    public Color BorderColor => IsIsolatedGalaxy
+        ? Color.Parse("#475569")
+        : IsIncompatible
+            ? Color.Parse("#F87171")
+            : IsDisabled
+                ? Color.Parse("#64748B")
+                : IsHub
+                    ? Color.Parse("#F5C542")
+                    : IsOptionalRelated
+                        ? Color.Parse("#34D399")
+                        : Ring == 1
+                            ? Color.Parse("#3B82F6")
+                            : Color.Parse("#64748B");
 
     public bool IsDisabled => Model.Status == ModStatus.Missing;
 

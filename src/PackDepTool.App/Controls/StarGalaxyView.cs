@@ -264,14 +264,20 @@ public sealed class StarGalaxyView : Control
     private void FocusGalaxy(int galaxyIndex)
     {
         if (Scene is null || galaxyIndex < 0 || galaxyIndex >= Scene.Galaxies.Count) return;
+        ZoomToGalaxy(galaxyIndex);
+        if (Scene.ById.TryGetValue(Scene.Galaxies[galaxyIndex].HubId, out var hub)) SelectNode(hub);
+        Refresh();
+    }
+
+    private void ZoomToGalaxy(int galaxyIndex)
+    {
+        if (Scene is null || galaxyIndex < 0 || galaxyIndex >= Scene.Galaxies.Count) return;
         var galaxy = Scene.Galaxies[galaxyIndex];
         _camera = new StarGalaxyCamera(
             1.0,
             Bounds.Width / 2 - galaxy.CenterX,
             Bounds.Height / 2 - galaxy.CenterY);
         _cameraUserAdjusted = true;
-        if (Scene.ById.TryGetValue(galaxy.HubId, out var hub)) SelectNode(hub);
-        Refresh();
     }
 
     private void ApplySearch()
@@ -416,7 +422,13 @@ public sealed class StarGalaxyView : Control
             }
             return;
         }
-        if (!_dragMoved) SelectNode(node);
+        if (!_dragMoved)
+        {
+            SelectNode(node);
+            // Encyclopedia-like drill-down: a hub click at overview scale opens
+            // its local relationship map, while leaf clicks only select.
+            if (node.IsHub && _camera.Zoom < 0.5) ZoomToGalaxy(node.GalaxyIndex);
+        }
         Refresh();
     }
 
@@ -891,17 +903,22 @@ public sealed class StarGalaxyView : Control
         using var manual = new SKPath();
         var view = new SKRect((float)frame.Bounds.X - 40, (float)frame.Bounds.Y - 40,
             (float)frame.Bounds.Right + 40, (float)frame.Bounds.Bottom + 40);
+        var overview = camera.Zoom < 0.32;
 
         foreach (var edge in scene.Edges)
         {
             if (edge.CrossGalaxy) continue;
+            var selected = IsEndpointSelected(frame, edge);
             if (edge.Type == EdgeType.Incompatible)
             {
-                if (!IsEndpointSelected(frame, edge)) continue;
+                if (!selected) continue;
             }
-            else if (!IsEndpointSelected(frame, edge) && IsSegmentVisible(edge, camera, view) is false)
+            else
             {
-                continue;
+                // At overview scale only solid requirements are worth drawing;
+                // optional/recommended/embedded dashes turn the map into noise.
+                if (overview && !selected && edge.Type != EdgeType.Requires) continue;
+                if (!selected && IsSegmentVisible(edge, camera, view) is false) continue;
             }
 
             var path = edge.Manual
@@ -918,7 +935,9 @@ public sealed class StarGalaxyView : Control
             path.LineTo((float)to.X, (float)to.Y);
         }
 
-        canvas.DrawPath(requires, Paint(0xCC3B82F6, true, 1.2f));
+        var requiresAlpha = overview ? 0x8C3B82F6u : 0xCC3B82F6u;
+        var requiresWidth = overview ? 0.9f : 1.2f;
+        canvas.DrawPath(requires, Paint(requiresAlpha, true, requiresWidth));
         canvas.DrawPath(optional, Paint(0xB394A3B8, true, 0.9f, dashed: true));
         canvas.DrawPath(embedded, Paint(0xCCA78BFA, true, 1.0f));
         canvas.DrawPath(manual, Paint(0xCCF5C542, true, 1.0f, dashed: true));
@@ -1023,7 +1042,7 @@ public sealed class StarGalaxyView : Control
             var border = Paint(dim ? WithAlpha(ToArgb(node.BorderColor), 70) : ToArgb(node.BorderColor),
                 true, node.IsHub ? 2.2f : 1.4f);
 
-            if (node.IsHub)
+            if (node.IsHub && !node.IsIsolatedGalaxy)
                 canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)(radius + 4),
                     Paint(dim ? 0x1AF5C542u : 0x33F5C542u, true, 2f));
 
@@ -1089,7 +1108,8 @@ public sealed class StarGalaxyView : Control
     private void DrawLabels(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene,
         StarGalaxyCamera camera, double zoom)
     {
-        var allLabels = zoom >= LabelZoomThreshold;
+        var allLabels = zoom >= 0.85;
+        var showTopMembers = zoom >= 0.35;
         var nodes = allLabels
             ? (IEnumerable<GalaxyNodeVm>)scene.Nodes
             : scene.Nodes
@@ -1100,13 +1120,21 @@ public sealed class StarGalaxyView : Control
                 .ThenBy(node => node.LabelRank)
                 .ThenByDescending(node => node.Degree)
                 .ThenBy(node => node.Id, StringComparer.OrdinalIgnoreCase);
-        var placedLabels = new List<SKRect>(64);
+        var placedLabels = new List<SKRect>(32);
 
         foreach (var node in nodes)
         {
             var isMatch = frame.HasSearch && frame.SearchMatches?.Contains(node.Id) == true;
             if (!node.ShowLabel && !node.IsHub) continue;
-            if (!allLabels && !node.IsHub && placedLabels.Count >= 48) break;
+            if (!allLabels)
+            {
+                var important = node.IsHub || isMatch ||
+                                string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) ||
+                                frame.Neighbors.Contains(node.Id) ||
+                                (showTopMembers && node.LabelRank <= 1);
+                if (!important) continue;
+                if (!node.IsHub && placedLabels.Count >= 40) break;
+            }
 
             var screen = camera.WorldToScreen(node.X, node.Y);
             var radius = ScreenRadius(node, zoom);
@@ -1138,9 +1166,12 @@ public sealed class StarGalaxyView : Control
             // galaxy stay readable, with a cheap screen-space collision pass.
             fontSize = node.IsHub ? HubLabelFontSize : LabelFontSize - 0.5f;
             var nodeGalaxy = scene.Galaxies[node.GalaxyIndex];
+            var maxLabelWidth = node.IsHub ? 240 : 170;
             text = node.IsHub && nodeGalaxy.IsIsolated
                 ? $"未连接 · {nodeGalaxy.NodeCount}"
-                : Ellipsize(node.Title, fontSize, 170);
+                : node.IsHub
+                    ? Ellipsize($"{node.Title} · {nodeGalaxy.NodeCount}", fontSize, maxLabelWidth)
+                    : Ellipsize(node.Title, fontSize, maxLabelWidth);
             var baseline = (float)(screen.Y + radius + 13);
             var textWidth = Measure(node.IsHub ? HubLabelFont : NodeLabelFont, text);
             var labelRect = new SKRect(
@@ -1308,7 +1339,7 @@ public sealed class StarGalaxyView : Control
 
     private void DrawHint(SKCanvas canvas, GalaxyFrameState frame)
     {
-        var text = "滚轮缩放 · 拖空白平移 · 拖节点移动 · 单击看关系 · 双击重生成星系";
+        var text = "滚轮缩放 · 拖空白平移 · 拖节点移动 · 单击枢纽聚焦 · 双击重生成 · 0 回总览";
         DrawScreenText(canvas, text, (float)frame.Bounds.Width / 2,
             (float)frame.Bounds.Height - 12, SKTextAlign.Center, LegendFont,
             Paint(0xFF475569, false));

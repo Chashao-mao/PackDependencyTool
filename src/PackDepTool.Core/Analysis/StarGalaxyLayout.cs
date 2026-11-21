@@ -1073,6 +1073,8 @@ public sealed class StarGalaxyLayoutEngine
         IReadOnlyDictionary<string, int> score,
         StarGalaxyOptions opt)
     {
+        if (cluster.IsIsolated) return BuildIsolatedGrid(cluster, opt);
+
         var depths = BfsDepths(cluster.Set, cluster.HubId, adjacency);
         var maxDepth = Math.Max(1, depths.Values.Where(depth => depth > 0).DefaultIfEmpty(1).Max());
         foreach (var id in cluster.NodeIds)
@@ -1149,6 +1151,35 @@ public sealed class StarGalaxyLayoutEngine
             .DefaultIfEmpty(0)
             .Max() + opt.NodeRadius + 72;
         return new ClusterLayout(cluster, angles, rings, positions, galaxyRadius);
+    }
+
+    private static ClusterLayout BuildIsolatedGrid(MutableCluster cluster, StarGalaxyOptions opt)
+    {
+        var ids = cluster.NodeIds
+            .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var columns = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(ids.Count)));
+        var rows = Math.Max(1, (int)Math.Ceiling(ids.Count / (double)columns));
+        var spacing = opt.MinNodeSpacing;
+
+        var angles = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var rings = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var positions = new Dictionary<string, LayoutPoint>(StringComparer.OrdinalIgnoreCase);
+        var maxExtent = 0.0;
+        for (var i = 0; i < ids.Count; i++)
+        {
+            var column = i % columns;
+            var row = i / columns;
+            var x = (column - (columns - 1) / 2.0) * spacing;
+            var y = (row - (rows - 1) / 2.0) * spacing;
+            positions[ids[i]] = new LayoutPoint(x, y);
+            angles[ids[i]] = 0;
+            rings[ids[i]] = 1;
+            maxExtent = Math.Max(maxExtent, Math.Max(Math.Abs(x), Math.Abs(y)));
+        }
+
+        return new ClusterLayout(cluster, angles, rings, positions,
+            maxExtent + opt.NodeRadius + 72);
     }
 
     private sealed record ClusterLayout(
