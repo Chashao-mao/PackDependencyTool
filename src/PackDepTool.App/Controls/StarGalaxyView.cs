@@ -107,6 +107,7 @@ public sealed class StarGalaxyView : Control
     private string? _pendingFocusNodeId;
     private bool _overviewCollapsed;
     private bool _showCrossGalaxyLines = true;
+    private bool _onlyRelated;
     private readonly Dictionary<string, (double X, double Y, LayoutRect Label)> _basePositions =
         new(StringComparer.OrdinalIgnoreCase);
     private Rect _crossToggleRect;
@@ -624,6 +625,12 @@ public sealed class StarGalaxyView : Control
             ResetPositions();
             e.Handled = true;
         }
+        else if (e.Key == Key.O)
+        {
+            _onlyRelated = !_onlyRelated;
+            Refresh();
+            e.Handled = true;
+        }
         else if (e.Key == Key.X)
         {
             _showCrossGalaxyLines = !_showCrossGalaxyLines;
@@ -1042,6 +1049,7 @@ public sealed class StarGalaxyView : Control
             Icons = BuildIconSnapshot(scene),
             UnconnectedIcons = BuildUnconnectedIconSnapshot(scene),
             Neighbors = BuildNeighbors(scene, selectedId ?? _hover?.Id),
+            OnlyRelated = _onlyRelated,
             SelectedGalaxy = GetSelectedGalaxy(scene, selectedId),
             SelectedDetails = BuildSelectionDetails(scene, selectedId),
             Pointer = _pointerScreen,
@@ -1220,6 +1228,7 @@ public sealed class StarGalaxyView : Control
         foreach (var edge in scene.Edges)
         {
             if (edge.CrossGalaxy) continue;
+            if (frame.OnlyRelated && frame.SelectedId is not null && !IsEndpointSelected(frame, edge)) continue;
             var selected = IsEndpointSelected(frame, edge);
             if (edge.Type == EdgeType.Incompatible)
             {
@@ -1290,7 +1299,7 @@ public sealed class StarGalaxyView : Control
     {
         var view = new SKRect((float)frame.Bounds.X - 40, (float)frame.Bounds.Y - 40,
             (float)frame.Bounds.Right + 40, (float)frame.Bounds.Bottom + 40);
-        if (_showCrossGalaxyLines && zoom >= 0.55 &&
+        if (_showCrossGalaxyLines && !frame.OnlyRelated && zoom >= 0.55 &&
             frame.SelectedId is null && frame.HoverId is null)
         {
             using var requires = new SKPath();
@@ -1347,6 +1356,9 @@ public sealed class StarGalaxyView : Control
             var searchDim = frame.HasSearch &&
                             (frame.SearchMatches is null || !frame.SearchMatches.Contains(node.Id));
             var focusId = frame.SelectedId ?? frame.HoverId;
+            if (frame.OnlyRelated && frame.SelectedId is not null &&
+                !string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) &&
+                !frame.Neighbors.Contains(node.Id)) continue;
             var focusDim = focusId is not null &&
                            !string.Equals(node.Id, focusId, StringComparison.OrdinalIgnoreCase) &&
                            !frame.Neighbors.Contains(node.Id);
@@ -1437,6 +1449,9 @@ public sealed class StarGalaxyView : Control
 
         foreach (var node in nodes)
         {
+            if (frame.OnlyRelated && frame.SelectedId is not null &&
+                !string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) &&
+                !frame.Neighbors.Contains(node.Id)) continue;
             var isMatch = frame.HasSearch && frame.SearchMatches?.Contains(node.Id) == true;
             if (!node.ShowLabel && !node.IsHub) continue;
             // The isolated group has a group caption above the grid; do not
@@ -1672,7 +1687,7 @@ public sealed class StarGalaxyView : Control
 
     private void DrawHint(SKCanvas canvas, GalaxyFrameState frame)
     {
-        var text = "滚轮缩放 · 拖空白平移 · 拖节点移动 · 单击枢纽聚焦 · 双击重生成 · X 跨星系线 · R 恢复默认布局 · 0 回总览";
+        var text = "滚轮缩放 · 拖空白平移 · 拖节点移动 · 单击枢纽聚焦 · 双击重生成 · X 跨星系线 · O 只看关联 · R 恢复默认布局 · 0 回总览";
         DrawScreenText(canvas, text, (float)frame.Bounds.Width / 2,
             (float)frame.Bounds.Height - 12, SKTextAlign.Center, LegendFont,
             Paint(0xFF475569, false));
@@ -1849,6 +1864,7 @@ public sealed class StarGalaxyView : Control
         public SKImage?[] Icons = [];
         public SKImage?[] UnconnectedIcons = [];
         public HashSet<string> Neighbors = [];
+        public bool OnlyRelated;
         public int SelectedGalaxy = -1;
         public SelectionDetails? SelectedDetails;
         public Point Pointer;
