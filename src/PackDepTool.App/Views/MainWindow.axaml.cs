@@ -11,7 +11,6 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using PackDepTool.App.Services;
 using PackDepTool.App.ViewModels;
-using WebViewControl;
 using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
 
@@ -23,7 +22,6 @@ public partial class MainWindow : Window
     private string? _startupPath;
     private DispatcherTimer? _pendingDeselectTimer;
     private string? _railStatePath;
-    private WebView? _starWeb;
 
     public MainWindow()
     {
@@ -49,61 +47,6 @@ public partial class MainWindow : Window
             (_, _) => QueueDependencyRailOverlayUpdate(), RoutingStrategies.Bubble, handledEventsToo: true);
         Closing += (_, _) => _viewModel?.SaveWindowState(this);
         Closed += (_, _) => Environment.Exit(0);
-    }
-
-    private void QueueStarWebReload()
-    {
-        DispatcherTimer.RunOnce(ReloadStarWeb, TimeSpan.FromMilliseconds(50));
-    }
-
-    private void EnsureStarWeb()
-    {
-        if (_starWeb is not null) return;
-        _starWeb = new WebView();
-        _starWeb.Loaded += (_, _) => QueueStarWebReload();
-        StarHost.Content = _starWeb;
-    }
-
-    private void ReloadStarWeb()
-    {
-        if (_viewModel?.IsStarView != true)
-        {
-            StarHost.Content = null;
-            _starWeb = null;
-            return;
-        }
-        var scene = _viewModel.StarScene;
-        if (scene is null) return;
-        EnsureStarWeb();
-        var web = _starWeb!;
-        try
-        {
-            var directory = Path.Combine(_viewModel.DataDirectory, "star");
-            Directory.CreateDirectory(directory);
-            var source = Path.Combine(AppContext.BaseDirectory, "Assets", "echarts.min.js");
-            var target = Path.Combine(directory, "echarts.min.js");
-            if (File.Exists(source) && !File.Exists(target)) File.Copy(source, target);
-            var htmlPath = Path.Combine(directory, "star.html");
-            File.WriteAllText(htmlPath, StarWebViewHtml.Build(scene, scene.Center.Model.Id));
-            try
-            {
-                web.RegisterJavascriptObject("pdt", new StarBridge(_viewModel));
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
-            {
-            }
-            web.Address = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.UtcNow.Ticks;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // The star view is optional; keep the rest of the window usable.
-        }
-    }
-
-    private sealed class StarBridge(MainWindowViewModel viewModel)
-    {
-        public void recenter(string id) =>
-            Dispatcher.UIThread.Post(() => viewModel.RecenterStar(id));
     }
 
     private void ConstrainHomeContent()
@@ -145,12 +88,6 @@ public partial class MainWindow : Window
         bool openToolbox = false)
     {
         _viewModel = viewModel;
-        _viewModel.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName is nameof(MainWindowViewModel.StarScene) or
-                nameof(MainWindowViewModel.SelectedViewOption))
-                QueueStarWebReload();
-        };
         _startupPath = startupPath;
         _railStatePath = Path.Combine(viewModel.DataDirectory, "rail-state.json");
         viewModel.AttachGraph(GraphView);
@@ -173,10 +110,10 @@ public partial class MainWindow : Window
         };
         GraphView.QuickLinkToRequested += (fromId, toId, type) =>
             _ = viewModel.CreateManualLinkAsync(fromId, toId, type);
+        GalaxyView.NodeActivated += id => _viewModel?.FocusGalaxy(id);
         _ = viewModel.InitializeAsync(
             startupPath, openSettings, addLinkFrom, openDownloadPack, openDownloadMod, downloadQuery,
             selectNodeId, exportPclPath, openGameSetup, installGameSpec, openLoaderSwitch, openGraph, openToolbox);
-        QueueStarWebReload();
     }
 
     private void OnNodeItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)

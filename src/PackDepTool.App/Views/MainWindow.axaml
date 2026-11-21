@@ -4,7 +4,6 @@
         xmlns:vm="using:PackDepTool.App.ViewModels"
         xmlns:controls="using:PackDepTool.App.Controls"
         xmlns:views="using:PackDepTool.App.Views"
-        xmlns:wv="clr-namespace:WebViewControl;assembly=WebViewControl.Avalonia"
         xmlns:analysis="using:PackDepTool.Core.Analysis"
         x:Class="PackDepTool.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -860,9 +859,12 @@
               </TreeView>
             </Grid>
 
-            <!-- Graph canvas -->
+            <!-- Native star/galaxy canvas -->
             <Grid IsVisible="{Binding IsStarView}">
-              <ContentControl x:Name="StarHost" />
+              <controls:StarGalaxyView x:Name="GalaxyView"
+                                       Scene="{Binding GalaxyScene}"
+                                       SearchText="{Binding SearchText}"
+                                       SelectedNodeId="{Binding StarSelectedNodeId, Mode=TwoWay}" />
             </Grid>
 
             <Grid IsVisible="{Binding IsGraphView}">
@@ -932,7 +934,7 @@
             </Border>
 
             <!-- Busy overlay -->
-            <Border IsVisible="{Binding IsBusy}" Background="{DynamicResource OverlayScrim}" CornerRadius="12">
+            <Border IsVisible="{Binding ShowBusyOverlay}" Background="{DynamicResource OverlayScrim}" CornerRadius="12">
               <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Width="300">
                 <TextBlock Text="正在处理…" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
                 <ProgressBar IsIndeterminate="True" />

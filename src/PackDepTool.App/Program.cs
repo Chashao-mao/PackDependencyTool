@@ -17,6 +17,14 @@ internal static class Program
             return;
         }
 
+        if (args.Any(arg => string.Equals(arg, "--star", StringComparison.OrdinalIgnoreCase)))
+        {
+            Environment.SetEnvironmentVariable("PDT_PAGE", "mods");
+            Environment.SetEnvironmentVariable("PDT_VIEW", "star");
+            args = args.Where(arg => !string.Equals(arg, "--star", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+
         if (!string.Equals(Environment.GetEnvironmentVariable("PDT_MULTI"), "1", StringComparison.Ordinal))
         {
             _singleInstance = new Mutex(true, "PackDependencyTool.SingleInstance", out var createdNew);
@@ -25,14 +33,6 @@ internal static class Program
                 ActivateExistingWindow();
                 return;
             }
-        }
-
-        try
-        {
-            WebViewControl.WebView.Settings.OsrEnabled = true;
-        }
-        catch (Exception)
-        {
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
