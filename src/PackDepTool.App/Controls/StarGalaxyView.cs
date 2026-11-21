@@ -459,7 +459,6 @@ public sealed class StarGalaxyView : Control
             return;
         }
         if (left && HandleUnconnectedClick(point)) return;
-        if (left && HandleSelectionCardClick(point)) return;
         if (left && HandleOverviewClick(point)) return;
 
         if (left && HitTest(point) is { } node)
@@ -1123,7 +1122,9 @@ public sealed class StarGalaxyView : Control
 
         DrawHeader(canvas, frame, scene, camera);
         DrawOverview(canvas, frame, scene);
-        DrawSelectionCard(canvas, frame);
+        // The real details panel is an Avalonia control in MainWindow; do not
+        // draw a second floating copy over the graph.
+
         DrawUnconnectedPanel(canvas, frame, scene);
         DrawLegend(canvas, frame);
         DrawHint(canvas, frame);

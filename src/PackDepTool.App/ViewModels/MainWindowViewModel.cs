@@ -2090,6 +2090,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _selectedNodeId = node.Id;
         _selectedEdgeId = null;
+        ShowDetailsPanel = true;
         UpdateNodeDetail(node);
         _suppressSelectionSync = true;
         SelectedNodeItem = NodeItems.FirstOrDefault(item =>
@@ -2127,7 +2128,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (IsTreeView) BuildDependencyTree();
         if (IsStarView)
         {
-            ShowDetailsPanel = false;
+            ShowDetailsPanel = true;
             BuildGalaxyScene(force: true);
         }
         else

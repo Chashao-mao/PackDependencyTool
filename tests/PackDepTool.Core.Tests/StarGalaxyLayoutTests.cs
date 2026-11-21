@@ -368,6 +368,25 @@ public sealed class StarGalaxyLayoutTests
     }
 
     [Fact]
+    public void FiveHundredNodesRemainCompleteAndInteractive()
+    {
+        var (nodes, edges) = BuildPack(11, 40, 4);
+        Assert.Equal(495, nodes.Count);
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges);
+        stopwatch.Stop();
+
+        Assert.Equal(nodes.Count, layout.Nodes.Count);
+        Assert.True(layout.Galaxies.Count >= 6);
+        Assert.Equal(nodes.Count,
+            layout.Nodes.Values.Select(node => node.Id)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.True(stopwatch.ElapsedMilliseconds < 500,
+            $"500-node layout took {stopwatch.ElapsedMilliseconds} ms");
+    }
+
+    [Fact]
     public void LayoutOfThreeHundredNodesStaysFast()
     {
         var (nodes, edges) = BuildPack(8, 30, 3);
