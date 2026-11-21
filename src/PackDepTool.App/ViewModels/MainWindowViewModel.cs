@@ -186,6 +186,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isCheckingUpdates;
     private string? _lastUpdateUrl;
     [ObservableProperty] private bool _isBusy;
+
+    /// <summary>Background update checks must not dim the whole workspace.</summary>
+    public bool ShowBusyOverlay => IsBusy && !IsCheckingUpdates;
+
+    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(ShowBusyOverlay));
+    partial void OnIsCheckingUpdatesChanged(bool value) => OnPropertyChanged(nameof(ShowBusyOverlay));
+
     [ObservableProperty] private bool _isProgressIndeterminate;
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _progressText = string.Empty;
@@ -1546,8 +1553,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (nodes.Count == 0) return;
 
         var cts = BeginOperation();
-        IsBusy = true;
         IsCheckingUpdates = true;
+        IsBusy = true;
         IsProgressIndeterminate = false;
         ProgressValue = 0;
         ProgressText = "识别在线项目…";
@@ -1600,7 +1607,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // footer text/progress jump wildly. Throttle UI updates, but always
             // let the final 100% through.
             var now = Environment.TickCount64;
-            if (value.Done < value.Total && now - lastProgressAt < 200) return;
+            if (value.Done < value.Total && now - lastProgressAt < 400) return;
             lastProgressAt = now;
             ProgressValue = (double)value.Done / value.Total;
             ProgressText = $"检查模组更新 {value.Done}/{value.Total}";

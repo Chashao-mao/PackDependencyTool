@@ -934,7 +934,7 @@
             </Border>
 
             <!-- Busy overlay -->
-            <Border IsVisible="{Binding IsBusy}" Background="{DynamicResource OverlayScrim}" CornerRadius="12">
+            <Border IsVisible="{Binding ShowBusyOverlay}" Background="{DynamicResource OverlayScrim}" CornerRadius="12">
               <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Width="300">
                 <TextBlock Text="正在处理…" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
                 <ProgressBar IsIndeterminate="True" />
