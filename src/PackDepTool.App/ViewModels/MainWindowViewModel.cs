@@ -43,7 +43,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private List<LocalRule> _localRules = [];
     private Dictionary<string, string> _translationOverrides = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, LayoutPoint> _positions = new(StringComparer.OrdinalIgnoreCase);
-    private HashSet<string> _starVisibleIds = new(StringComparer.OrdinalIgnoreCase);
+    private string? _galaxyLayoutKey;
+    private string? _starFocusNodeId;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CachedModUpdate>
         _updateCheckCache = new(StringComparer.OrdinalIgnoreCase);
@@ -316,7 +317,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _blastRadiusDetail = string.Empty;
     private IReadOnlyList<JarConflict> _jarConflicts = [];
     [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
-    [ObservableProperty] private StarScene? _starScene;
+    [ObservableProperty] private GalaxyScene? _galaxyScene;
+    [ObservableProperty] private string? _starSelectedNodeId;
     [ObservableProperty] private string _treeDirection = "requires";
     [ObservableProperty] private bool _treeOnlyConnected;
     public bool TreeUsesRequires => string.Equals(TreeDirection, "requires", StringComparison.OrdinalIgnoreCase);
@@ -454,7 +456,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ViewOptions.FirstOrDefault(option => option.Value == previewView) is { } previewOption)
         {
             SelectedViewOption = previewOption;
-            if (IsStarView) await RelayoutAsync();
+            if (IsStarView) BuildGalaxyScene(force: true);
         }
 
         var previewPage = Environment.GetEnvironmentVariable("PDT_PAGE");
@@ -2038,10 +2040,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedNodeItemChanged(NodeItemViewModel? value)
     {
         RefreshNodeInsights();
-        if (IsStarView && value is not null && !_suppressSelectionSync)
-            BuildStarScene();
+        if (IsStarView)
+        {
+            var starId = value?.Id;
+            if (!string.Equals(StarSelectedNodeId, starId, StringComparison.OrdinalIgnoreCase))
+                StarSelectedNodeId = starId;
+        }
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
+    }
+
+    partial void OnStarSelectedNodeIdChanged(string? value)
+    {
+        if (!IsStarView || _suppressSelectionSync || string.IsNullOrWhiteSpace(value)) return;
+        var node = _graph?.FindNode(value);
+        if (node is null) return;
+
+        _selectedNodeId = node.Id;
+        _selectedEdgeId = null;
+        UpdateNodeDetail(node);
+        _suppressSelectionSync = true;
+        SelectedNodeItem = NodeItems.FirstOrDefault(item =>
+            string.Equals(item.Id, node.Id, StringComparison.OrdinalIgnoreCase));
+        SelectedManualLink = null;
+        SelectedIssue = null;
+        _suppressSelectionSync = false;
     }
 
     partial void OnSelectedIssueChanged(IssueItemViewModel? value)
@@ -2073,7 +2096,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (IsStarView)
         {
             ShowDetailsPanel = false;
-            BuildStarScene();
+            BuildGalaxyScene(force: true);
+        }
+        else
+        {
+            GalaxyScene = null;
+            _galaxyLayoutKey = null;
+            _starFocusNodeId = null;
         }
 
         if (IsGraphView)
@@ -4761,35 +4790,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _graphView?.InvalidateVisual();
     }
 
-    private async Task RelayoutWhenIdleAsync()
-    {
-        for (var attempt = 0; attempt < 100 && IsBusy; attempt++)
-            await Task.Delay(100);
-        if (!IsStarView || _graph is null) return;
-        await RelayoutAsync();
-    }
-
     private async Task LayoutAsync(bool fit, CancellationToken cancellationToken)
     {
         if (_graph is null) return;
 
-        var algorithm = IsStarView ? LayoutAlgorithm.Star : _services.Settings.LayoutAlgorithm;
         var graph = _graph;
         var options = new LayoutOptions
         {
-            Algorithm = algorithm,
-            CenterNodeId = IsStarView ? (_selectedNodeId ?? graph.Nodes.FirstOrDefault()?.Id) : null,
-            StarNodeLimit = IsStarView ? 16 : 80,
-            StarDepth = 2,
+            Algorithm = _services.Settings.LayoutAlgorithm,
         };
 
         var positions = await Task.Run(
             () => _services.Layout.Compute(graph, options, cancellationToken),
             cancellationToken);
 
-        _starVisibleIds = IsStarView
-            ? positions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase)
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         _positions = new Dictionary<string, LayoutPoint>(positions, StringComparer.OrdinalIgnoreCase);
         BuildScene();
 
@@ -4851,20 +4865,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        if (IsStarView &&
-            (_starVisibleIds.Count == 0 || _starVisibleIds.Count >= _graph.Nodes.Count - 1))
-        {
-            var starPositions = _services.Layout.Compute(_graph, new LayoutOptions
-            {
-                Algorithm = LayoutAlgorithm.Star,
-                CenterNodeId = _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
-                StarDepth = 2,
-                StarNodeLimit = 16,
-            });
-            _positions = new Dictionary<string, LayoutPoint>(starPositions, StringComparer.OrdinalIgnoreCase);
-            _starVisibleIds = starPositions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        }
-
         var term = SearchText.Trim();
         var byId = _graph.Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
         var edgeTypeVisible = EdgeTypeVisible();
@@ -4878,7 +4878,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             !node.IsEmbedded &&
             (!node.IsOptionalDependency || ShowUninstalledOptional) &&
             (!node.IsRecommendedDependency || ShowUninstalledOptional) &&
-            (!IsStarView || _starVisibleIds.Count == 0 || _starVisibleIds.Contains(node.Id)) &&
             (!IsRelationFocus || _relationFocusIds.Contains(node.Id)) &&
             MatchesStatusFilter(node.Status) &&
             MatchesSideFilter(node.Side) &&
@@ -4940,9 +4939,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 IsSearchMatch = MatchesSearch(node, term),
                 EmbeddedCount = embeddedCounts.GetValueOrDefault(node.Id),
-                IsStarCenter = IsStarView && string.Equals(node.Id,
-                    _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
-                    StringComparison.OrdinalIgnoreCase),
             });
         }
 
@@ -4978,7 +4974,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Edges = edgeVms,
             SearchTerm = term,
             ShowLabels = ShowLabels,
-            FocusEdgesOnly = IsStarView ? false : FocusEdgesOnly,
+            FocusEdgesOnly = FocusEdgesOnly,
         };
         HasGraph = nodeVms.Count > 0;
         var optionalVisible = nodeVms.Count(node =>
@@ -4989,13 +4985,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(InstalledModCount));
 
         RebuildNodeList(nodeVms, term);
-        if (IsStarView) BuildStarScene();
-        if (IsStarView)
-        {
-            Dispatcher.UIThread.Post(() => _graphView?.FitToView(), DispatcherPriority.Loaded);
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(250));
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(), TimeSpan.FromMilliseconds(800));
-        }
+        if (IsStarView) BuildGalaxyScene();
     }
 
     private void RebuildNodeList(IReadOnlyList<GraphNodeVm> visibleNodes, string term)
@@ -5641,91 +5631,79 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StatusText = $"已复制 modId：{nodeId}";
     }
 
-    public void RecenterStar(string id)
+    public void FocusGalaxy(string id)
     {
-        var item = NodeItems.FirstOrDefault(node => string.Equals(node.Id, id, StringComparison.OrdinalIgnoreCase));
-        if (item is null) return;
-        _suppressSelectionSync = true;
-        SelectedNodeItem = item;
-        _suppressSelectionSync = false;
-        _selectedNodeId = item.Id;
-        BuildStarScene();
+        var node = _graph?.FindNode(id);
+        if (node is null) return;
+        _starFocusNodeId = node.Id;
+        if (!string.Equals(StarSelectedNodeId, node.Id, StringComparison.OrdinalIgnoreCase))
+            StarSelectedNodeId = node.Id;
+        BuildGalaxyScene(force: true);
     }
 
-    private void BuildStarScene()
+    private void BuildGalaxyScene(bool force = false)
     {
-        if (_graph is null || NodeItems.Count == 0)
+        if (_graph is null)
         {
-            StarScene = null;
+            GalaxyScene = null;
+            _galaxyLayoutKey = null;
             return;
         }
+
         var nodes = _graph.Nodes
             .Where(node => !node.IsSynthetic && !node.IsEmbedded)
             .GroupBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            .Select(group => group.First())
+            .ToList();
         if (nodes.Count == 0)
         {
-            StarScene = null;
+            GalaxyScene = null;
+            _galaxyLayoutKey = null;
             return;
         }
-        var centerId = _selectedNodeId;
-        if (string.IsNullOrWhiteSpace(centerId) || !nodes.ContainsKey(centerId))
-            centerId = nodes.Keys.First();
 
-        var adjacency = nodes.Keys.ToDictionary(id => id, _ => new List<string>(), StringComparer.OrdinalIgnoreCase);
-        foreach (var edge in _graph.Edges.Where(edge => edge.Type != EdgeType.Incompatible && edge.From != edge.To))
+        var ids = nodes.Select(node => node.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var edges = _graph.Edges
+            .Where(edge => ids.Contains(edge.From) && ids.Contains(edge.To))
+            .ToList();
+
+        var key = GalaxyLayoutKey(nodes, edges, _starFocusNodeId);
+        if (!force && string.Equals(key, _galaxyLayoutKey, StringComparison.Ordinal))
         {
-            if (!adjacency.ContainsKey(edge.From) || !adjacency.ContainsKey(edge.To)) continue;
-            if (!adjacency[edge.From].Contains(edge.To, StringComparer.OrdinalIgnoreCase))
-                adjacency[edge.From].Add(edge.To);
-            if (!adjacency[edge.To].Contains(edge.From, StringComparer.OrdinalIgnoreCase))
-                adjacency[edge.To].Add(edge.From);
+            if (GalaxyScene is not null)
+                StarSelectedNodeId = _selectedNodeId;
+            return;
         }
 
-        var depth = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { [centerId] = 0 };
-        var queue = new Queue<string>();
-        queue.Enqueue(centerId);
-        while (queue.Count > 0)
+        var options = new StarGalaxyOptions
         {
-            var current = queue.Dequeue();
-            foreach (var next in adjacency[current])
-            {
-                if (depth.ContainsKey(next)) continue;
-                depth[next] = depth[current] + 1;
-                queue.Enqueue(next);
-            }
-        }
-        foreach (var id in nodes.Keys)
-            depth.TryAdd(id, 99);
-
-        var visible = nodes.Values
-            .OrderBy(node => depth[node.Id])
-            .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var center = visible.First(node => string.Equals(node.Id, centerId, StringComparison.OrdinalIgnoreCase));
-        var starNodes = visible.Select(node => new StarNodeVm
-        {
-            Model = node,
-            Ring = depth[node.Id],
-        }).ToList();
-        var byId = starNodes.ToDictionary(node => node.Model.Id, StringComparer.OrdinalIgnoreCase);
-        var starEdges = _graph.Edges
-            .Where(edge => byId.ContainsKey(edge.From) && byId.ContainsKey(edge.To))
-            .Select(edge => new StarEdgeVm
-            {
-                From = byId[edge.From],
-                To = byId[edge.To],
-                Type = edge.Type,
-                Manual = edge.ManualOverride,
-            })
-            .ToList();
-        StarScene = new StarScene
-        {
-            Center = byId[centerId],
-            Nodes = starNodes,
-            Edges = starEdges,
-            HiddenCount = 0,
+            FocusNodeId = _starFocusNodeId,
         };
+        var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges, options);
+        GalaxyScene = global::PackDepTool.App.ViewModels.GalaxyScene.From(layout, nodes, edges, options);
+        _galaxyLayoutKey = key;
+        StarSelectedNodeId = _selectedNodeId;
+        CountSummary = $"{nodes.Count} 个模组 · {edges.Count} 条关系 · {layout.Galaxies.Count} 个星系";
+    }
+
+    private static string GalaxyLayoutKey(
+        IReadOnlyList<ModNode> nodes,
+        IReadOnlyList<DependencyEdge> edges,
+        string? focusId)
+    {
+        var hash = new HashCode();
+        hash.Add(nodes.Count);
+        foreach (var node in nodes)
+            hash.Add(node.Id, StringComparer.OrdinalIgnoreCase);
+        hash.Add(edges.Count);
+        foreach (var edge in edges)
+        {
+            hash.Add(edge.From, StringComparer.OrdinalIgnoreCase);
+            hash.Add(edge.To, StringComparer.OrdinalIgnoreCase);
+            hash.Add((int)edge.Type);
+        }
+        hash.Add(focusId, StringComparer.OrdinalIgnoreCase);
+        return hash.ToHashCode().ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private void BuildDependencyTree()
@@ -5930,7 +5908,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnPackPathChanged(string value) => OnPropertyChanged(nameof(IsPackLoaded));
 
-    partial void OnSearchTextChanged(string value) => RefreshView();
+    partial void OnSearchTextChanged(string value)
+    {
+        // The galaxy view keeps every installed mod; search only highlights/focuses there.
+        if (IsStarView) return;
+        RefreshView();
+    }
     partial void OnShowRequiresChanged(bool value) => RefreshView();
     partial void OnShowIncompatibleChanged(bool value) => RefreshView();
     partial void OnShowOptionalChanged(bool value)

@@ -3,8 +3,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\PackDepTool.App\PackDepTool.App.csproj" />
+    <ProjectReference Include="..\..\src\PackDepTool.Core\PackDepTool.Core.csproj" />
   </ItemGroup>
 </Project>

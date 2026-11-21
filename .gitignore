@@ -17,3 +17,4 @@ _legacy-backup-*/
 TestResults/
 *.trx
 *.coverage
+screenshots/

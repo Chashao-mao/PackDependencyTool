@@ -27,14 +27,6 @@ internal static class Program
             }
         }
 
-        try
-        {
-            WebViewControl.WebView.Settings.OsrEnabled = true;
-        }
-        catch (Exception)
-        {
-        }
-
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         GC.KeepAlive(_singleInstance);
     }
