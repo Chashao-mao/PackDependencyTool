@@ -2739,12 +2739,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            var lastScanProgressAt = 0L;
             var progress = new Progress<ScanProgress>(p =>
             {
+                // A 429-mod scan reports hundreds of files. Keep the footer
+                // sentence stable and throttle the moving widget so the UI does
+                // not flicker or overlap repaints.
+                var now = Environment.TickCount64;
+                if (p.Fraction < 1 && now - lastScanProgressAt < 120) return;
+                lastScanProgressAt = now;
                 ProgressValue = p.Fraction;
-                ProgressText = $"{p.Phase} {p.Processed}/{p.Total}";
-                if (!string.IsNullOrWhiteSpace(p.CurrentFile))
-                    StatusText = $"正在解析 {p.CurrentFile}";
+                ProgressText = string.IsNullOrWhiteSpace(p.CurrentFile)
+                    ? $"{p.Phase} {p.Processed}/{p.Total}"
+                    : $"{p.Phase} {p.Processed}/{p.Total} · {Path.GetFileName(p.CurrentFile)}";
             });
 
             var scan = await _services.Scanner.ScanAsync(PackPath, progress, cts.Token);
