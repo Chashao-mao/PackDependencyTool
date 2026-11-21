@@ -8,12 +8,12 @@
 ```bash
 cd F:\DSH-Workspace\PackDependencyTool-star
 
-# 全图预览
-dotnet run --project tools/StarPreview/StarPreview.csproj -c Debug -- \
+# 全图预览（使用仓库要求的 9.0.319 SDK，避免 global.json 不匹配）
+"F:\DSH-Workspace\.dotnet\dotnet.exe" run --project tools/StarPreview/StarPreview.csproj -c Debug -- \
   --out screenshots/star.png
 
 # 选中某个模组 + 放大到它（会显示右侧关系卡）
-dotnet run --project tools/StarPreview/StarPreview.csproj -c Debug -- \
+"F:\DSH-Workspace\.dotnet\dotnet.exe" run --project tools/StarPreview/StarPreview.csproj -c Debug -- \
   --out screenshots/star-selected.png --select create --focus create --zoom 1.15
 ```
 
