@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -24,9 +23,6 @@ public sealed class StarGalaxyView : Control
 {
     public static readonly StyledProperty<GalaxyScene?> SceneProperty =
         AvaloniaProperty.Register<StarGalaxyView, GalaxyScene?>(nameof(Scene));
-
-    public static readonly StyledProperty<string?> LayoutStoragePathProperty =
-        AvaloniaProperty.Register<StarGalaxyView, string?>(nameof(LayoutStoragePath));
 
     public static readonly StyledProperty<string?> SearchTextProperty =
         AvaloniaProperty.Register<StarGalaxyView, string?>(nameof(SearchText));
@@ -92,6 +88,7 @@ public sealed class StarGalaxyView : Control
     private StarGalaxyCamera _camera = new(1, 0, 0);
     private bool _cameraUserAdjusted;
     private GalaxyNodeVm? _hover;
+    private GalaxyEdgeVm? _hoverEdge;
     private GalaxyNodeVm? _dragNode;
     private Point _dragStartScreen;
     private Point _dragStartWorld;
@@ -127,12 +124,6 @@ public sealed class StarGalaxyView : Control
     {
         get => GetValue(SceneProperty);
         set => SetValue(SceneProperty, value);
-    }
-
-    public string? LayoutStoragePath
-    {
-        get => GetValue(LayoutStoragePathProperty);
-        set => SetValue(LayoutStoragePathProperty, value);
     }
 
     public string? SearchText
@@ -214,7 +205,6 @@ public sealed class StarGalaxyView : Control
 
         _cameraUserAdjusted = false;
         CaptureBasePositions();
-        ApplySavedPositions();
         FitToScene();
         var pending = _pendingFocusNodeId;
         _pendingFocusNodeId = null;
@@ -375,53 +365,6 @@ public sealed class StarGalaxyView : Control
             _basePositions[node.Id] = (node.X, node.Y, node.LabelRect);
     }
 
-    private void ApplySavedPositions()
-    {
-        if (Scene is null || string.IsNullOrWhiteSpace(LayoutStoragePath) ||
-            !File.Exists(LayoutStoragePath)) return;
-        try
-        {
-            var saved = JsonSerializer.Deserialize<Dictionary<string, SavedPoint>>(
-                File.ReadAllText(LayoutStoragePath));
-            if (saved is null) return;
-            foreach (var node in Scene.Nodes)
-            {
-                if (!saved.TryGetValue(node.Id, out var point) ||
-                    !_basePositions.TryGetValue(node.Id, out var basePos)) continue;
-                var dx = point.X - basePos.X;
-                var dy = point.Y - basePos.Y;
-                node.X = point.X;
-                node.Y = point.Y;
-                node.LabelRect = new LayoutRect(
-                    basePos.Label.X + dx, basePos.Label.Y + dy,
-                    basePos.Label.Width, basePos.Label.Height);
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
-        {
-            // A stale/corrupt layout must never stop the star map from opening.
-        }
-    }
-
-    private void SavePositions()
-    {
-        if (Scene is null || string.IsNullOrWhiteSpace(LayoutStoragePath)) return;
-        try
-        {
-            var directory = Path.GetDirectoryName(LayoutStoragePath);
-            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
-            var positions = Scene.Nodes.ToDictionary(
-                node => node.Id,
-                node => new SavedPoint(node.X, node.Y),
-                StringComparer.OrdinalIgnoreCase);
-            File.WriteAllText(LayoutStoragePath,
-                JsonSerializer.Serialize(new LayoutFile(1, positions)));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-        }
-    }
-
     private void ResetPositions()
     {
         if (Scene is null) return;
@@ -432,13 +375,9 @@ public sealed class StarGalaxyView : Control
             node.Y = basePos.Y;
             node.LabelRect = basePos.Label;
         }
-        SavePositions();
         FitToScene();
         Refresh();
     }
-
-    private sealed record SavedPoint(double X, double Y);
-    private sealed record LayoutFile(int Version, Dictionary<string, SavedPoint> Positions);
 
     // ------------------------------------------------------------------ interaction
 
@@ -540,9 +479,11 @@ public sealed class StarGalaxyView : Control
         }
 
         var hover = HitTest(point);
-        if (ReferenceEquals(hover, _hover)) return;
+        var edge = hover is null ? HitTestEdge(point) : null;
+        if (ReferenceEquals(hover, _hover) && ReferenceEquals(edge, _hoverEdge)) return;
         _hover = hover;
-        Cursor = hover is null ? ArrowCursor : HandCursor;
+        _hoverEdge = edge;
+        Cursor = hover is null && edge is null ? ArrowCursor : HandCursor;
         Refresh();
     }
 
@@ -571,18 +512,15 @@ public sealed class StarGalaxyView : Control
             // its local relationship map, while leaf clicks only select.
             if (node.IsHub && _camera.Zoom < 0.5) ZoomToGalaxy(node.GalaxyIndex);
         }
-        else
-        {
-            SavePositions();
-        }
         Refresh();
     }
 
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
-        if (_hover is null) return;
+        if (_hover is null && _hoverEdge is null) return;
         _hover = null;
+        _hoverEdge = null;
         Cursor = ArrowCursor;
         Refresh();
     }
@@ -1041,6 +979,7 @@ public sealed class StarGalaxyView : Control
             Scene = scene,
             Camera = _camera,
             HoverId = _hover?.Id,
+            HoverEdge = _hoverEdge,
             SelectedId = selectedId,
             SearchMatches = _searchMatches,
             HasSearch = _hasSearch,
@@ -1230,7 +1169,7 @@ public sealed class StarGalaxyView : Control
         {
             if (edge.CrossGalaxy) continue;
             if (frame.OnlyRelated && frame.SelectedId is not null && !IsEndpointSelected(frame, edge)) continue;
-            var selected = IsEndpointSelected(frame, edge);
+            var selected = IsEndpointSelected(frame, edge) || ReferenceEquals(frame.HoverEdge, edge);
             if (edge.Type == EdgeType.Incompatible)
             {
                 if (!selected) continue;
@@ -1527,8 +1466,55 @@ public sealed class StarGalaxyView : Control
         }
     }
 
+    private GalaxyEdgeVm? HitTestEdge(Point point)
+    {
+        if (Scene is null) return null;
+        GalaxyEdgeVm? best = null;
+        var bestDistance = 7.0;
+        foreach (var edge in Scene.DetailEdges)
+        {
+            if (edge.From.IsIsolatedGalaxy || edge.To.IsIsolatedGalaxy) continue;
+            var from = ToScreen(edge.From);
+            var to = ToScreen(edge.To);
+            var dx = to.X - from.X;
+            var dy = to.Y - from.Y;
+            var lengthSq = dx * dx + dy * dy;
+            if (lengthSq < 1) continue;
+            var t = Math.Clamp(((point.X - from.X) * dx + (point.Y - from.Y) * dy) / lengthSq, 0, 1);
+            var px = from.X + dx * t;
+            var py = from.Y + dy * t;
+            var distance = Math.Sqrt((point.X - px) * (point.X - px) + (point.Y - py) * (point.Y - py));
+            if (distance >= bestDistance) continue;
+            bestDistance = distance;
+            best = edge;
+        }
+        return best;
+    }
+
+    private void DrawEdgeTooltip(SKCanvas canvas, GalaxyFrameState frame, GalaxyEdgeVm edge)
+    {
+        var type = GraphPalette.EdgeText(edge.Type);
+        var range = edge.Model.VersionRange;
+        var title = $"{edge.From.Title} → {edge.To.Title}";
+        var second = string.IsNullOrWhiteSpace(range) ? type : $"{type} · {range}";
+        var width = Math.Max(Measure(TooltipBoldFont, title), Measure(TooltipFont, second)) + 24;
+        var x = Math.Clamp((float)frame.Pointer.X + 14, 6, (float)frame.Bounds.Width - width - 6);
+        var y = Math.Clamp((float)frame.Pointer.Y + 14, 6, (float)frame.Bounds.Height - 48);
+        canvas.DrawRoundRect(new SKRect(x, y, x + width, y + 40), 7, 7, Paint(0xF21A2030, false));
+        canvas.DrawRoundRect(new SKRect(x, y, x + width, y + 40), 7, 7, Paint(0xFF334155, true, 1f));
+        DrawScreenText(canvas, Ellipsize(title, TooltipBoldFont, width - 20), x + 10, y + 16,
+            SKTextAlign.Left, TooltipBoldFont, Paint(0xFFF1F5F9, false));
+        DrawScreenText(canvas, Ellipsize(second, TooltipFont, width - 20), x + 10, y + 31,
+            SKTextAlign.Left, TooltipFont, Paint(0xFF93C5FD, false));
+    }
+
     private void DrawTooltip(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene)
     {
+        if (frame.HoverId is null && frame.HoverEdge is not null)
+        {
+            DrawEdgeTooltip(canvas, frame, frame.HoverEdge);
+            return;
+        }
         if (frame.HoverId is null || string.Equals(frame.HoverId, frame.SelectedId, StringComparison.OrdinalIgnoreCase))
             return;
         if (!scene.ById.TryGetValue(frame.HoverId, out var node)) return;
@@ -1662,15 +1648,17 @@ public sealed class StarGalaxyView : Control
     private void DrawLegend(SKCanvas canvas, GalaxyFrameState frame)
     {
         var x = 16f;
-        var y = (float)frame.Bounds.Height - 92;
         var entries = new (uint Color, string Text)[]
         {
             (0xFFF5C542, "星系核心"),
-            (0xFF3B82F6, "直接依赖"),
-            (0xFF64748B, "深层依赖"),
-            (0xFF34D399, "可选关系"),
+            (0xFF5B9EF0, "必需依赖"),
+            (0xFF71839B, "可选依赖"),
+            (0xFF48C5C8, "推荐依赖"),
+            (0xFFF06B6B, "不兼容关系"),
+            (0xFFB18AE8, "手动关系"),
             (0xFF8492A6, "跨星系关系（聚合）"),
         };
+        var y = (float)frame.Bounds.Height - entries.Length * 16 - 36;
         for (var i = 0; i < entries.Length; i++)
         {
             var rowY = y + i * 16;
@@ -1858,6 +1846,7 @@ public sealed class StarGalaxyView : Control
         public GalaxyScene? Scene;
         public StarGalaxyCamera Camera;
         public string? HoverId;
+        public GalaxyEdgeVm? HoverEdge;
         public string? SelectedId;
         public HashSet<string>? SearchMatches;
         public bool HasSearch;

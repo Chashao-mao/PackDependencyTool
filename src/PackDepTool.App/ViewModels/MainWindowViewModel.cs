@@ -374,7 +374,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public string? RelationFocusId => _relationFocusId;
 
     public string DataDirectory => _services.Paths.DataDirectory;
-    public string GalaxyLayoutPath => Path.Combine(DataDirectory, "star", "layout.json");
     public bool IsPackLoaded => !string.IsNullOrWhiteSpace(PackPath);
     public bool HasOfflineUsername => !string.IsNullOrWhiteSpace(_services.Settings.OfflineUsername);
     public bool CanLaunch => HasGraph && HasOfflineUsername;
