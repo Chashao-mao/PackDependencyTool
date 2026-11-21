@@ -28,6 +28,7 @@ internal static class Program
         var cameraZoom = Arg(args, "--camera-zoom", null) is { } cameraZoomArg
             ? double.Parse(cameraZoomArg, CultureInfo.InvariantCulture)
             : (double?)null;
+        var showUnconnected = args.Contains("--unconnected", StringComparer.OrdinalIgnoreCase);
         var interactive = args.Contains("--interactive", StringComparer.OrdinalIgnoreCase);
 
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -47,7 +48,7 @@ internal static class Program
             .Where(edge => ids.Contains(edge.From) && ids.Contains(edge.To))
             .ToList();
 
-        var options = new StarGalaxyOptions();
+        var options = new StarGalaxyOptions { SeparateUnconnected = true };
         var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges, options);
         var scene = GalaxyScene.From(layout, nodes, edges, options);
 
@@ -96,6 +97,7 @@ internal static class Program
         if (focus is not null) view.FocusNode(focus, zoom);
         else view.FitAll();
         if (cameraZoom is { } explicitZoom) view.SetCameraZoom(explicitZoom);
+        if (showUnconnected) view.ExpandUnconnectedPanel();
         Dispatcher.UIThread.RunJobs();
 
         using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));

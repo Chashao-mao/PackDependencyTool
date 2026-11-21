@@ -102,7 +102,11 @@ public sealed class StarGalaxyView : Control
     private int _sceneVersion;
     private string? _pendingFocusNodeId;
     private bool _overviewCollapsed;
+    private bool _unconnectedExpanded;
+    private double _unconnectedScroll;
     private int _frameVersion;
+    private const int UnconnectedRowHeight = 26;
+    private const int UnconnectedVisibleRows = 10;
 
     private void Refresh()
     {
@@ -238,6 +242,14 @@ public sealed class StarGalaxyView : Control
         Refresh();
     }
 
+    /// <summary>Expands the unconnected-mod panel (preview / diagnostics).</summary>
+    public void ExpandUnconnectedPanel()
+    {
+        if (Scene is null || Scene.Unconnected.Count == 0) return;
+        _unconnectedExpanded = true;
+        Refresh();
+    }
+
     /// <summary>Sets an explicit camera zoom around the layout center (preview / diagnostics).</summary>
     public void SetCameraZoom(double zoom)
     {
@@ -294,13 +306,11 @@ public sealed class StarGalaxyView : Control
         var matches = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         double minX = double.MaxValue, minY = double.MaxValue;
         double maxX = double.MinValue, maxY = double.MinValue;
+        var hasSpatialMatch = false;
         foreach (var node in Scene.Nodes)
         {
-            var hit = node.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                      node.Model.Id.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                      node.Model.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                      (node.Model.NameZh?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
-            if (!hit) continue;
+            if (!Matches(node, term)) continue;
+            hasSpatialMatch = true;
             matches.Add(node.Id);
             minX = Math.Min(minX, node.X - node.Radius);
             minY = Math.Min(minY, node.Y - node.Radius);
@@ -308,15 +318,36 @@ public sealed class StarGalaxyView : Control
             maxY = Math.Max(maxY, node.Y + node.Radius);
         }
 
+        var firstUnconnected = -1;
+        for (var index = 0; index < Scene.Unconnected.Count; index++)
+        {
+            var node = Scene.Unconnected[index];
+            if (!Matches(node, term)) continue;
+            matches.Add(node.Id);
+            if (firstUnconnected < 0) firstUnconnected = index;
+        }
+
         _hasSearch = true;
         _searchMatches = matches;
-        if (matches.Count > 0 && Bounds.Width > 1 && Bounds.Height > 1)
+        if (hasSpatialMatch && Bounds.Width > 1 && Bounds.Height > 1)
         {
             var bbox = LayoutRect.FromEdges(minX, minY, maxX, maxY).Inflate(140);
             _camera = StarGalaxyCamera.Fit(bbox, Bounds.Width, Bounds.Height, 60, 2.2);
             _cameraUserAdjusted = true;
         }
+        if (firstUnconnected >= 0)
+        {
+            _unconnectedExpanded = true;
+            var max = Math.Max(0, Scene.Unconnected.Count - UnconnectedVisibleRows);
+            _unconnectedScroll = Math.Clamp(firstUnconnected - 2, 0, max);
+        }
         Refresh();
+
+        static bool Matches(GalaxyNodeVm node, string value) =>
+            node.Title.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            node.Model.Id.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            node.Model.Name.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            (node.Model.NameZh?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
     // ------------------------------------------------------------------ interaction
@@ -331,6 +362,7 @@ public sealed class StarGalaxyView : Control
         var left = current.Properties.IsLeftButtonPressed;
         var middle = current.Properties.IsMiddleButtonPressed;
 
+        if (left && HandleUnconnectedClick(point)) return;
         if (left && HandleSelectionCardClick(point)) return;
         if (left && HandleOverviewClick(point)) return;
 
@@ -369,6 +401,21 @@ public sealed class StarGalaxyView : Control
         base.OnPointerMoved(e);
         var point = e.GetPosition(this);
         _pointerScreen = point;
+
+        if (_dragNode is null && !_panning)
+        {
+            var panel = UnconnectedPanelRect();
+            if (panel.Width > 0 && panel.Contains(point))
+            {
+                if (_hover is not null)
+                {
+                    _hover = null;
+                    Refresh();
+                }
+                Cursor = ArrowCursor;
+                return;
+            }
+        }
 
         if (_dragNode is not null)
         {
@@ -445,6 +492,19 @@ public sealed class StarGalaxyView : Control
     {
         base.OnPointerWheelChanged(e);
         var point = e.GetPosition(this);
+        if (_unconnectedExpanded && Scene is not null)
+        {
+            var panel = UnconnectedPanelRect();
+            if (panel.Contains(point))
+            {
+                var max = Math.Max(0, Scene.Unconnected.Count - UnconnectedVisibleRows);
+                _unconnectedScroll = Math.Clamp(
+                    _unconnectedScroll - Math.Sign(e.Delta.Y), 0, max);
+                Refresh();
+                e.Handled = true;
+                return;
+            }
+        }
         var factor = e.Delta.Y > 0 ? 1.18 : 1 / 1.18;
         _camera = _camera.ZoomAt(point.X, point.Y, factor);
         _cameraUserAdjusted = true;
@@ -494,6 +554,121 @@ public sealed class StarGalaxyView : Control
         return null;
     }
 
+    // ------------------------------------------------------------------ unconnected panel
+
+    private Rect UnconnectedPanelRect()
+    {
+        if (Scene is null || Scene.Unconnected.Count == 0) return default;
+        const double width = 300;
+        var x = Math.Max(8, Bounds.Width - width - 12);
+        if (!_unconnectedExpanded) return new Rect(x, Bounds.Height - 48, width, 34);
+
+        var rows = Math.Min(Scene.Unconnected.Count, UnconnectedVisibleRows);
+        var height = 44 + rows * UnconnectedRowHeight;
+        return new Rect(x, Math.Max(8, Bounds.Height - height - 14), width, height);
+    }
+
+    private bool HandleUnconnectedClick(Point point)
+    {
+        if (Scene is null || Scene.Unconnected.Count == 0) return false;
+        var panel = UnconnectedPanelRect();
+        if (!panel.Contains(point)) return false;
+
+        if (!_unconnectedExpanded)
+        {
+            _unconnectedExpanded = true;
+            Refresh();
+            return true;
+        }
+
+        if (point.Y < panel.Y + 36)
+        {
+            _unconnectedExpanded = false;
+            _unconnectedScroll = 0;
+            Refresh();
+            return true;
+        }
+
+        var start = (int)_unconnectedScroll;
+        var row = (int)((point.Y - (panel.Y + 40)) / UnconnectedRowHeight);
+        var index = start + row;
+        if (index >= 0 && index < Scene.Unconnected.Count)
+        {
+            var id = Scene.Unconnected[index].Id;
+            SetCurrentValue(SelectedNodeIdProperty, id);
+            NodeSelected?.Invoke(id);
+            Refresh();
+        }
+        return true;
+    }
+
+    private void DrawUnconnectedPanel(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene)
+    {
+        if (scene.Unconnected.Count == 0) return;
+        var panel = UnconnectedPanelRect();
+        if (panel.Width <= 0) return;
+
+        canvas.DrawRoundRect(ToSk(panel), 9, 9, Paint(0xF2161B26, false));
+        canvas.DrawRoundRect(ToSk(panel), 9, 9, Paint(0xFF334155, true, 1f));
+
+        var x = (float)panel.X + 12;
+        DrawScreenText(canvas, $"未连接模组 · {scene.Unconnected.Count}",
+            x, (float)panel.Y + 21, SKTextAlign.Left, OverviewTitleFont,
+            Paint(0xFFCBD5E1, false));
+        DrawScreenText(canvas, _unconnectedExpanded ? "收起 ▴" : "展开 ▸",
+            (float)panel.Right - 12, (float)panel.Y + 21, SKTextAlign.Right,
+            OverviewFont, Paint(0xFF94A3B8, false));
+
+        if (!_unconnectedExpanded) return;
+
+        var rowTop = (float)panel.Y + 40;
+        canvas.Save();
+        canvas.ClipRect(new SKRect((float)panel.X + 1, rowTop,
+            (float)panel.Right - 1, (float)panel.Bottom - 2));
+        var start = (int)_unconnectedScroll;
+        var visible = Math.Min(UnconnectedVisibleRows, scene.Unconnected.Count - start);
+        for (var i = 0; i < visible; i++)
+        {
+            var index = start + i;
+            var node = scene.Unconnected[index];
+            var rowY = rowTop + i * UnconnectedRowHeight;
+            var isMatch = frame.HasSearch && frame.SearchMatches?.Contains(node.Id) == true;
+            if (isMatch)
+                canvas.DrawRoundRect(new SKRect((float)panel.X + 6, rowY,
+                        (float)panel.Right - 6, rowY + UnconnectedRowHeight - 2),
+                    4, 4, Paint(0x331D4ED8, false));
+            else if (string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase))
+                canvas.DrawRoundRect(new SKRect((float)panel.X + 6, rowY,
+                        (float)panel.Right - 6, rowY + UnconnectedRowHeight - 2),
+                    4, 4, Paint(0x33E9EFF8, false));
+
+            var icon = index < frame.UnconnectedIcons.Length ? frame.UnconnectedIcons[index] : null;
+            var iconRect = new SKRect(x, rowY + 4, x + 18, rowY + 22);
+            if (icon is not null)
+            {
+                canvas.Save();
+                using var clip = new SKPath();
+                clip.AddRoundRect(new SKRect(iconRect.Left, iconRect.Top,
+                    iconRect.Right, iconRect.Bottom), 4, 4);
+                canvas.ClipPath(clip, SKClipOperation.Intersect, true);
+                canvas.DrawImage(icon, iconRect);
+                canvas.Restore();
+            }
+            else
+            {
+                canvas.DrawRoundRect(iconRect, 4, 4,
+                    Paint(WithAlpha(ToArgb(node.LoaderColor), 220), false));
+            }
+
+            var text = Ellipsize(node.Title, 10f, (float)panel.Width - 76);
+            DrawScreenText(canvas, text, x + 26, rowY + 16, SKTextAlign.Left,
+                LegendFont, Paint(0xFFE2E8F0, false));
+            canvas.DrawCircle((float)panel.Right - 16, rowY + 13, 3f,
+                Paint(ToArgb(node.StatusColor), false));
+        }
+        canvas.Restore();
+    }
+
     // ------------------------------------------------------------------ selection details
 
     private sealed class SelectionDetails
@@ -520,7 +695,7 @@ public sealed class StarGalaxyView : Control
         var optional = 0;
         var incompatible = 0;
         var related = new List<(int Priority, GalaxyEdgeVm Edge, GalaxyNodeVm Other)>();
-        foreach (var edge in scene.Edges)
+        foreach (var edge in scene.DetailEdges)
         {
             GalaxyNodeVm other;
             if (string.Equals(edge.From.Id, node.Id, StringComparison.OrdinalIgnoreCase))
@@ -746,6 +921,7 @@ public sealed class StarGalaxyView : Control
             HasSearch = _hasSearch,
             Overview = scene is null ? default : GetOverview(),
             Icons = BuildIconSnapshot(scene),
+            UnconnectedIcons = BuildUnconnectedIconSnapshot(scene),
             Neighbors = BuildNeighbors(scene, selectedId ?? _hover?.Id),
             SelectedGalaxy = GetSelectedGalaxy(scene, selectedId),
             SelectedDetails = BuildSelectionDetails(scene, selectedId),
@@ -760,6 +936,14 @@ public sealed class StarGalaxyView : Control
         if (scene is null) return [];
         var icons = new SKImage?[scene.Nodes.Count];
         for (var i = 0; i < icons.Length; i++) icons[i] = _icons.TryGet(scene.Nodes[i].Id);
+        return icons;
+    }
+
+    private SKImage?[] BuildUnconnectedIconSnapshot(GalaxyScene? scene)
+    {
+        if (scene is null) return [];
+        var icons = new SKImage?[scene.Unconnected.Count];
+        for (var i = 0; i < icons.Length; i++) icons[i] = _icons.TryGet(scene.Unconnected[i].Id);
         return icons;
     }
 
@@ -813,6 +997,7 @@ public sealed class StarGalaxyView : Control
         DrawHeader(canvas, frame, scene, camera);
         DrawOverview(canvas, frame, scene);
         DrawSelectionCard(canvas, frame);
+        DrawUnconnectedPanel(canvas, frame, scene);
         DrawLegend(canvas, frame);
         DrawHint(canvas, frame);
 
@@ -1247,11 +1432,10 @@ public sealed class StarGalaxyView : Control
         }
         else
         {
-            var isolated = scene.Galaxies
-                .Where(galaxy => galaxy.IsIsolated)
-                .Sum(galaxy => galaxy.NodeCount);
-            text = $"{scene.Nodes.Count} 个模组 · {scene.Galaxies.Count} 个星系" +
-                   (isolated > 0 ? $" · 未连接 {isolated}" : string.Empty) +
+            text = $"{scene.TotalCount} 个模组 · {scene.Galaxies.Count} 个星系" +
+                   (scene.Unconnected.Count > 0
+                       ? $" · 未连接 {scene.Unconnected.Count}"
+                       : string.Empty) +
                    " · 滚轮放大查看全部名称";
             color = 0xFF94A3B8;
         }
@@ -1521,6 +1705,7 @@ public sealed class StarGalaxyView : Control
         public bool HasSearch;
         public OverviewLayout Overview;
         public SKImage?[] Icons = [];
+        public SKImage?[] UnconnectedIcons = [];
         public HashSet<string> Neighbors = [];
         public int SelectedGalaxy = -1;
         public SelectionDetails? SelectedDetails;
@@ -1558,6 +1743,7 @@ public sealed class StarGalaxyView : Control
             var cts = new CancellationTokenSource();
             _cts = cts;
             var items = scene.Nodes
+                .Concat(scene.Unconnected)
                 .Where(node => node.Model.IconData is { Length: > 0 })
                 .Select(node => (node.Id, Data: node.Model.IconData!))
                 .ToArray();

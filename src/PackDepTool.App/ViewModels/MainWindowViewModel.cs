@@ -5678,6 +5678,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var options = new StarGalaxyOptions
         {
             FocusNodeId = _starFocusNodeId,
+            // Fully disconnected mods live in the side panel, not in the
+            // constellation; otherwise they dominate the map without relations.
+            SeparateUnconnected = true,
         };
         var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges, options);
         GalaxyScene = global::PackDepTool.App.ViewModels.GalaxyScene.From(layout, nodes, edges, options);

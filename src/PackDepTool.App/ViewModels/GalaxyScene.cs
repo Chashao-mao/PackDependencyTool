@@ -28,10 +28,13 @@ public sealed class GalaxyScene
     public IReadOnlyList<GalaxyInfoVm> Galaxies { get; init; } = [];
     public IReadOnlyList<GalaxyEdgeVm> Edges { get; init; } = [];
     public IReadOnlyList<StarGalaxyCrossLink> CrossLinks { get; init; } = [];
+    public IReadOnlyList<GalaxyNodeVm> Unconnected { get; init; } = [];
+    public IReadOnlyList<GalaxyEdgeVm> DetailEdges { get; init; } = [];
     public IReadOnlyDictionary<string, GalaxyNodeVm> ById { get; init; } =
         new Dictionary<string, GalaxyNodeVm>(StringComparer.OrdinalIgnoreCase);
 
-    public bool IsEmpty => Nodes.Count == 0;
+    public bool IsEmpty => Nodes.Count == 0 && Unconnected.Count == 0;
+    public int TotalCount => Nodes.Count + Unconnected.Count;
     public int HiddenCount { get; init; }
 
     public static GalaxyScene From(
@@ -101,20 +104,48 @@ public sealed class GalaxyScene
             byVm[model.Id] = vm;
         }
 
+        var unconnected = new List<GalaxyNodeVm>(layout.UnconnectedIds.Count);
+        foreach (var id in layout.UnconnectedIds)
+        {
+            if (!byId.TryGetValue(id, out var model) || byVm.ContainsKey(id)) continue;
+            var vm = new GalaxyNodeVm
+            {
+                Model = model,
+                GalaxyIndex = -1,
+                Ring = 0,
+                IsHub = false,
+                Degree = 0,
+                Radius = options.NodeRadius,
+                X = 0,
+                Y = 0,
+                ShowLabel = false,
+                LabelRect = default,
+                IsIsolatedGalaxy = true,
+            };
+            unconnected.Add(vm);
+            byVm[id] = vm;
+        }
+        unconnected.Sort((left, right) =>
+            string.Compare(left.Title, right.Title, StringComparison.OrdinalIgnoreCase));
+
         var edgeVms = new List<GalaxyEdgeVm>(edges.Count);
+        var detailEdges = new List<GalaxyEdgeVm>(edges.Count);
         foreach (var edge in edges)
         {
             if (!byVm.TryGetValue(edge.From, out var from) || !byVm.TryGetValue(edge.To, out var to))
                 continue;
-            edgeVms.Add(new GalaxyEdgeVm
+            var vm = new GalaxyEdgeVm
             {
                 Model = edge,
                 From = from,
                 To = to,
                 Type = edge.Type,
                 Manual = edge.ManualOverride,
-                CrossGalaxy = from.GalaxyIndex != to.GalaxyIndex,
-            });
+                CrossGalaxy = from.GalaxyIndex >= 0 && to.GalaxyIndex >= 0 &&
+                              from.GalaxyIndex != to.GalaxyIndex,
+            };
+            detailEdges.Add(vm);
+            if (from.GalaxyIndex >= 0 && to.GalaxyIndex >= 0) edgeVms.Add(vm);
         }
 
         var galaxies = layout.Galaxies
@@ -141,6 +172,8 @@ public sealed class GalaxyScene
             Nodes = nodeVms,
             Galaxies = galaxies,
             Edges = edgeVms,
+            DetailEdges = detailEdges,
+            Unconnected = unconnected,
             CrossLinks = layout.CrossLinks,
             ById = byVm,
         };

@@ -52,6 +52,9 @@ public sealed class StarGalaxyOptions
     public int MaxDepthRings { get; set; } = 6;
     public int MaxGalaxies { get; set; } = 8;
 
+    /// <summary>Keep fully disconnected mods out of the spatial layout (UI panel instead).</summary>
+    public bool SeparateUnconnected { get; set; }
+
     /// <summary>When set (double click), this node becomes the hub of galaxy 0 and its neighborhood is kept together.</summary>
     public string? FocusNodeId { get; set; }
 
@@ -101,6 +104,7 @@ public sealed class StarGalaxyLayout
     public IReadOnlyDictionary<string, StarGalaxyNodePlacement> Nodes { get; init; } =
         new Dictionary<string, StarGalaxyNodePlacement>(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<StarGalaxyCrossLink> CrossLinks { get; init; } = [];
+    public IReadOnlyList<string> UnconnectedIds { get; init; } = [];
     public LayoutRect Bounds { get; init; }
 
     public static StarGalaxyLayout Empty { get; } = new();
@@ -225,6 +229,16 @@ public sealed class StarGalaxyLayoutEngine
         var weightedAdjacency = BuildWeightedAdjacency(orderedNodes, edges, byId);
         RefineByAffinity(clusters, weightedAdjacency, score, opt, focusId, cancellationToken);
 
+        var unconnectedIds = new List<string>();
+        if (opt.SeparateUnconnected)
+        {
+            foreach (var cluster in clusters.Where(cluster => cluster.IsIsolated).ToList())
+            {
+                unconnectedIds.AddRange(cluster.NodeIds);
+                clusters.Remove(cluster);
+            }
+        }
+
         clusters = OrderClusters(clusters, focusId, score);
         for (var i = 0; i < clusters.Count; i++) clusters[i].Index = i;
 
@@ -274,7 +288,8 @@ public sealed class StarGalaxyLayoutEngine
         }
         for (var i = 0; i < galaxyRadii.Length; i++) galaxyRadii[i] += 34;
 
-        var labels = BuildLabels(orderedNodes, world, nodeMeta, score, degree, opt);
+        var spatialNodes = orderedNodes.Where(node => world.ContainsKey(node.Id)).ToList();
+        var labels = BuildLabels(spatialNodes, world, nodeMeta, score, degree, opt);
         var bounds = ComputeBounds(world, nodeMeta, labels, opt);
         var crossLinks = BuildCrossLinks(edges, byId, owner);
 
@@ -306,7 +321,7 @@ public sealed class StarGalaxyLayoutEngine
             });
         }
 
-        foreach (var node in orderedNodes)
+        foreach (var node in spatialNodes)
         {
             var meta = nodeMeta[node.Id];
             var point = world[node.Id];
@@ -330,6 +345,7 @@ public sealed class StarGalaxyLayoutEngine
             Galaxies = clusterInfoList,
             Nodes = placements,
             CrossLinks = crossLinks,
+            UnconnectedIds = unconnectedIds,
             Bounds = bounds,
         };
     }

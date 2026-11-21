@@ -169,6 +169,28 @@ public sealed class StarGalaxyLayoutTests
     }
 
     [Fact]
+    public void SeparateUnconnectedRemovesThemFromSpatialLayout()
+    {
+        var nodes = Enumerable.Range(0, 40)
+            .Select(index => new ModNode { Id = $"linked{index}", Name = $"Linked {index}" })
+            .ToList();
+        var edges = new List<DependencyEdge>();
+        for (var i = 1; i < nodes.Count; i++)
+            edges.Add(new DependencyEdge { From = nodes[i].Id, To = nodes[0].Id, Type = EdgeType.Requires });
+        for (var i = 0; i < 10; i++)
+            nodes.Add(new ModNode { Id = $"island{i}", Name = $"Island {i}" });
+
+        var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges, new StarGalaxyOptions
+        {
+            SeparateUnconnected = true,
+        });
+
+        Assert.Equal(10, layout.UnconnectedIds.Count);
+        Assert.All(layout.UnconnectedIds, id => Assert.False(layout.Nodes.ContainsKey(id)));
+        Assert.Equal(nodes.Count, layout.Nodes.Count + layout.UnconnectedIds.Count);
+    }
+
+    [Fact]
     public void CrossGalaxyLinksAreAggregatedAndComplete()
     {
         var (nodes, edges) = BuildPack();
