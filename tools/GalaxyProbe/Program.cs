@@ -22,11 +22,32 @@ stopwatch.Stop();
 Console.WriteLine($"pack={pack}");
 Console.WriteLine($"nodes={nodes.Count} edges={edges.Count} galaxies={layout.Galaxies.Count} layoutMs={stopwatch.ElapsedMilliseconds}");
 Console.WriteLine($"bounds={layout.Bounds.X:F0},{layout.Bounds.Y:F0} {layout.Bounds.Width:F0}x{layout.Bounds.Height:F0}");
+var rawDegreeZero = nodes.Count(node => !graph.Edges.Any(edge =>
+    string.Equals(edge.From, node.Id, StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase)));
+Console.WriteLine($"nodesWithoutAnyGraphEdge={rawDegreeZero}");
+
+var adjacency = nodes.ToDictionary(node => node.Id,
+    _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+    StringComparer.OrdinalIgnoreCase);
+foreach (var edge in edges)
+{
+    if (edge.Type == EdgeType.Incompatible) continue;
+    if (!adjacency.ContainsKey(edge.From) || !adjacency.ContainsKey(edge.To)) continue;
+    adjacency[edge.From].Add(edge.To);
+    adjacency[edge.To].Add(edge.From);
+}
+
 foreach (var galaxy in layout.Galaxies)
 {
+    var members = galaxy.NodeIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var disconnected = galaxy.NodeIds
+        .Where(id => adjacency[id].Count(neighbor => members.Contains(neighbor)) == 0)
+        .ToList();
     Console.WriteLine(
         $"G{galaxy.Index + 1,-2} hub={galaxy.HubId,-32} nodes={galaxy.NodeIds.Count,3} " +
-        $"r={galaxy.Radius,6:F0} internal={galaxy.InternalEdges,3} cross={galaxy.CrossEdges,3}");
+        $"r={galaxy.Radius,6:F0} internal={galaxy.InternalEdges,3} cross={galaxy.CrossEdges,3} " +
+        $"isolated={disconnected.Count,2} [{string.Join(",", disconnected.Take(6))}]");
 }
 
 var labels = layout.Nodes.Values.Count(node => node.LabelVisible);

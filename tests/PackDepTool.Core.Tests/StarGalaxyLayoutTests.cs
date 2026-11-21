@@ -196,6 +196,32 @@ public sealed class StarGalaxyLayoutTests
     }
 
     [Fact]
+    public void DependencyGalaxiesDoNotContainDisconnectedMembers()
+    {
+        var (nodes, edges) = BuildPack();
+        var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges);
+        var adjacency = nodes.ToDictionary(node => node.Id,
+            _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var edge in edges)
+        {
+            if (edge.Type == EdgeType.Incompatible) continue;
+            if (!adjacency.ContainsKey(edge.From) || !adjacency.ContainsKey(edge.To)) continue;
+            adjacency[edge.From].Add(edge.To);
+            adjacency[edge.To].Add(edge.From);
+        }
+
+        foreach (var galaxy in layout.Galaxies.Where(galaxy => !galaxy.IsIsolated))
+        {
+            var members = galaxy.NodeIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in galaxy.NodeIds)
+            {
+                Assert.Contains(adjacency[id], neighbour => members.Contains(neighbour));
+            }
+        }
+    }
+
+    [Fact]
     public void GalaxyCentersHaveClearSpacing()
     {
         var (nodes, edges) = BuildPack();
@@ -272,6 +298,51 @@ public sealed class StarGalaxyLayoutTests
             Assert.InRange(node.X, layout.Bounds.X, layout.Bounds.Right);
             Assert.InRange(node.Y, layout.Bounds.Y, layout.Bounds.Bottom);
         });
+    }
+
+    [Fact]
+    public void DensePackWithSixHundredFiftyEdgesStaysBalancedAndFast()
+    {
+        var (nodes, edges) = BuildPack();
+        var existing = edges
+            .Select(edge => edge.From + "\u0000" + edge.To)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var types = new[]
+        {
+            EdgeType.Requires, EdgeType.Optional, EdgeType.Recommends,
+            EdgeType.Embedded, EdgeType.Manual,
+        };
+        var cursor = 0;
+        for (var i = 0; i < nodes.Count && edges.Count < 650; i++)
+        {
+            for (var j = 0; j < nodes.Count && edges.Count < 650; j++)
+            {
+                if (i == j) continue;
+                var from = nodes[i];
+                var to = nodes[(j + i * 7) % nodes.Count];
+                if (string.Equals(from.Id, to.Id, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!existing.Add(from.Id + "\u0000" + to.Id)) continue;
+                edges.Add(new DependencyEdge
+                {
+                    From = from.Id,
+                    To = to.Id,
+                    Type = types[cursor++ % types.Length],
+                });
+            }
+        }
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges);
+        stopwatch.Stop();
+
+        Assert.Equal(nodes.Count, layout.Nodes.Count);
+        Assert.True(layout.Galaxies.Count >= 6);
+        Assert.All(layout.Galaxies, galaxy => Assert.InRange(galaxy.NodeIds.Count, 1, 55));
+        Assert.Equal(nodes.Count,
+            layout.Galaxies.SelectMany(galaxy => galaxy.NodeIds)
+                .Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.True(stopwatch.ElapsedMilliseconds < 250,
+            $"650-edge layout took {stopwatch.ElapsedMilliseconds} ms");
     }
 
     [Fact]

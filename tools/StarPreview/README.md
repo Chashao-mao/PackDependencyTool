@@ -27,5 +27,6 @@ cd F:\DSH-Workspace\PackDependencyTool-star
 | `--select` | 无 | 选中节点 id（显示关系卡） |
 | `--focus` | 无 | 相机中心节点 id |
 | `--zoom` | `1.05` | 配合 `--focus` 的缩放 |
+| `--camera-zoom` | 无 | 直接指定缩放（例如 `0.07`，用于检查缩小时图标/标签） |
 
 工具只初始化 Avalonia 渲染栈和 `RenderTargetBitmap`，不创建/显示窗口；图标解码会等待最多 3 秒的 dispatcher 泵。

@@ -1,5 +1,8 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using PackDepTool.App.Controls;
@@ -22,6 +25,10 @@ internal static class Program
         var focus = Arg(args, "--focus", null);
         var select = Arg(args, "--select", focus);
         var zoom = double.Parse(Arg(args, "--zoom", "1.05"), CultureInfo.InvariantCulture);
+        var cameraZoom = Arg(args, "--camera-zoom", null) is { } cameraZoomArg
+            ? double.Parse(cameraZoomArg, CultureInfo.InvariantCulture)
+            : (double?)null;
+        var interactive = args.Contains("--interactive", StringComparer.OrdinalIgnoreCase);
 
         Directory.CreateDirectory(Path.GetDirectoryName(output)!);
 
@@ -43,6 +50,22 @@ internal static class Program
         var options = new StarGalaxyOptions();
         var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges, options);
         var scene = GalaxyScene.From(layout, nodes, edges, options);
+
+        if (interactive)
+        {
+            PreviewApp.Scene = scene;
+            PreviewApp.SelectedId = select;
+            PreviewApp.FocusId = focus;
+            PreviewApp.FocusZoom = zoom;
+            PreviewApp.WindowWidth = width;
+            PreviewApp.WindowHeight = height;
+
+            AppBuilder.Configure<PreviewApp>()
+                .UsePlatformDetect()
+                .WithInterFont()
+                .StartWithClassicDesktopLifetime(args);
+            return 0;
+        }
 
         AppBuilder.Configure<PreviewApp>()
             .UsePlatformDetect()
@@ -72,6 +95,7 @@ internal static class Program
         view.Arrange(new Rect(0, 0, width, height));
         if (focus is not null) view.FocusNode(focus, zoom);
         else view.FitAll();
+        if (cameraZoom is { } explicitZoom) view.SetCameraZoom(explicitZoom);
         Dispatcher.UIThread.RunJobs();
 
         using var bitmap = new RenderTargetBitmap(new PixelSize(width, height), new Vector(96, 96));
@@ -92,4 +116,39 @@ internal static class Program
 
 internal sealed class PreviewApp : Application
 {
+    public static GalaxyScene? Scene;
+    public static string? SelectedId;
+    public static string? FocusId;
+    public static double FocusZoom = 1.05;
+    public static int WindowWidth = 1600;
+    public static int WindowHeight = 900;
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        if (Scene is not null)
+        {
+            var view = new StarGalaxyView { Scene = Scene };
+            if (SelectedId is not null) view.SelectedNodeId = SelectedId;
+
+            var window = new Window
+            {
+                Title = "StarGalaxyView Preview",
+                Width = WindowWidth,
+                Height = WindowHeight,
+                Background = Brushes.Black,
+                Content = view,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            };
+            window.Show();
+            if (FocusId is not null)
+            {
+                var focusId = FocusId;
+                Dispatcher.UIThread.Post(() => view.FocusNode(focusId, FocusZoom),
+                    DispatcherPriority.Loaded);
+            }
+        }
+        base.OnFrameworkInitializationCompleted();
+    }
 }

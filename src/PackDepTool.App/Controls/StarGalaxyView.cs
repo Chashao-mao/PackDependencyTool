@@ -238,6 +238,20 @@ public sealed class StarGalaxyView : Control
         Refresh();
     }
 
+    /// <summary>Sets an explicit camera zoom around the layout center (preview / diagnostics).</summary>
+    public void SetCameraZoom(double zoom)
+    {
+        if (Scene is null) return;
+        var clamped = Math.Clamp(zoom, StarGalaxyCamera.MinZoom, StarGalaxyCamera.MaxZoom);
+        var cx = Scene.Bounds.X + Scene.Bounds.Width / 2;
+        var cy = Scene.Bounds.Y + Scene.Bounds.Height / 2;
+        _camera = new StarGalaxyCamera(clamped,
+            Bounds.Width / 2 - cx * clamped,
+            Bounds.Height / 2 - cy * clamped);
+        _cameraUserAdjusted = true;
+        Refresh();
+    }
+
     private void CenterOn(GalaxyNodeVm node, double zoom)
     {
         _camera = new StarGalaxyCamera(
@@ -457,9 +471,10 @@ public sealed class StarGalaxyView : Control
             var node = scene.Nodes[index];
             var screen = ToScreen(node);
             var radius = ScreenRadius(node);
+            var hitRadius = Math.Max(radius + 4, 12);
             var dx = point.X - screen.X;
             var dy = point.Y - screen.Y;
-            if (dx * dx + dy * dy <= (radius + 2) * (radius + 2)) return node;
+            if (dx * dx + dy * dy <= hitRadius * hitRadius) return node;
 
             if (_camera.Zoom < LabelZoomThreshold || !node.ShowLabel) continue;
             if (LabelScreenRect(node).Contains(point)) return node;
@@ -749,6 +764,14 @@ public sealed class StarGalaxyView : Control
         var width = (float)frame.Bounds.Width;
         var height = (float)frame.Bounds.Height;
         canvas.Save();
+
+        // The custom-draw canvas already carries the window's DPI scale
+        // (e.g. 1.5 at 150%). Bounds and the camera are logical units, so undo
+        // that scale once; otherwise the map is zoomed 1.5x and clips.
+        var renderScale = canvas.TotalMatrix.ScaleX;
+        if (renderScale > 0.01f && Math.Abs(renderScale - 1f) > 0.01f)
+            canvas.Scale(1f / renderScale, 1f / renderScale);
+
         canvas.ClipRect(new SKRect(0, 0, width, height));
         canvas.DrawRect(new SKRect(0, 0, width, height), Paint(0xFF0B0D12, false));
         DrawStarfield(canvas, width, height);
@@ -805,17 +828,15 @@ public sealed class StarGalaxyView : Control
 
             var color = ToArgb(galaxy.Color);
             var selected = i == frame.SelectedGalaxy;
+            // No heavy "bubble": a faint halo plus a dashed orbit keeps the
+            // groups legible without visually cutting them apart.
             canvas.DrawCircle((float)center.X, (float)center.Y, radius,
-                Paint(WithAlpha(color, selected ? (byte)10 : (byte)13), false));
-            canvas.DrawCircle((float)center.X, (float)center.Y, radius * 0.72f,
-                Paint(WithAlpha(color, selected ? (byte)6 : (byte)7), false));
+                Paint(WithAlpha(color, selected ? (byte)12 : (byte)4), false));
+            if (selected)
+                canvas.DrawCircle((float)center.X, (float)center.Y, radius,
+                    Paint(WithAlpha(color, 120), true, 1.4f));
 
-            var border = selected
-                ? Paint(WithAlpha(color, 150), true, 1.8f)
-                : Paint(WithAlpha(color, 46), true, 1f, dashed: true);
-            canvas.DrawCircle((float)center.X, (float)center.Y, radius, border);
-
-            if (camera.Zoom >= 0.32)
+            if (!galaxy.IsIsolated && camera.Zoom >= 0.5)
             {
                 var title = $"{galaxy.ShortTitle} · {galaxy.NodeCount} 个模组";
                 DrawScreenText(canvas, title, (float)center.X, (float)(center.Y - radius - 8),
@@ -851,9 +872,9 @@ public sealed class StarGalaxyView : Control
             var highlighted = frame.SelectedGalaxy == link.FromGalaxy ||
                               frame.SelectedGalaxy == link.ToGalaxy;
             var alpha = (byte)Math.Clamp(
-                (highlighted ? 110 : 30) + Math.Min(45, link.Count * 3), 30, 170);
+                (highlighted ? 120 : 46) + Math.Min(58, link.Count * 4), 46, 180);
             var color = link.RequiresCount > 0 ? 0xFF3B82F6 : 0xFF64748B;
-            var width = Math.Min(3.4f, 0.6f + (float)Math.Log2(link.Count + 1) * 0.7f);
+            var width = Math.Min(3.4f, 0.8f + (float)Math.Log2(link.Count + 1) * 0.6f);
             using var path = new SKPath();
             path.MoveTo((float)from.X, (float)from.Y);
             path.QuadTo((float)control.X, (float)control.Y, (float)to.X, (float)to.Y);
@@ -1024,12 +1045,20 @@ public sealed class StarGalaxyView : Control
                 canvas.DrawImage(icon, dest);
                 canvas.Restore();
             }
-            else if (radius >= 10)
+            else
             {
-                var initial = FirstGlyph(node.Title);
-                DrawScreenText(canvas, initial, (float)screen.X, (float)(screen.Y + radius * 0.36),
-                    SKTextAlign.Center, InitialFont,
-                    Paint(WithAlpha(ToArgb(node.LoaderColor), dim ? (byte)90 : (byte)230), false));
+                // No icon bytes (or still decoding): never leave an empty hole.
+                // A loader-colored core stays visible at any zoom; larger nodes
+                // additionally show the M/CJK initial.
+                canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)(innerRadius * 0.62),
+                    Paint(WithAlpha(ToArgb(node.LoaderColor), dim ? (byte)100 : (byte)225), false));
+                if (radius >= 9)
+                {
+                    var initial = FirstGlyph(node.Title);
+                    DrawScreenText(canvas, initial, (float)screen.X,
+                        (float)(screen.Y + radius * 0.36), SKTextAlign.Center, InitialFont,
+                        Paint(dim ? 0x99FFFFFF : 0xFF10141C, false));
+                }
             }
 
             if (radius >= 9)
@@ -1065,16 +1094,19 @@ public sealed class StarGalaxyView : Control
             ? (IEnumerable<GalaxyNodeVm>)scene.Nodes
             : scene.Nodes
                 .OrderBy(node => node.IsHub ? 0 : 1)
+                .ThenBy(node => string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(node => frame.HasSearch && frame.SearchMatches?.Contains(node.Id) == true ? 0 : 1)
+                .ThenBy(node => frame.Neighbors.Contains(node.Id) ? 0 : 1)
                 .ThenBy(node => node.LabelRank)
+                .ThenByDescending(node => node.Degree)
                 .ThenBy(node => node.Id, StringComparer.OrdinalIgnoreCase);
-        var placedLabels = new List<SKRect>(48);
+        var placedLabels = new List<SKRect>(64);
 
         foreach (var node in nodes)
         {
             var isMatch = frame.HasSearch && frame.SearchMatches?.Contains(node.Id) == true;
-            if (!node.ShowLabel) continue;
-            if (!allLabels && !node.IsHub && node.LabelRank > 1 &&
-                !(isMatch && frame.SearchMatches!.Count <= 12)) continue;
+            if (!node.ShowLabel && !node.IsHub) continue;
+            if (!allLabels && !node.IsHub && placedLabels.Count >= 48) break;
 
             var screen = camera.WorldToScreen(node.X, node.Y);
             var radius = ScreenRadius(node, zoom);
@@ -1088,7 +1120,10 @@ public sealed class StarGalaxyView : Control
                 var rect = LabelScreenRect(node, camera);
                 if (!rect.Intersects(frame.Bounds)) continue;
                 fontSize = node.IsHub ? HubLabelFontSize : LabelFontSize;
-                text = Ellipsize(node.Title, fontSize, (float)rect.Width - 8);
+                var galaxy = scene.Galaxies[node.GalaxyIndex];
+                text = Ellipsize(node.IsHub && galaxy.IsIsolated
+                    ? $"未连接 · {galaxy.NodeCount}"
+                    : node.Title, fontSize, (float)rect.Width - 8);
                 var back = new SKRect((float)rect.X, (float)rect.Y, (float)rect.Right, (float)rect.Bottom);
                 canvas.DrawRoundRect(back, 4, 4,
                     Paint(isMatch ? 0xCC1D4ED8 : 0xD90B0D12, false));
@@ -1102,15 +1137,23 @@ public sealed class StarGalaxyView : Control
             // Overview zoom: hubs plus the two highest-degree members of each
             // galaxy stay readable, with a cheap screen-space collision pass.
             fontSize = node.IsHub ? HubLabelFontSize : LabelFontSize - 0.5f;
-            text = Ellipsize(node.Title, fontSize, 170);
-            var baseline = (float)(screen.Y + radius + 16);
+            var nodeGalaxy = scene.Galaxies[node.GalaxyIndex];
+            text = node.IsHub && nodeGalaxy.IsIsolated
+                ? $"未连接 · {nodeGalaxy.NodeCount}"
+                : Ellipsize(node.Title, fontSize, 170);
+            var baseline = (float)(screen.Y + radius + 13);
             var textWidth = Measure(node.IsHub ? HubLabelFont : NodeLabelFont, text);
             var labelRect = new SKRect(
-                (float)screen.X - textWidth / 2 - 5,
-                baseline - fontSize - 4,
-                (float)screen.X + textWidth / 2 + 5,
-                baseline + 3);
+                (float)screen.X - textWidth / 2 - 4,
+                baseline - fontSize - 3,
+                (float)screen.X + textWidth / 2 + 4,
+                baseline + 2);
+            if (labelRect.Right < 0 || labelRect.Left > (float)frame.Bounds.Width ||
+                labelRect.Bottom < 0 || labelRect.Top > (float)frame.Bounds.Height) continue;
             if (placedLabels.Any(other => other.IntersectsWith(labelRect))) continue;
+            if (!node.IsHub && !isMatch &&
+                !string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) &&
+                OverlapsNode(labelRect, scene, camera, zoom, node.Id)) continue;
             placedLabels.Add(labelRect);
 
             canvas.DrawRoundRect(labelRect, 4, 4,
@@ -1162,7 +1205,12 @@ public sealed class StarGalaxyView : Control
         }
         else
         {
-            text = $"{scene.Nodes.Count} 个模组 · {scene.Galaxies.Count} 个星系 · 滚轮放大查看全部名称";
+            var isolated = scene.Galaxies
+                .Where(galaxy => galaxy.IsIsolated)
+                .Sum(galaxy => galaxy.NodeCount);
+            text = $"{scene.Nodes.Count} 个模组 · {scene.Galaxies.Count} 个星系" +
+                   (isolated > 0 ? $" · 未连接 {isolated}" : string.Empty) +
+                   " · 滚轮放大查看全部名称";
             color = 0xFF94A3B8;
         }
         DrawScreenText(canvas, text, 16, 24, SKTextAlign.Left, LegendFont, Paint(color, false));
@@ -1228,7 +1276,7 @@ public sealed class StarGalaxyView : Control
                     Paint(WithAlpha(color, 110), true, 2f));
             canvas.DrawCircle((float)point.X, (float)point.Y, radius,
                 Paint(WithAlpha(color, 235), false));
-            DrawScreenText(canvas, galaxy.ShortTitle, (float)point.X, (float)point.Y + 2.8f,
+            DrawScreenText(canvas, galaxy.OverviewTitle, (float)point.X, (float)point.Y + 2.8f,
                 SKTextAlign.Center, OverviewFont, Paint(0xFF0B0D12, false));
         }
 
@@ -1295,7 +1343,7 @@ public sealed class StarGalaxyView : Control
 
     private static float ScreenRadius(GalaxyNodeVm node, double zoom)
     {
-        var minimum = node.IsHub ? 10.0 : MinScreenNodeRadius;
+        var minimum = node.IsHub ? 11.0 : 7.5;
         var maximum = node.IsHub ? 40.0 : MaxScreenNodeRadius;
         return (float)Math.Clamp(node.Radius * zoom, minimum, maximum);
     }
@@ -1310,6 +1358,21 @@ public sealed class StarGalaxyView : Control
             rect.Y * camera.Zoom + camera.PanY,
             rect.Width * camera.Zoom,
             rect.Height * camera.Zoom);
+    }
+
+    private static bool OverlapsNode(SKRect label, GalaxyScene scene, StarGalaxyCamera camera,
+        double zoom, string excludeId)
+    {
+        foreach (var node in scene.Nodes)
+        {
+            if (string.Equals(node.Id, excludeId, StringComparison.OrdinalIgnoreCase)) continue;
+            var screen = camera.WorldToScreen(node.X, node.Y);
+            var radius = ScreenRadius(node, zoom) + 2;
+            var nodeRect = new SKRect((float)(screen.X - radius), (float)(screen.Y - radius),
+                (float)(screen.X + radius), (float)(screen.Y + radius));
+            if (nodeRect.IntersectsWith(label)) return true;
+        }
+        return false;
     }
 
     private static bool CircleVisible(LayoutPoint center, double radius, SKRect view) =>

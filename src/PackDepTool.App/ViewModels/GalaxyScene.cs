@@ -127,7 +127,10 @@ public sealed class GalaxyScene
                 Radius = galaxy.Radius,
                 NodeCount = galaxy.NodeIds.Count,
                 CrossEdges = galaxy.CrossEdges,
-                Color = GalaxyColors[galaxy.Index % GalaxyColors.Length],
+                IsIsolated = galaxy.IsIsolated,
+                Color = galaxy.IsIsolated
+                    ? Color.Parse("#64748B")
+                    : GalaxyColors[galaxy.Index % GalaxyColors.Length],
             })
             .ToList();
 
@@ -208,7 +211,9 @@ public sealed class GalaxyInfoVm
     public required int NodeCount { get; init; }
     public required int CrossEdges { get; init; }
     public required Color Color { get; init; }
-    public string ShortTitle => $"G{Index + 1}";
+    public bool IsIsolated { get; init; }
+    public string ShortTitle => IsIsolated ? "未连接" : $"G{Index + 1}";
+    public string OverviewTitle => IsIsolated ? "未" : $"G{Index + 1}";
 }
 
 public sealed class GalaxyEdgeVm

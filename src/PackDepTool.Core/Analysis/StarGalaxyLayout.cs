@@ -68,6 +68,9 @@ public sealed class StarGalaxyCluster
     public required IReadOnlyList<string> NodeIds { get; init; }
     public required int InternalEdges { get; init; }
     public required int CrossEdges { get; init; }
+
+    /// <summary>True for the explicit "no dependency edges" group.</summary>
+    public bool IsIsolated { get; init; }
 }
 
 public sealed class StarGalaxyNodePlacement
@@ -215,6 +218,13 @@ public sealed class StarGalaxyLayoutEngine
         MergeTinyClusters(clusters, opt, focusId);
         MergeSparseClusters(clusters, edges, opt, focusId, target);
 
+        // Balanced splitting is geometry-first; this pass is relationship-first:
+        // every node moves toward the galaxy it actually shares the most
+        // dependency weight with, and fully disconnected mods are separated
+        // into an explicit "unconnected" galaxy instead of polluting a hub.
+        var weightedAdjacency = BuildWeightedAdjacency(orderedNodes, edges, byId);
+        RefineByAffinity(clusters, weightedAdjacency, score, opt, focusId, cancellationToken);
+
         clusters = OrderClusters(clusters, focusId, score);
         for (var i = 0; i < clusters.Count; i++) clusters[i].Index = i;
 
@@ -292,6 +302,7 @@ public sealed class StarGalaxyLayoutEngine
                 NodeIds = nodeIds,
                 InternalEdges = internalEdges,
                 CrossEdges = crossEdges,
+                IsIsolated = cluster.IsIsolated,
             });
         }
 
@@ -652,6 +663,233 @@ public sealed class StarGalaxyLayoutEngine
         }
     }
 
+    private static Dictionary<string, Dictionary<string, int>> BuildWeightedAdjacency(
+        IReadOnlyList<ModNode> nodes,
+        IReadOnlyList<DependencyEdge> edges,
+        IReadOnlyDictionary<string, ModNode> byId)
+    {
+        var result = nodes.ToDictionary(
+            node => node.Id,
+            _ => new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var edge in edges)
+        {
+            if (edge.Type == EdgeType.Incompatible) continue;
+            if (string.IsNullOrWhiteSpace(edge.From) || string.IsNullOrWhiteSpace(edge.To)) continue;
+            if (string.Equals(edge.From, edge.To, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!byId.ContainsKey(edge.From) || !byId.ContainsKey(edge.To)) continue;
+
+            var weight = edge.Type switch
+            {
+                EdgeType.Requires => 3,
+                EdgeType.Embedded => 2,
+                _ => 1,
+            };
+            Add(edge.From, edge.To, weight);
+            Add(edge.To, edge.From, weight);
+
+            void Add(string from, string to, int value)
+            {
+                var neighbours = result[from];
+                if (!neighbours.TryGetValue(to, out var existing) || value > existing)
+                    neighbours[to] = value;
+            }
+        }
+        return result;
+    }
+
+    private static void RefineByAffinity(
+        List<MutableCluster> clusters,
+        Dictionary<string, Dictionary<string, int>> adjacency,
+        IReadOnlyDictionary<string, int> score,
+        StarGalaxyOptions opt,
+        string? focusId,
+        CancellationToken cancellationToken)
+    {
+        // 1. Fully disconnected mods get their own galaxy. Mixing them into a
+        // dependency hub was the main reason galaxies contained unrelated mods.
+        var isolated = adjacency
+            .Where(pair => pair.Value.Count == 0)
+            .Select(pair => pair.Key)
+            .Where(id => focusId is null ||
+                         !string.Equals(id, focusId, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (isolated.Count > 0)
+        {
+            foreach (var cluster in clusters)
+                foreach (var id in isolated.Where(cluster.Set.Contains).ToList())
+                    cluster.Remove(id);
+            clusters.RemoveAll(cluster => cluster.NodeIds.Count == 0);
+
+            for (var start = 0; start < isolated.Count; start += opt.MaxGalaxyNodes)
+            {
+                var chunk = isolated.Skip(start).Take(opt.MaxGalaxyNodes).ToList();
+                var misc = new MutableCluster(clusters.Count, chunk[0]) { IsIsolated = true };
+                foreach (var id in chunk) misc.Add(id);
+                clusters.Add(misc);
+            }
+        }
+
+        if (clusters.Count == 0) return;
+
+        var owner = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < clusters.Count; index++)
+            foreach (var id in clusters[index].NodeIds)
+                owner[id] = index;
+
+        var affinity = new int[clusters.Count];
+        var ordered = adjacency.Keys
+            .OrderByDescending(id => adjacency[id].Values.Sum())
+            .ThenBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        for (var pass = 0; pass < 10; pass++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var changed = false;
+            foreach (var id in ordered)
+            {
+                if (focusId is not null &&
+                    string.Equals(id, focusId, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!owner.TryGetValue(id, out var current) || current >= clusters.Count) continue;
+                if (adjacency[id].Count == 0) continue;
+
+                Array.Clear(affinity);
+                foreach (var (neighbour, weight) in adjacency[id])
+                {
+                    if (!owner.TryGetValue(neighbour, out var galaxy)) continue;
+                    if (galaxy < affinity.Length) affinity[galaxy] += weight;
+                }
+
+                var best = current;
+                var bestWeight = affinity[current];
+                for (var galaxy = 0; galaxy < affinity.Length; galaxy++)
+                {
+                    if (galaxy == current) continue;
+                    if (affinity[galaxy] <= bestWeight) continue;
+                    if (clusters[galaxy].NodeIds.Count >= opt.MaxGalaxyNodes) continue;
+                    best = galaxy;
+                    bestWeight = affinity[galaxy];
+                }
+
+                if (best == current) continue;
+                clusters[current].Remove(id);
+                clusters[best].Add(id);
+                owner[id] = best;
+                changed = true;
+            }
+
+            if (!changed) break;
+        }
+
+        clusters.RemoveAll(cluster => cluster.NodeIds.Count == 0);
+
+        // 2. A capacity limit can leave a few connected mods with no room in
+        // their true galaxy. Do not leave them inside an unrelated hub: move
+        // them to the explicit "unconnected/other" group instead.
+        CleanUnrelatedMembers(clusters, adjacency, opt, focusId);
+
+        // 3. Re-elect the hub from actual internal relationships, not from the
+        // seed that happened to own the region.
+        foreach (var cluster in clusters)
+        {
+            if (focusId is not null &&
+                cluster.Set.Contains(focusId))
+            {
+                cluster.HubId = focusId;
+                continue;
+            }
+
+            var hub = cluster.NodeIds
+                .OrderByDescending(id => cluster.Set
+                    .Where(neighbour => adjacency[id].ContainsKey(neighbour))
+                    .Sum(neighbour => adjacency[id][neighbour]))
+                .ThenByDescending(id => score.GetValueOrDefault(id))
+                .ThenBy(id => id, StringComparer.OrdinalIgnoreCase)
+                .First();
+            cluster.HubId = hub;
+            cluster.IsIsolated = !cluster.NodeIds.Any(id =>
+                adjacency[id].Keys.Any(cluster.Set.Contains));
+        }
+
+        RebalanceIsolatedClusters(clusters, score, opt);
+    }
+
+    private static void RebalanceIsolatedClusters(
+        List<MutableCluster> clusters,
+        IReadOnlyDictionary<string, int> score,
+        StarGalaxyOptions opt)
+    {
+        var isolated = clusters.Where(cluster => cluster.IsIsolated).ToList();
+        if (isolated.Count <= 1) return;
+
+        var ids = isolated
+            .SelectMany(cluster => cluster.NodeIds)
+            .OrderByDescending(id => score.GetValueOrDefault(id))
+            .ThenBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (var cluster in isolated) clusters.Remove(cluster);
+        if (ids.Count == 0) return;
+
+        var chunkCount = Math.Max(1, (int)Math.Ceiling(ids.Count / (double)opt.MaxGalaxyNodes));
+        var chunkSize = (int)Math.Ceiling(ids.Count / (double)chunkCount);
+        for (var start = 0; start < ids.Count; start += chunkSize)
+        {
+            var chunk = ids.Skip(start).Take(chunkSize).ToList();
+            var misc = new MutableCluster(clusters.Count, chunk[0]) { IsIsolated = true };
+            foreach (var id in chunk) misc.Add(id);
+            clusters.Add(misc);
+        }
+    }
+
+    private static void CleanUnrelatedMembers(
+        List<MutableCluster> clusters,
+        Dictionary<string, Dictionary<string, int>> adjacency,
+        StarGalaxyOptions opt,
+        string? focusId)
+    {
+        MutableCluster? misc = clusters.FirstOrDefault(cluster => cluster.IsIsolated);
+
+        MutableCluster GetMisc(string firstId)
+        {
+            if (misc is not null && misc.NodeIds.Count < opt.MaxGalaxyNodes) return misc;
+            misc = new MutableCluster(clusters.Count, firstId) { IsIsolated = true };
+            clusters.Add(misc);
+            return misc;
+        }
+
+        foreach (var cluster in clusters.Where(cluster => !cluster.IsIsolated).ToList())
+        {
+            if (focusId is not null && cluster.Set.Contains(focusId)) continue;
+            var unrelated = cluster.NodeIds
+                .Where(id => adjacency[id].Count > 0 &&
+                             !cluster.Set.Any(neighbour =>
+                                 !string.Equals(neighbour, id, StringComparison.OrdinalIgnoreCase) &&
+                                 adjacency[id].ContainsKey(neighbour)))
+                .ToList();
+            foreach (var id in unrelated)
+            {
+                cluster.Remove(id);
+                GetMisc(id).Add(id);
+            }
+
+            var hasInternalEdge = cluster.NodeIds.Any(id =>
+                adjacency[id].Keys.Any(cluster.Set.Contains));
+            if (hasInternalEdge) continue;
+
+            // Degenerate cluster: only leftovers. Fold it into the misc group.
+            var leftover = cluster.NodeIds.ToList();
+            foreach (var id in leftover)
+            {
+                cluster.Remove(id);
+                GetMisc(id).Add(id);
+            }
+            clusters.Remove(cluster);
+        }
+    }
+
     private static int Affinity(MutableCluster source, MutableCluster destination,
         IReadOnlyList<DependencyEdge> edges)
     {
@@ -814,9 +1052,12 @@ public sealed class StarGalaxyLayoutEngine
         var centerX = (minX + maxX) / 2;
         var centerY = (minY + maxY) / 2;
 
-        // Desktop windows are wide. A ~1.55 horizontal spread keeps the
-        // constellation from becoming a square blob with empty side gutters.
-        const double horizontalSpread = 1.55;
+        // Desktop windows are wide, but only stretch a composition that came
+        // out too square. With many galaxies the force layout is already wide;
+        // forcing 1.55x there produced huge side gutters.
+        var spanX = Math.Max(1, maxX - minX);
+        var spanY = Math.Max(1, maxY - minY);
+        var horizontalSpread = Math.Clamp(1.55 * spanY / spanX, 1.0, 1.55);
         for (var i = 0; i < count; i++)
             positions[i] = new LayoutPoint(
                 (positions[i].X - centerX) * horizontalSpread,
@@ -1141,7 +1382,8 @@ public sealed class StarGalaxyLayoutEngine
     private sealed class MutableCluster(int index, string hubId)
     {
         public int Index { get; set; } = index;
-        public string HubId { get; } = hubId;
+        public string HubId { get; set; } = hubId;
+        public bool IsIsolated { get; set; }
         public List<string> NodeIds { get; } = [];
         public HashSet<string> Set { get; } = new(StringComparer.OrdinalIgnoreCase);
 
