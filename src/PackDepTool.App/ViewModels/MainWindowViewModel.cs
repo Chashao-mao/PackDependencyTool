@@ -462,6 +462,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(previewView) &&
             ViewOptions.FirstOrDefault(option => option.Value == previewView) is { } previewOption)
         {
+            Navigate("mods");
             SelectedViewOption = previewOption;
             if (IsStarView) BuildGalaxyScene(force: true);
         }
