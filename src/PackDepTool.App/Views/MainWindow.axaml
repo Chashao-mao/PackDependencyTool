@@ -1546,16 +1546,15 @@
       </Border>
       <Border IsVisible="{Binding IsHomePage}" Margin="10,10,10,6"
               Background="{DynamicResource AppBackground}">
-        <Grid RowDefinitions="*,300">
-        <ScrollViewer x:Name="HomeScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto"
+        <ScrollViewer x:Name="HomeScroll" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
-          <StackPanel x:Name="HomeContent" Width="1200" HorizontalAlignment="Center">
+          <StackPanel x:Name="HomeContent" Width="1200" HorizontalAlignment="Center"
+                      Spacing="12">
             <views:DashboardPage DataContext="{Binding}" />
+            <controls:RuntimeConsoleView DataContext="{Binding RuntimeConsole}"
+                                         Height="420" Margin="0,0,0,12" />
           </StackPanel>
         </ScrollViewer>
-        <controls:RuntimeConsoleView Grid.Row="1" DataContext="{Binding RuntimeConsole}"
-                                     MinHeight="180" />
-        </Grid>
       </Border>
 
     </Grid>
