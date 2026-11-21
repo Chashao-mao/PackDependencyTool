@@ -111,12 +111,34 @@ public sealed class StarGalaxyView : Control
     private bool _unconnectedExpanded;
     private double _unconnectedScroll;
     private int _frameVersion;
+    private long _lastRefreshTicks;
+    private bool _refreshScheduled;
+    private bool _rendering;
     private const int UnconnectedRowHeight = 26;
     private const int UnconnectedVisibleRows = 10;
 
     private void Refresh()
     {
+        // Coalesce bursts (icon batches, pointer moves, layout changes) into at
+        // most one frame per ~16 ms. A custom Skia draw operation must never be
+        // allowed to turn into an unbounded invalidation loop.
+        if (_refreshScheduled) return;
+        var now = Environment.TickCount64;
+        var elapsed = now - _lastRefreshTicks;
+        if (elapsed < 16)
+        {
+            _refreshScheduled = true;
+            DispatcherTimer.RunOnce(() =>
+            {
+                _refreshScheduled = false;
+                _frameVersion++;
+                _lastRefreshTicks = Environment.TickCount64;
+                InvalidateVisual();
+            }, TimeSpan.FromMilliseconds(16 - elapsed));
+            return;
+        }
         _frameVersion++;
+        _lastRefreshTicks = now;
         InvalidateVisual();
     }
 
@@ -1015,6 +1037,20 @@ public sealed class StarGalaxyView : Control
     // ------------------------------------------------------------------ rendering
 
     public override void Render(DrawingContext context)
+    {
+        if (_rendering) return;
+        _rendering = true;
+        try
+        {
+            RenderCore(context);
+        }
+        finally
+        {
+            _rendering = false;
+        }
+    }
+
+    private void RenderCore(DrawingContext context)
     {
         base.Render(context);
         var scene = Scene;
