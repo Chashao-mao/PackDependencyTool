@@ -1546,9 +1546,9 @@
       </Border>
       <Border IsVisible="{Binding IsHomePage}" Margin="10,10,10,6"
               Background="{DynamicResource AppBackground}">
-        <Grid RowDefinitions="Auto,*">
+        <Grid RowDefinitions="*,300">
         <ScrollViewer x:Name="HomeScroll" Grid.Row="0" VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled" MaxHeight="620">
+                      HorizontalScrollBarVisibility="Disabled">
           <StackPanel x:Name="HomeContent" Width="1200" HorizontalAlignment="Center">
             <views:DashboardPage DataContext="{Binding}" />
           </StackPanel>
