@@ -5760,8 +5760,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var loaderVisible = LoaderVisible();
+        var edgeTypeVisible = EdgeTypeVisible();
         var nodes = _graph.Nodes
-            .Where(node => !node.IsSynthetic && !node.IsEmbedded)
+            .Where(node => !node.IsEmbedded)
+            .Where(node => !node.IsSynthetic || node.IsOptionalDependency ||
+                           node.IsRecommendedDependency || node.Status == ModStatus.Missing)
+            .Where(node => loaderVisible(node.Loader))
+            .Where(node => ShowMissing || node.Status != ModStatus.Missing)
+            .Where(node => MatchesStatusFilter(node.Status))
+            .Where(node => MatchesSideFilter(node.Side))
+            .Where(node => MatchesCategoryFilter(node.Category))
+            .Where(node => !HideIsolated || _graph.Edges.Any(edge =>
+                string.Equals(edge.From, node.Id, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase)))
             .GroupBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
             .ToList();
@@ -5775,6 +5787,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var ids = nodes.Select(node => node.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var edges = _graph.Edges
             .Where(edge => ids.Contains(edge.From) && ids.Contains(edge.To))
+            .Where(edge => edgeTypeVisible(edge.Type))
             .ToList();
 
         var key = GalaxyLayoutKey(nodes, edges, _starFocusNodeId);
@@ -6918,6 +6931,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_graph is null) return;
         BuildScene();
+        if (IsStarView) BuildGalaxyScene(force: true);
         if (IsGraphView)
             _ = ScheduleCompactLayoutAsync();
     }

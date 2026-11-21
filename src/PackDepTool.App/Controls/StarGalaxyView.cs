@@ -391,6 +391,13 @@ public sealed class StarGalaxyView : Control
         var left = current.Properties.IsLeftButtonPressed;
         var middle = current.Properties.IsMiddleButtonPressed;
 
+        if (current.Properties.IsRightButtonPressed && HitTest(point) is { } menuNode)
+        {
+            SelectNode(menuNode);
+            ShowNodeMenu(menuNode);
+            e.Handled = true;
+            return;
+        }
         if (left && _crossToggleRect.Contains(point))
         {
             _showCrossGalaxyLines = !_showCrossGalaxyLines;
@@ -850,6 +857,45 @@ public sealed class StarGalaxyView : Control
             return true;
         }
         return true;
+    }
+
+    private void ShowNodeMenu(GalaxyNodeVm node)
+    {
+        var menu = new ContextMenu();
+        var details = new MenuItem { Header = "查看模组详情" };
+        details.Click += (_, _) =>
+        {
+            SelectNode(node);
+            NodeSelected?.Invoke(node.Id);
+        };
+        var only = new MenuItem { Header = _onlyRelated ? "退出只看关联" : "只看直接关联" };
+        only.Click += (_, _) =>
+        {
+            _onlyRelated = !_onlyRelated;
+            SetCurrentValue(SelectedNodeIdProperty, node.Id);
+            Refresh();
+        };
+        var focus = new MenuItem { Header = "居中并聚焦" };
+        focus.Click += (_, _) =>
+        {
+            SetCurrentValue(SelectedNodeIdProperty, node.Id);
+            _pendingFocusNodeId = node.Id;
+            NodeActivated?.Invoke(node.Id);
+            Refresh();
+        };
+        var copy = new MenuItem { Header = "复制 Mod ID" };
+        copy.Click += async (_, _) =>
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is not null) await clipboard.SetTextAsync(node.Model.Id);
+        };
+        menu.Items.Add(details);
+        menu.Items.Add(only);
+        menu.Items.Add(focus);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(copy);
+        menu.PlacementTarget = this;
+        menu.Open();
     }
 
     private void FocusNodeInView(string id)
@@ -1319,7 +1365,7 @@ public sealed class StarGalaxyView : Control
             // L1/L2 are dot maps; icons only become the node body at L3/L4
             // (or when the user is inspecting a specific node).
             var showIcon = icon is not null &&
-                           (zoom >= 0.72 ||
+                           (zoom >= 0.55 ||
                             string.Equals(node.Id, frame.SelectedId, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(node.Id, frame.HoverId, StringComparison.OrdinalIgnoreCase));
             if (showIcon)
@@ -1342,7 +1388,7 @@ public sealed class StarGalaxyView : Control
                 // additionally show the M/CJK initial.
                 canvas.DrawCircle((float)screen.X, (float)screen.Y, (float)(innerRadius * 0.62),
                     Paint(WithAlpha(ToArgb(node.LoaderColor), dim ? (byte)100 : (byte)225), false));
-                if (radius >= 9 && zoom >= 0.72)
+                if (radius >= 9 && zoom >= 0.55)
                 {
                     var initial = FirstGlyph(node.Title);
                     DrawScreenText(canvas, initial, (float)screen.X,
@@ -1379,8 +1425,8 @@ public sealed class StarGalaxyView : Control
     private void DrawLabels(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene,
         StarGalaxyCamera camera, double zoom)
     {
-        var allLabels = zoom >= 0.72;
-        var showTopMembers = zoom >= 0.35;
+        var allLabels = zoom >= 0.55;
+        var showTopMembers = zoom >= 0.30;
         var nodes = allLabels
             ? (IEnumerable<GalaxyNodeVm>)scene.Nodes
             : scene.Nodes
@@ -1525,15 +1571,26 @@ public sealed class StarGalaxyView : Control
             return;
         if (!scene.ById.TryGetValue(frame.HoverId, out var node)) return;
 
-        var lines = new[] { node.Title, node.Subtitle, GraphPalette.StatusText(node.Model.Status) };
+        var upstream = scene.DetailEdges.Count(edge =>
+            string.Equals(edge.From.Id, node.Id, StringComparison.OrdinalIgnoreCase));
+        var downstream = scene.DetailEdges.Count(edge =>
+            string.Equals(edge.To.Id, node.Id, StringComparison.OrdinalIgnoreCase));
+        var lines = new[]
+        {
+            node.Title,
+            node.Subtitle,
+            $"前置 {upstream} · 下游 {downstream}",
+            GraphPalette.StatusText(node.Model.Status),
+        };
         var lineWidths = new[]
         {
             Measure(TooltipBoldFont, lines[0]),
             Measure(TooltipFont, lines[1]),
             Measure(TooltipFont, lines[2]),
+            Measure(TooltipFont, lines[3]),
         };
         var width = lineWidths.Max() + 26;
-        var height = 66f;
+        var height = 84f;
         var x = Math.Clamp((float)frame.Pointer.X + 16, 6, (float)frame.Bounds.Width - width - 6);
         var y = Math.Clamp((float)frame.Pointer.Y + 16, 6, (float)frame.Bounds.Height - height - 6);
         var box = new SKRect(x, y, x + width, y + height);
@@ -1545,6 +1602,8 @@ public sealed class StarGalaxyView : Control
         DrawScreenText(canvas, lines[1], x + 12, y + 37, SKTextAlign.Left,
             TooltipFont, Paint(0xFF94A3B8, false));
         DrawScreenText(canvas, lines[2], x + 12, y + 54, SKTextAlign.Left,
+            TooltipFont, Paint(0xFF94A3B8, false));
+        DrawScreenText(canvas, lines[3], x + 12, y + 72, SKTextAlign.Left,
             TooltipFont, Paint(WithAlpha(ToArgb(node.StatusColor), 235), false));
     }
 
@@ -1571,15 +1630,21 @@ public sealed class StarGalaxyView : Control
 
         var (level, levelText) = camera.Zoom switch
         {
-            < 0.35 => ("L1", "全局视图"),
-            < 0.72 => ("L2", "星团视图"),
-            < 1.15 => ("L3", "模组视图"),
-            _ => ("L4", "检查视图"),
+            < 0.28 => ("L0", "全局结构"),
+            < 0.55 => ("L1", "星团概览"),
+            < 0.95 => ("L2", "模组关系"),
+            _ => ("L3", "精细检查"),
         };
         var chip = new SKRect(16, 34, 108, 54);
         canvas.DrawRoundRect(chip, 4, 4, Paint(0xCC141A26, false));
         DrawScreenText(canvas, $"{level} · {levelText}", 24, 49, SKTextAlign.Left,
             OverviewFont, Paint(0xFF93C5FD, false));
+
+        var status = $"{scene.Nodes.Count} 节点 · {scene.Edges.Count} 关系 · " +
+                     $"{camera.Zoom:0.00}x · {level} {levelText}" +
+                     (_onlyRelated && frame.SelectedId is not null ? " · 仅关联" : string.Empty);
+        DrawScreenText(canvas, status, 16, 68, SKTextAlign.Left, OverviewFont,
+            Paint(0xFF64748B, false));
     }
 
     private void DrawOverview(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene)
