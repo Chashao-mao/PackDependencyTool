@@ -814,34 +814,26 @@ public sealed class StarGalaxyLayoutEngine
                 adjacency[id].Keys.Any(cluster.Set.Contains));
         }
 
-        RebalanceIsolatedClusters(clusters, score, opt);
+        MergeIsolatedClusters(clusters);
     }
 
-    private static void RebalanceIsolatedClusters(
-        List<MutableCluster> clusters,
-        IReadOnlyDictionary<string, int> score,
-        StarGalaxyOptions opt)
+    private static void MergeIsolatedClusters(List<MutableCluster> clusters)
     {
         var isolated = clusters.Where(cluster => cluster.IsIsolated).ToList();
         if (isolated.Count <= 1) return;
 
+        // These mods have no relationship at all, so splitting them into
+        // multiple "galaxies" is pure noise. Keep one compact gray grid.
         var ids = isolated
             .SelectMany(cluster => cluster.NodeIds)
-            .OrderByDescending(id => score.GetValueOrDefault(id))
-            .ThenBy(id => id, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(id => id, StringComparer.OrdinalIgnoreCase)
             .ToList();
         foreach (var cluster in isolated) clusters.Remove(cluster);
         if (ids.Count == 0) return;
 
-        var chunkCount = Math.Max(1, (int)Math.Ceiling(ids.Count / (double)opt.MaxGalaxyNodes));
-        var chunkSize = (int)Math.Ceiling(ids.Count / (double)chunkCount);
-        for (var start = 0; start < ids.Count; start += chunkSize)
-        {
-            var chunk = ids.Skip(start).Take(chunkSize).ToList();
-            var misc = new MutableCluster(clusters.Count, chunk[0]) { IsIsolated = true };
-            foreach (var id in chunk) misc.Add(id);
-            clusters.Add(misc);
-        }
+        var misc = new MutableCluster(clusters.Count, ids[0]) { IsIsolated = true };
+        foreach (var id in ids) misc.Add(id);
+        clusters.Add(misc);
     }
 
     private static void CleanUnrelatedMembers(

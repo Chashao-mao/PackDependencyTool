@@ -848,7 +848,15 @@ public sealed class StarGalaxyView : Control
                 canvas.DrawCircle((float)center.X, (float)center.Y, radius,
                     Paint(WithAlpha(color, 120), true, 1.4f));
 
-            if (!galaxy.IsIsolated && camera.Zoom >= 0.5)
+            if (galaxy.IsIsolated)
+            {
+                var captionY = Math.Max(16, (float)(center.Y - radius - 8));
+                DrawScreenText(canvas, $"未连接 · {galaxy.NodeCount}",
+                    (float)center.X, captionY,
+                    SKTextAlign.Center, GalaxyTitleFont,
+                    Paint(0xFF94A3B8, false));
+            }
+            else if (camera.Zoom >= 0.5)
             {
                 var title = $"{galaxy.ShortTitle} · {galaxy.NodeCount} 个模组";
                 DrawScreenText(canvas, title, (float)center.X, (float)(center.Y - radius - 8),
@@ -1126,6 +1134,9 @@ public sealed class StarGalaxyView : Control
         {
             var isMatch = frame.HasSearch && frame.SearchMatches?.Contains(node.Id) == true;
             if (!node.ShowLabel && !node.IsHub) continue;
+            // The isolated group has a group caption above the grid; do not
+            // stamp an arbitrary "hub" name on top of its icons.
+            if (node.IsHub && node.IsIsolatedGalaxy) continue;
             if (!allLabels)
             {
                 var important = node.IsHub || isMatch ||
