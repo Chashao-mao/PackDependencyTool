@@ -133,6 +133,39 @@
           </Border>
         </Grid>
 
+        <Border Classes="card" Padding="16">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Spacing="1">
+                <TextBlock Text="加载耗时 Top" Classes="section" />
+                <TextBlock Text="{Binding DashboardLoadCostSummary}" Classes="caption"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="1" Content="读取性能报告…"
+                      Command="{Binding AnalyzePerformanceCommand}" VerticalAlignment="Center" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding DashboardLoadCosts}"
+                          IsVisible="{Binding HasDashboardLoadCosts}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DashboardBarItem">
+                  <StackPanel Spacing="3" Margin="0,0,0,9">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Label}" FontSize="10.5" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" Text="{Binding Detail}" FontSize="9"
+                                 Foreground="{DynamicResource TextMuted}" />
+                    </Grid>
+                    <ProgressBar Value="{Binding Percent}" Maximum="100" Height="7"
+                                 Foreground="{Binding Brush}" Background="{DynamicResource PanelAlt}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="运行过 Caliper / Spark 报告后，这里显示有效加载耗时；共享前置会按依赖方分摊。"
+                       Classes="caption" TextWrapping="Wrap"
+                       IsVisible="{Binding !HasDashboardLoadCosts}" />
+          </StackPanel>
+        </Border>
+
         <Border Classes="card" Padding="14">
           <WrapPanel>
             <Button Content="备份 config…" Command="{Binding OpenBackupCenterCommand}" Margin="0,0,8,0" />

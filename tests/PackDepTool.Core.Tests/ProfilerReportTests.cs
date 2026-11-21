@@ -1,4 +1,5 @@
 using PackDepTool.Core.Analysis;
+using PackDepTool.Core.Models;
 using Xunit;
 
 namespace PackDepTool.Core.Tests;
@@ -13,6 +14,20 @@ public sealed class ProfilerReportTests
         Assert.NotNull(report);
         Assert.Contains(report!.Findings, finding => finding.Title.Contains("sodium"));
         Assert.Contains(report.Findings, finding => finding.RuleId == "caliper-load-cost");
+    }
+
+    [Fact]
+    public void MapsCaliperRowsToInstalledModIds()
+    {
+        var graph = new GraphDocument
+        {
+            Nodes = [new ModNode { Id = "sodium", Name = "Sodium" }],
+        };
+        var entries = new[] { new CaliperLoadEntry("sodium", "sodium.jar", 120) };
+
+        var costs = CaliperReportParser.ToOwnCosts(entries, graph);
+
+        Assert.Equal(120, costs["sodium"]);
     }
 
     [Fact]

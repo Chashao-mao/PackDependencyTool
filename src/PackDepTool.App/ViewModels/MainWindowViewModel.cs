@@ -243,7 +243,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _dashboardHealthLabel = "等待扫描";
     public ObservableCollection<DashboardBarItem> DashboardBars { get; } = [];
     public ObservableCollection<DashboardProblemItem> DashboardProblems { get; } = [];
+    public ObservableCollection<DashboardBarItem> DashboardLoadCosts { get; } = [];
     public bool HasDashboardProblems => DashboardProblems.Count > 0;
+    public bool HasDashboardLoadCosts => DashboardLoadCosts.Count > 0;
+    public string DashboardLoadCostSummary { get; private set; } = "尚未读取 Caliper / Spark 报告";
     public bool HasDashboardBars => DashboardBars.Count > 0;
     public IBrush DashboardHealthBrush => DashboardHealthScore switch
     {
@@ -2983,6 +2986,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var text = await File.ReadAllTextAsync(path);
             if (text.Length > 4 * 1024 * 1024)
                 text = text[..(4 * 1024 * 1024)];
+            var caliperEntries = CaliperReportParser.TryParseEntries(text);
+            if (caliperEntries is { Count: > 0 }) UpdateLoadCosts(caliperEntries);
             var report = CaliperReportParser.TryParse(text, path, _graph)
                          ?? PerformanceAttributionAnalyzer.Analyze(text, path, _graph);
             var source = reports.FirstOrDefault(item =>
@@ -5323,8 +5328,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             DashboardHealthLabel = "等待扫描";
             DashboardBars.Clear();
             DashboardProblems.Clear();
+            DashboardLoadCosts.Clear();
             OnPropertyChanged(nameof(HasDashboardProblems));
             OnPropertyChanged(nameof(HasDashboardBars));
+            OnPropertyChanged(nameof(HasDashboardLoadCosts));
             return;
         }
 
@@ -5806,6 +5813,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Edges = starEdges,
             HiddenCount = 0,
         };
+    }
+
+    private void UpdateLoadCosts(IReadOnlyList<CaliperLoadEntry> entries)
+    {
+        if (_graph is null) return;
+        var own = CaliperReportParser.ToOwnCosts(entries, _graph);
+        if (own.Count == 0) return;
+        var report = LoadCostAttribution.Analyze(_graph, own);
+        DashboardLoadCosts.Clear();
+        var max = Math.Max(1, report.Costs.FirstOrDefault()?.EffectiveMilliseconds ?? 1);
+        foreach (var row in report.Costs.Take(6))
+        {
+            DashboardLoadCosts.Add(new DashboardBarItem(
+                row.Name,
+                (int)Math.Round(row.EffectiveMilliseconds),
+                Math.Clamp(row.EffectiveMilliseconds / max * 100, 0, 100),
+                new SolidColorBrush(Color.Parse(row.EffectiveMilliseconds switch
+                {
+                    >= 1000 => "#F87171",
+                    >= 300 => "#FBBF24",
+                    _ => "#60A5FA",
+                })),
+                $"{row.EffectiveMilliseconds:0.#} ms（自身 {row.OwnMilliseconds:0.#} / 共享 {row.SharedPrerequisiteMilliseconds:0.#}）"));
+        }
+        DashboardLoadCostSummary = report.Summary;
+        OnPropertyChanged(nameof(HasDashboardLoadCosts));
+        OnPropertyChanged(nameof(DashboardLoadCostSummary));
     }
 
     private void BuildDependencyTree()
