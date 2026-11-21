@@ -863,6 +863,7 @@
             <Grid IsVisible="{Binding IsStarView}">
               <controls:StarGalaxyView x:Name="GalaxyView"
                                        Scene="{Binding GalaxyScene}"
+                                       LayoutStoragePath="{Binding GalaxyLayoutPath}"
                                        SearchText="{Binding SearchText}"
                                        SelectedNodeId="{Binding StarSelectedNodeId, Mode=TwoWay}" />
             </Grid>

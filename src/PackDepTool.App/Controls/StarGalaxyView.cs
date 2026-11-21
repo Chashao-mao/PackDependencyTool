@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -23,6 +24,9 @@ public sealed class StarGalaxyView : Control
 {
     public static readonly StyledProperty<GalaxyScene?> SceneProperty =
         AvaloniaProperty.Register<StarGalaxyView, GalaxyScene?>(nameof(Scene));
+
+    public static readonly StyledProperty<string?> LayoutStoragePathProperty =
+        AvaloniaProperty.Register<StarGalaxyView, string?>(nameof(LayoutStoragePath));
 
     public static readonly StyledProperty<string?> SearchTextProperty =
         AvaloniaProperty.Register<StarGalaxyView, string?>(nameof(SearchText));
@@ -102,6 +106,10 @@ public sealed class StarGalaxyView : Control
     private int _sceneVersion;
     private string? _pendingFocusNodeId;
     private bool _overviewCollapsed;
+    private bool _showCrossGalaxyLines = true;
+    private readonly Dictionary<string, (double X, double Y, LayoutRect Label)> _basePositions =
+        new(StringComparer.OrdinalIgnoreCase);
+    private Rect _crossToggleRect;
     private bool _unconnectedExpanded;
     private double _unconnectedScroll;
     private int _frameVersion;
@@ -118,6 +126,12 @@ public sealed class StarGalaxyView : Control
     {
         get => GetValue(SceneProperty);
         set => SetValue(SceneProperty, value);
+    }
+
+    public string? LayoutStoragePath
+    {
+        get => GetValue(LayoutStoragePathProperty);
+        set => SetValue(LayoutStoragePathProperty, value);
     }
 
     public string? SearchText
@@ -198,6 +212,8 @@ public sealed class StarGalaxyView : Control
         }
 
         _cameraUserAdjusted = false;
+        CaptureBasePositions();
+        ApplySavedPositions();
         FitToScene();
         var pending = _pendingFocusNodeId;
         _pendingFocusNodeId = null;
@@ -350,6 +366,79 @@ public sealed class StarGalaxyView : Control
             (node.Model.NameZh?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
+    private void CaptureBasePositions()
+    {
+        _basePositions.Clear();
+        if (Scene is null) return;
+        foreach (var node in Scene.Nodes)
+            _basePositions[node.Id] = (node.X, node.Y, node.LabelRect);
+    }
+
+    private void ApplySavedPositions()
+    {
+        if (Scene is null || string.IsNullOrWhiteSpace(LayoutStoragePath) ||
+            !File.Exists(LayoutStoragePath)) return;
+        try
+        {
+            var saved = JsonSerializer.Deserialize<Dictionary<string, SavedPoint>>(
+                File.ReadAllText(LayoutStoragePath));
+            if (saved is null) return;
+            foreach (var node in Scene.Nodes)
+            {
+                if (!saved.TryGetValue(node.Id, out var point) ||
+                    !_basePositions.TryGetValue(node.Id, out var basePos)) continue;
+                var dx = point.X - basePos.X;
+                var dy = point.Y - basePos.Y;
+                node.X = point.X;
+                node.Y = point.Y;
+                node.LabelRect = new LayoutRect(
+                    basePos.Label.X + dx, basePos.Label.Y + dy,
+                    basePos.Label.Width, basePos.Label.Height);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // A stale/corrupt layout must never stop the star map from opening.
+        }
+    }
+
+    private void SavePositions()
+    {
+        if (Scene is null || string.IsNullOrWhiteSpace(LayoutStoragePath)) return;
+        try
+        {
+            var directory = Path.GetDirectoryName(LayoutStoragePath);
+            if (!string.IsNullOrWhiteSpace(directory)) Directory.CreateDirectory(directory);
+            var positions = Scene.Nodes.ToDictionary(
+                node => node.Id,
+                node => new SavedPoint(node.X, node.Y),
+                StringComparer.OrdinalIgnoreCase);
+            File.WriteAllText(LayoutStoragePath,
+                JsonSerializer.Serialize(new LayoutFile(1, positions)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private void ResetPositions()
+    {
+        if (Scene is null) return;
+        foreach (var node in Scene.Nodes)
+        {
+            if (!_basePositions.TryGetValue(node.Id, out var basePos)) continue;
+            node.X = basePos.X;
+            node.Y = basePos.Y;
+            node.LabelRect = basePos.Label;
+        }
+        SavePositions();
+        FitToScene();
+        Refresh();
+    }
+
+    private sealed record SavedPoint(double X, double Y);
+    private sealed record LayoutFile(int Version, Dictionary<string, SavedPoint> Positions);
+
     // ------------------------------------------------------------------ interaction
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -362,6 +451,12 @@ public sealed class StarGalaxyView : Control
         var left = current.Properties.IsLeftButtonPressed;
         var middle = current.Properties.IsMiddleButtonPressed;
 
+        if (left && _crossToggleRect.Contains(point))
+        {
+            _showCrossGalaxyLines = !_showCrossGalaxyLines;
+            Refresh();
+            return;
+        }
         if (left && HandleUnconnectedClick(point)) return;
         if (left && HandleSelectionCardClick(point)) return;
         if (left && HandleOverviewClick(point)) return;
@@ -476,6 +571,10 @@ public sealed class StarGalaxyView : Control
             // its local relationship map, while leaf clicks only select.
             if (node.IsHub && _camera.Zoom < 0.5) ZoomToGalaxy(node.GalaxyIndex);
         }
+        else
+        {
+            SavePositions();
+        }
         Refresh();
     }
 
@@ -518,6 +617,17 @@ public sealed class StarGalaxyView : Control
         if (e.Key is Key.D0 or Key.NumPad0 or Key.F)
         {
             FitToScene();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.R)
+        {
+            ResetPositions();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.X)
+        {
+            _showCrossGalaxyLines = !_showCrossGalaxyLines;
+            Refresh();
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)
@@ -681,10 +791,12 @@ public sealed class StarGalaxyView : Control
         public required int Requires { get; init; }
         public required int Optional { get; init; }
         public required int Incompatible { get; init; }
+        public required int Upstream { get; init; }
+        public required int Downstream { get; init; }
         public required IReadOnlyList<DetailRow> Rows { get; init; }
     }
 
-    private sealed record DetailRow(string Id, string Title, string Kind, uint Color);
+    private sealed record DetailRow(string Id, string Title, string Kind, uint Color, bool IsUpstream);
 
     private static SelectionDetails? BuildSelectionDetails(GalaxyScene? scene, string? selectedId)
     {
@@ -705,6 +817,7 @@ public sealed class StarGalaxyView : Control
             else
                 continue;
 
+            var isUpstream = string.Equals(edge.From.Id, node.Id, StringComparison.OrdinalIgnoreCase);
             switch (edge.Type)
             {
                 case EdgeType.Requires:
@@ -728,14 +841,18 @@ public sealed class StarGalaxyView : Control
                 EdgeType.Embedded => 4,
                 _ => 5,
             };
-            related.Add((priority, edge, other));
+            related.Add((isUpstream ? priority : priority + 10, edge, other));
         }
 
         var rows = related
             .OrderBy(item => item.Priority)
             .ThenBy(item => item.Other.Title, StringComparer.OrdinalIgnoreCase)
-            .Select(item => new DetailRow(item.Other.Id, item.Other.Title,
-                GraphPalette.EdgeText(item.Edge.Type), ToArgb(item.Edge.Color)))
+            .Select(item => new DetailRow(
+                item.Other.Id,
+                (string.Equals(item.Edge.From.Id, node.Id, StringComparison.OrdinalIgnoreCase) ? "→ " : "← ")
+                + item.Other.Title,
+                GraphPalette.EdgeText(item.Edge.Type), ToArgb(item.Edge.Color),
+                string.Equals(item.Edge.From.Id, node.Id, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
         return new SelectionDetails
@@ -749,6 +866,8 @@ public sealed class StarGalaxyView : Control
             Requires = requires,
             Optional = optional,
             Incompatible = incompatible,
+            Upstream = rows.Count(row => row.IsUpstream),
+            Downstream = rows.Count(row => !row.IsUpstream),
             Rows = rows,
         };
     }
@@ -823,9 +942,9 @@ public sealed class StarGalaxyView : Control
         canvas.DrawLine(x, y + 43, (float)panel.Right - 12, y + 43,
             Paint(0xFF273043, true, 1f));
 
-        var counts = details.Requires + details.Optional + details.Incompatible == 0
+        var counts = details.Rows.Count == 0
             ? "没有记录到关系"
-            : $"{details.Requires} 必需 · {details.Optional} 可选 · {details.Incompatible} 冲突";
+            : $"前置 {details.Upstream} · 下游 {details.Downstream} · 冲突 {details.Incompatible}";
         DrawScreenText(canvas, counts, x, y + 59, SKTextAlign.Left, LegendFont,
             Paint(0xFFCBD5E1, false));
 
@@ -1054,9 +1173,9 @@ public sealed class StarGalaxyView : Control
     private void DrawGalaxyBackbone(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene,
         StarGalaxyCamera camera)
     {
-        // While inspecting a node, its own cross-galaxy edges are highlighted;
-        // the global backbone would only add long chords through the viewport.
-        if (frame.SelectedId is not null) return;
+        // The backbone is opt-in: the overview panel already conveys cross
+        // galaxy relations, and always-on chords turn the map into spaghetti.
+        if (!_showCrossGalaxyLines || frame.SelectedId is not null) return;
 
         foreach (var link in scene.CrossLinks)
         {
@@ -1077,7 +1196,7 @@ public sealed class StarGalaxyView : Control
             var highlighted = frame.SelectedGalaxy == link.FromGalaxy ||
                               frame.SelectedGalaxy == link.ToGalaxy;
             var alpha = (byte)Math.Clamp(
-                (highlighted ? 120 : 46) + Math.Min(58, link.Count * 4), 46, 180);
+                (highlighted ? 110 : 24) + Math.Min(34, link.Count * 2), 24, 150);
             var color = link.RequiresCount > 0 ? 0xFF3B82F6 : 0xFF64748B;
             var width = Math.Min(3.4f, 0.8f + (float)Math.Log2(link.Count + 1) * 0.6f);
             using var path = new SKPath();
@@ -1171,7 +1290,8 @@ public sealed class StarGalaxyView : Control
     {
         var view = new SKRect((float)frame.Bounds.X - 40, (float)frame.Bounds.Y - 40,
             (float)frame.Bounds.Right + 40, (float)frame.Bounds.Bottom + 40);
-        if (zoom >= 0.55 && frame.SelectedId is null && frame.HoverId is null)
+        if (_showCrossGalaxyLines && zoom >= 0.55 &&
+            frame.SelectedId is null && frame.HoverId is null)
         {
             using var requires = new SKPath();
             using var other = new SKPath();
@@ -1301,7 +1421,7 @@ public sealed class StarGalaxyView : Control
     private void DrawLabels(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene,
         StarGalaxyCamera camera, double zoom)
     {
-        var allLabels = zoom >= 0.85;
+        var allLabels = zoom >= 0.72;
         var showTopMembers = zoom >= 0.35;
         var nodes = allLabels
             ? (IEnumerable<GalaxyNodeVm>)scene.Nodes
@@ -1440,6 +1560,18 @@ public sealed class StarGalaxyView : Control
             color = 0xFF94A3B8;
         }
         DrawScreenText(canvas, text, 16, 24, SKTextAlign.Left, LegendFont, Paint(color, false));
+
+        var (level, levelText) = camera.Zoom switch
+        {
+            < 0.35 => ("L1", "全局视图"),
+            < 0.72 => ("L2", "星团视图"),
+            < 1.15 => ("L3", "模组视图"),
+            _ => ("L4", "检查视图"),
+        };
+        var chip = new SKRect(16, 34, 108, 54);
+        canvas.DrawRoundRect(chip, 4, 4, Paint(0xCC141A26, false));
+        DrawScreenText(canvas, $"{level} · {levelText}", 24, 49, SKTextAlign.Left,
+            OverviewFont, Paint(0xFF93C5FD, false));
     }
 
     private void DrawOverview(SKCanvas canvas, GalaxyFrameState frame, GalaxyScene scene)
@@ -1530,11 +1662,17 @@ public sealed class StarGalaxyView : Control
             DrawScreenText(canvas, entries[i].Text, x + 13, rowY, SKTextAlign.Left,
                 LegendFont, Paint(0xFF94A3B8, false));
         }
+
+        var toggleY = y + entries.Length * 16 + 2;
+        _crossToggleRect = new Rect(x - 2, toggleY - 12, 176, 18);
+        var toggleText = _showCrossGalaxyLines ? "跨星系线：开（X 关闭）" : "跨星系线：关（X 打开）";
+        DrawScreenText(canvas, toggleText, x + 2, toggleY, SKTextAlign.Left,
+            LegendFont, Paint(_showCrossGalaxyLines ? 0xFF3B82F6 : 0xFF64748B, false));
     }
 
     private void DrawHint(SKCanvas canvas, GalaxyFrameState frame)
     {
-        var text = "滚轮缩放 · 拖空白平移 · 拖节点移动 · 单击枢纽聚焦 · 双击重生成 · 0 回总览";
+        var text = "滚轮缩放 · 拖空白平移 · 拖节点移动 · 单击枢纽聚焦 · 双击重生成 · X 跨星系线 · R 恢复默认布局 · 0 回总览";
         DrawScreenText(canvas, text, (float)frame.Bounds.Width / 2,
             (float)frame.Bounds.Height - 12, SKTextAlign.Center, LegendFont,
             Paint(0xFF475569, false));
