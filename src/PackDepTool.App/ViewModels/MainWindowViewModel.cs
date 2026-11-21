@@ -1592,12 +1592,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var completed = 0;
         var unresolved = 0;
         var cachedCount = 0;
+        var lastProgressAt = 0L;
         IProgress<(int Done, int Total, string Name)> progress =
             new Progress<(int Done, int Total, string Name)>(value =>
         {
+            // 429 mods can report hundreds of times per second; that made the
+            // footer text/progress jump wildly. Throttle UI updates, but always
+            // let the final 100% through.
+            var now = Environment.TickCount64;
+            if (value.Done < value.Total && now - lastProgressAt < 200) return;
+            lastProgressAt = now;
             ProgressValue = (double)value.Done / value.Total;
             ProgressText = $"检查模组更新 {value.Done}/{value.Total}";
-            StatusText = $"检查模组更新 · {value.Name}";
+            // Keep the footer sentence stable; only the progress widget moves.
         });
 
         try
