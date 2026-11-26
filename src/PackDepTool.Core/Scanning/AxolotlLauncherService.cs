@@ -53,9 +53,16 @@ public sealed class AxolotlLauncherService
             if (File.Exists(expanded)) ExecutablePath = expanded;
         }
 
-        var db = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), DbRelativePath);
-        if (File.Exists(db)) DatabasePath = db;
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var databases = new[]
+        {
+            Path.Combine(appData, DbRelativePath),
+            Path.Combine(appData, "red.ghs.axolotl", "app.db"),
+            Path.Combine(localData, DbRelativePath),
+            Path.Combine(localData, "red.ghs.axolotl", "app.db"),
+        };
+        DatabasePath = databases.FirstOrDefault(File.Exists);
     }
 
     public IReadOnlyList<AxolotlInstance> ListInstances()
@@ -79,29 +86,10 @@ public sealed class AxolotlLauncherService
                 from instances i
                 order by i.pinned_at is not null desc, i.last_played desc, i.name
                 """;
-            if (Sqlite3.sqlite3_prepare_v2(database, sql, -1, out var statement, IntPtr.Zero) != 0)
-                return [];
-            try
-            {
-                while (Sqlite3.sqlite3_step(statement) == 100)
-                {
-                    result.Add(new AxolotlInstance
-                    {
-                        Id = Text(statement, 0),
-                        Name = Text(statement, 1),
-                        Path = Text(statement, 2),
-                        GameDirectoryOverride = Nullable(Text(statement, 3)),
-                        MinecraftVersion = Text(statement, 4),
-                        Loader = Text(statement, 5),
-                        LoaderVersion = Nullable(Text(statement, 6)),
-                        LastPlayed = Nullable(Text(statement, 7)),
-                    });
-                }
-            }
-            finally
-            {
-                Sqlite3.sqlite3_finalize(statement);
-            }
+            if (Read(database, sql, result)) return result;
+            // Older Axolotl builds do not expose content sets/last_played;
+            // keep instance discovery working instead of returning nothing.
+            Read(database, "select id, name, path from instances order by name", result);
         }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException or ExternalException)
         {
@@ -142,6 +130,35 @@ public sealed class AxolotlLauncherService
             ExternalLauncher = "Axolotl",
             ExternalId = instance.Id,
         };
+    }
+
+    private static bool Read(IntPtr database, string sql, List<AxolotlInstance> result)
+    {
+        if (Sqlite3.sqlite3_prepare_v2(database, sql, -1, out var statement, IntPtr.Zero) != 0)
+            return false;
+        var columns = Sqlite3.sqlite3_column_count(statement);
+        try
+        {
+            while (Sqlite3.sqlite3_step(statement) == 100)
+            {
+                result.Add(new AxolotlInstance
+                {
+                    Id = Text(statement, 0),
+                    Name = Text(statement, 1),
+                    Path = Text(statement, 2),
+                    GameDirectoryOverride = columns > 3 ? Nullable(Text(statement, 3)) : null,
+                    MinecraftVersion = columns > 4 ? Text(statement, 4) : "?",
+                    Loader = columns > 5 ? Text(statement, 5) : string.Empty,
+                    LoaderVersion = columns > 6 ? Nullable(Text(statement, 6)) : null,
+                    LastPlayed = columns > 7 ? Nullable(Text(statement, 7)) : null,
+                });
+            }
+            return true;
+        }
+        finally
+        {
+            Sqlite3.sqlite3_finalize(statement);
+        }
     }
 
     public bool Launch(string instanceId) => OpenUrl($"axolotl://launch?instance_id={Uri.EscapeDataString(instanceId)}");
@@ -187,6 +204,9 @@ internal static class Sqlite3
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern int sqlite3_step(IntPtr statement);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int sqlite3_column_count(IntPtr statement);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern IntPtr sqlite3_column_text(IntPtr statement, int index);

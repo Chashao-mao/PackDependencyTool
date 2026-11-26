@@ -49,6 +49,19 @@ internal static class TestJar
         }
     }
 
+    public static void WriteBytes(string path, params (string Entry, byte[] Content)[] entries)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var stream = File.Create(path);
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+        foreach (var (entryName, content) in entries)
+        {
+            var entry = archive.CreateEntry(entryName);
+            using var target = entry.Open();
+            target.Write(content);
+        }
+    }
+
     public static byte[] Build(params (string Entry, string Content)[] entries)
     {
         using var memory = new MemoryStream();

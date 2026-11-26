@@ -7,19 +7,17 @@ namespace PackDepTool.Core.Tests;
 public sealed class JarContentConflictAnalyzerTests
 {
     [Fact]
-    public async Task FindsDuplicateClassesResourceOverridesAndMixinTargets()
+    public async Task FindsDuplicateClassesAndResourceOverrides()
     {
         using var temp = new TempDir();
         var first = temp.Combine("mods", "first.jar");
         var second = temp.Combine("mods", "second.jar");
         TestJar.Write(first,
             ("com/example/Shared.class", "class"),
-            ("assets/demo/lang/en_us.json", "short"),
-            ("first.mixins.json", """{"package":"com.example.mixin","mixins":["Target"]}"""));
+            ("assets/demo/lang/en_us.json", "short"));
         TestJar.Write(second,
             ("com/example/Shared.class", "class"),
-            ("assets/demo/lang/en_us.json", "a longer value"),
-            ("second.mixins.json", """{"package":"com.example.mixin","mixins":["Target"]}"""));
+            ("assets/demo/lang/en_us.json", "a longer value"));
 
         var scan = new ScanResult { RootPath = temp.Path, ModsDirectory = temp.Combine("mods") };
         scan.Jars.Add(Jar(first, "first", "First"));
@@ -29,10 +27,8 @@ public sealed class JarContentConflictAnalyzerTests
 
         Assert.Contains(report.Findings, finding => finding.RuleId == "duplicate-class");
         Assert.Contains(report.Findings, finding => finding.RuleId == "resource-override");
-        Assert.Contains(report.Findings, finding => finding.RuleId == "mixin-target-overlap");
-        Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("first"));
+        Assert.Contains(report.Findings, finding => finding.RelatedModIds.Contains("second"));
         Assert.Contains(report.Conflicts, conflict => conflict.Kind == JarConflictKind.DuplicateClass);
-        Assert.Contains(report.Conflicts, conflict => conflict.Kind == JarConflictKind.MixinTarget);
     }
 
     [Fact]

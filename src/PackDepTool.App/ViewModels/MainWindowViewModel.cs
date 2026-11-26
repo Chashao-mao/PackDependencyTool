@@ -4139,7 +4139,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             (string.Equals(instance.Path, instancePath, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(instance.EffectiveRoot, instancePath, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(instance.GameDirectory, instancePath, StringComparison.OrdinalIgnoreCase)));
-        if (axolotlInstance?.ExternalId is { Length: > 0 } axolotlId)
+        _services.Axolotl.Detect(_services.Settings.AxolotlPath);
+        var directAxolotl = _services.Axolotl.ListInstances().FirstOrDefault(instance =>
+            string.Equals(instance.Path, instancePath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(instance.GameDirectoryOverride, instancePath, StringComparison.OrdinalIgnoreCase));
+        var axolotlId = axolotlInstance?.ExternalId ?? directAxolotl?.Id;
+        if (axolotlId is { Length: > 0 })
         {
             StatusText = _services.Axolotl.Launch(axolotlId)
                 ? $"已请求 Axolotl 启动「{axolotlInstance.Name}」；请在启动器中确认。"

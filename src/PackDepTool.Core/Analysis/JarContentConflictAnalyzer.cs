@@ -27,6 +27,28 @@ public sealed class JarContentConflictAnalyzer
         var resources = new Dictionary<string, JarOwner>(StringComparer.OrdinalIgnoreCase);
         var mixinConfigs = new Dictionary<string, JarOwner>(StringComparer.OrdinalIgnoreCase);
         var mixinTargets = new Dictionary<string, List<JarOwner>>(StringComparer.OrdinalIgnoreCase);
+        var mixinClassesByJar = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        // Cache the classes declared by mixin configs so the main pass only
+        // decompresses actual mixin classes, not every class in every jar.
+        foreach (var jar in scan.Jars)
+        {
+            if (!File.Exists(jar.AbsolutePath)) continue;
+            var mixinClassSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                using var archive = ZipFile.OpenRead(jar.AbsolutePath);
+                foreach (var entry in archive.Entries)
+                {
+                    if (!IsMixinConfig(entry.FullName)) continue;
+                    TryReadMixinClasses(entry, mixinClassSet);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+            }
+            if (mixinClassSet.Count > 0) mixinClassesByJar[jar.FilePath] = mixinClassSet;
+        }
 
         foreach (var jar in scan.Jars)
         {
@@ -67,7 +89,6 @@ public sealed class JarContentConflictAnalyzer
                                 "重复的 Mixin 配置路径",
                                 $"`{path}` 同时存在于 {existing.Jar} 和 {current.Jar}，加载器只会读取其中一个。",
                                 path, owner));
-                        TryReadMixinTargets(entry, path, owner, mixinTargets);
                         continue;
                     }
 
@@ -85,6 +106,29 @@ public sealed class JarContentConflictAnalyzer
                             AddConflict(conflicts, JarConflictKind.DuplicateClass, true,
                                 existing, current, path);
                         });
+
+                        if (mixinClassesByJar.TryGetValue(jar.FilePath, out var mixinClasses) &&
+                            mixinClasses.Contains(ClassDots(path)) && entry.Length is > 0 and < 2 * 1024 * 1024)
+                        {
+                            try
+                            {
+                                using var classStream = entry.Open();
+                                using var memory = new MemoryStream((int)entry.Length);
+                                classStream.CopyTo(memory);
+                                foreach (var target in MixinAnnotationReader.ReadTargets(memory.ToArray()))
+                                {
+                                    if (!mixinTargets.TryGetValue(target, out var owners))
+                                        mixinTargets[target] = owners = [];
+                                    if (owners.All(existing => !string.Equals(existing.Jar, owner.Jar,
+                                            StringComparison.OrdinalIgnoreCase)))
+                                        owners.Add(owner);
+                                }
+                            }
+                            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
+                                                           InvalidDataException or ArgumentOutOfRangeException)
+                            {
+                            }
+                        }
                     }
                     else if ((path.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) ||
                               path.StartsWith("data/", StringComparison.OrdinalIgnoreCase)) &&
@@ -161,11 +205,7 @@ public sealed class JarContentConflictAnalyzer
         map[path] = current;
     }
 
-    private static void TryReadMixinTargets(
-        ZipArchiveEntry entry,
-        string path,
-        JarOwner owner,
-        Dictionary<string, List<JarOwner>> targets)
+    private static void TryReadMixinClasses(ZipArchiveEntry entry, HashSet<string> classes)
     {
         if (entry.Length > MaxMixinConfigBytes) return;
         try
@@ -180,30 +220,30 @@ public sealed class JarContentConflictAnalyzer
 
             foreach (var listName in new[] { "mixins", "client", "server" })
             {
-                if (!root.TryGetProperty(listName, out var list) ||
-                    list.ValueKind != JsonValueKind.Array)
+                if (!root.TryGetProperty(listName, out var list) || list.ValueKind != JsonValueKind.Array)
                     continue;
                 foreach (var item in list.EnumerateArray())
                 {
                     if (item.ValueKind != JsonValueKind.String) continue;
                     var mixin = item.GetString();
                     if (string.IsNullOrWhiteSpace(mixin)) continue;
-                    var target = string.IsNullOrWhiteSpace(package)
-                        ? mixin
-                        : $"{package}.{mixin}";
-                    if (!targets.TryGetValue(target, out var owners))
-                        targets[target] = owners = [];
-                    if (owners.All(existing => !string.Equals(existing.Jar, owner.Jar,
-                            StringComparison.OrdinalIgnoreCase)))
-                        owners.Add(owner);
+                    var fullName = string.IsNullOrWhiteSpace(package) ? mixin : $"{package}.{mixin}";
+                    classes.Add(fullName.Replace('/', '.').TrimStart('.'));
                 }
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or
                                        JsonException or InvalidDataException)
         {
-            // A malformed mixin config is already reported by its owning mod's parser.
         }
+    }
+
+    private static string ClassDots(string path)
+    {
+        var value = path.Replace('\\', '/');
+        if (value.EndsWith(".class", StringComparison.OrdinalIgnoreCase))
+            value = value[..^6];
+        return value.Replace('/', '.');
     }
 
     private static bool IsMixinConfig(string path) =>
