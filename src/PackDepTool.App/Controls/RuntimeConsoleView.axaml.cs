@@ -58,7 +58,10 @@ public partial class RuntimeConsoleView : UserControl
         HookScroll();
         _viewModel.RefreshLog();
         if (_viewModel.AutoScroll && _stickToBottom && LogList.ItemCount > 0)
-            Dispatcher.UIThread.Post(() => LogList.ScrollIntoView(LogList.ItemCount - 1),
-                DispatcherPriority.Background);
+        {
+            // Scroll the console's own ScrollViewer. ListBox.ScrollIntoView can
+            // bubble to the home page ScrollViewer and drag the whole window.
+            Dispatcher.UIThread.Post(() => _scroll?.ScrollToEnd(), DispatcherPriority.Background);
+        }
     }
 }

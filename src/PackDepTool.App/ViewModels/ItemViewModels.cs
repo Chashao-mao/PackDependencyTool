@@ -452,7 +452,6 @@ public sealed record ViewOption(string Value, string Label)
         new("list", "模组清单"),
         new("tree", "关系树"),
         new("graph", "依赖图"),
-        new("star", "星图"),
     ];
 }
 
