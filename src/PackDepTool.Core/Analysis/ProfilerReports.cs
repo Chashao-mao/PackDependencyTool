@@ -57,11 +57,40 @@ public static class ProfilerReportDiscovery
     }
 }
 
+public sealed record CaliperLoadEntry(string Name, string? FileName, double Milliseconds);
+
 public static class CaliperReportParser
 {
+    public static IReadOnlyList<CaliperLoadEntry>? TryParseEntries(string text) =>
+        TryParseJson(text) ?? TryParseCsv(text);
+
+    /// <summary>Maps profiler rows to installed mod ids by id/name substring.</summary>
+    public static IReadOnlyDictionary<string, double> ToOwnCosts(
+        IEnumerable<CaliperLoadEntry> entries,
+        GraphDocument graph)
+    {
+        var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in graph.Nodes.Where(node => !node.IsSynthetic && !node.IsEmbedded))
+        {
+            var id = node.Id.ToLowerInvariant();
+            var name = node.Name.ToLowerInvariant();
+            var best = entries
+                .Where(entry =>
+                {
+                    var text = ((entry.Name ?? string.Empty) + " " + (entry.FileName ?? string.Empty)).ToLowerInvariant();
+                    return text.Contains(id) || (name.Length >= 3 && text.Contains(name));
+                })
+                .Select(entry => entry.Milliseconds)
+                .DefaultIfEmpty(0)
+                .Max();
+            if (best > 0) result[node.Id] = best;
+        }
+        return result;
+    }
+
     public static DiagnosticReport? TryParse(string text, string sourcePath, GraphDocument? graph = null)
     {
-        var entries = TryParseJson(text) ?? TryParseCsv(text);
+        var entries = TryParseEntries(text);
         if (entries is null || entries.Count == 0) return null;
 
         var findings = new List<DiagnosticFinding>();
@@ -87,14 +116,14 @@ public static class CaliperReportParser
         };
     }
 
-    private static List<CaliperEntry>? TryParseJson(string text)
+    private static List<CaliperLoadEntry>? TryParseJson(string text)
     {
         var trimmed = text.TrimStart();
         if (!trimmed.StartsWith('{') && !trimmed.StartsWith('[')) return null;
         try
         {
             using var document = JsonDocument.Parse(text);
-            var entries = new List<CaliperEntry>();
+            var entries = new List<CaliperLoadEntry>();
             Collect(document.RootElement, entries);
             return entries;
         }
@@ -104,7 +133,7 @@ public static class CaliperReportParser
         }
     }
 
-    private static void Collect(JsonElement element, List<CaliperEntry> entries)
+    private static void Collect(JsonElement element, List<CaliperLoadEntry> entries)
     {
         if (element.ValueKind == JsonValueKind.Array)
         {
@@ -135,10 +164,10 @@ public static class CaliperReportParser
             }
         }
         if (name is not null && milliseconds > 0)
-            entries.Add(new CaliperEntry(name, fileName, milliseconds));
+            entries.Add(new CaliperLoadEntry(name, fileName, milliseconds));
     }
 
-    private static List<CaliperEntry>? TryParseCsv(string text)
+    private static List<CaliperLoadEntry>? TryParseCsv(string text)
     {
         var lines = text.Replace("\r\n", "\n").Split('\n')
             .Where(line => !string.IsNullOrWhiteSpace(line)).ToList();
@@ -154,14 +183,14 @@ public static class CaliperReportParser
         }
         if (nameIndex < 0 || timeIndex < 0) return null;
 
-        var entries = new List<CaliperEntry>();
+        var entries = new List<CaliperLoadEntry>();
         foreach (var line in lines.Skip(1))
         {
             var cells = line.Split(',');
             if (cells.Length <= Math.Max(nameIndex, timeIndex)) continue;
             if (!double.TryParse(cells[timeIndex].Trim().Trim('"').Replace(',', '.'),
                     NumberStyles.Float, CultureInfo.InvariantCulture, out var value)) continue;
-            entries.Add(new CaliperEntry(
+            entries.Add(new CaliperLoadEntry(
                 cells[nameIndex].Trim().Trim('"'),
                 fileIndex >= 0 && cells.Length > fileIndex ? cells[fileIndex].Trim().Trim('"') : null,
                 value));
@@ -183,5 +212,4 @@ public static class CaliperReportParser
             .ToList();
     }
 
-    private sealed record CaliperEntry(string Name, string? FileName, double Milliseconds);
 }

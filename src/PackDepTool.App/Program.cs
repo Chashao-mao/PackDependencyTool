@@ -17,11 +17,14 @@ internal static class Program
             return;
         }
 
-        _singleInstance = new Mutex(true, "PackDependencyTool.SingleInstance", out var createdNew);
-        if (!createdNew)
+        if (!string.Equals(Environment.GetEnvironmentVariable("PDT_MULTI"), "1", StringComparison.Ordinal))
         {
-            ActivateExistingWindow();
-            return;
+            _singleInstance = new Mutex(true, "PackDependencyTool.SingleInstance", out var createdNew);
+            if (!createdNew)
+            {
+                ActivateExistingWindow();
+                return;
+            }
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -30,7 +33,7 @@ internal static class Program
 
     private static void ActivateExistingWindow()
     {
-        var handle = FindWindow(null, "Pack Dependency Tool");
+        var handle = FindWindow(null, "ModLens");
         if (handle == IntPtr.Zero) return;
         ShowWindow(handle, 9);
         SetForegroundWindow(handle);

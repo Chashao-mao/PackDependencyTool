@@ -43,7 +43,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private List<LocalRule> _localRules = [];
     private Dictionary<string, string> _translationOverrides = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, LayoutPoint> _positions = new(StringComparer.OrdinalIgnoreCase);
-    private HashSet<string> _starVisibleIds = new(StringComparer.OrdinalIgnoreCase);
+    private string? _galaxyLayoutKey;
+    private string? _starFocusNodeId;
     private readonly Dictionary<string, ModUpdateState> _updateStates = new(StringComparer.OrdinalIgnoreCase);
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, CachedModUpdate>
         _updateCheckCache = new(StringComparer.OrdinalIgnoreCase);
@@ -185,6 +186,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool _isCheckingUpdates;
     private string? _lastUpdateUrl;
     [ObservableProperty] private bool _isBusy;
+
+    /// <summary>Background update checks must not dim the whole workspace.</summary>
+    public bool ShowBusyOverlay => IsBusy && !IsCheckingUpdates;
+
+    partial void OnIsBusyChanged(bool value) => OnPropertyChanged(nameof(ShowBusyOverlay));
+    partial void OnIsCheckingUpdatesChanged(bool value) => OnPropertyChanged(nameof(ShowBusyOverlay));
+
     [ObservableProperty] private bool _isProgressIndeterminate;
     [ObservableProperty] private double _progressValue;
     [ObservableProperty] private string _progressText = string.Empty;
@@ -238,6 +246,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private int _errorCount;
     [ObservableProperty] private int _warningCount;
     [ObservableProperty] private int _infoCount;
+    [ObservableProperty] private int _relationCount;
+    [ObservableProperty] private int _dashboardHealthScore;
+    [ObservableProperty] private string _dashboardHealthLabel = "等待扫描";
+    public ObservableCollection<DashboardBarItem> DashboardBars { get; } = [];
+    public ObservableCollection<DashboardProblemItem> DashboardProblems { get; } = [];
+    public ObservableCollection<DashboardBarItem> DashboardLoadCosts { get; } = [];
+    public bool HasDashboardProblems => DashboardProblems.Count > 0;
+    public bool HasDashboardLoadCosts => DashboardLoadCosts.Count > 0;
+    public string DashboardLoadCostSummary { get; private set; } = "尚未读取 Caliper / Spark 报告";
+    public bool HasDashboardBars => DashboardBars.Count > 0;
+    public IBrush DashboardHealthBrush => DashboardHealthScore switch
+    {
+        >= 90 => new SolidColorBrush(Color.Parse("#4ADE80")),
+        >= 70 => new SolidColorBrush(Color.Parse("#FBBF24")),
+        _ => new SolidColorBrush(Color.Parse("#F87171")),
+    };
 
     [ObservableProperty] private string _detailTitle = "未选择";
     [ObservableProperty] private string _detailSubtitle = "在图中点选节点或关系查看详情";
@@ -316,6 +340,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _blastRadiusDetail = string.Empty;
     private IReadOnlyList<JarConflict> _jarConflicts = [];
     [ObservableProperty] private ModTreeNodeViewModel? _selectedTreeNode;
+    [ObservableProperty] private GalaxyScene? _galaxyScene;
+    [ObservableProperty] private string? _starSelectedNodeId;
     [ObservableProperty] private string _treeDirection = "requires";
     [ObservableProperty] private bool _treeOnlyConnected;
     public bool TreeUsesRequires => string.Equals(TreeDirection, "requires", StringComparison.OrdinalIgnoreCase);
@@ -336,6 +362,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsGraphView => string.Equals(SelectedViewOption?.Value, "graph", StringComparison.OrdinalIgnoreCase);
     public bool IsStarView => string.Equals(SelectedViewOption?.Value, "star", StringComparison.OrdinalIgnoreCase);
     public bool IsGraphSurface => IsGraphView || IsStarView;
+    public int InstalledModCount => _graph?.Nodes.Count(node => !node.IsEmbedded && !node.IsSynthetic) ?? 0;
 
     public bool IsActiveConflict(DependencyEdge edge)
     {
@@ -407,6 +434,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (!string.IsNullOrWhiteSpace(last) && Directory.Exists(last))
                 target = last;
         }
+        var previewPack = Environment.GetEnvironmentVariable("PDT_PACK");
+        if (!string.IsNullOrWhiteSpace(previewPack) && Directory.Exists(previewPack))
+            target = previewPack;
 
         if (!string.IsNullOrWhiteSpace(target))
             await OpenPackAsync(target, autoScan: true);
@@ -448,8 +478,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(previewView) &&
             ViewOptions.FirstOrDefault(option => option.Value == previewView) is { } previewOption)
         {
+            Navigate("mods");
             SelectedViewOption = previewOption;
-            if (IsStarView) await RelayoutAsync();
+            if (IsStarView) BuildGalaxyScene(force: true);
         }
 
         var previewPage = Environment.GetEnvironmentVariable("PDT_PAGE");
@@ -583,7 +614,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var curseForgeMirror = !string.IsNullOrWhiteSpace(_services.Settings.CurseForgeApiBaseUrl);
         var plan = new EnrichmentPlan
         {
-            InstalledCount = _graph.Nodes.Count(node => !node.IsSynthetic),
+            InstalledCount = _graph.Nodes.Count(node => !node.IsSynthetic && !node.IsEmbedded),
             MissingCount = _graph.Nodes.Count(node => node.Status == ModStatus.Missing),
             HasCurseForgeAccess = !string.IsNullOrWhiteSpace(curseForgeKey) || curseForgeMirror,
             UsesCurseForgeMirror = curseForgeMirror,
@@ -1539,8 +1570,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (nodes.Count == 0) return;
 
         var cts = BeginOperation();
-        IsBusy = true;
         IsCheckingUpdates = true;
+        IsBusy = true;
         IsProgressIndeterminate = false;
         ProgressValue = 0;
         ProgressText = "识别在线项目…";
@@ -1585,12 +1616,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var completed = 0;
         var unresolved = 0;
         var cachedCount = 0;
+        var lastProgressAt = 0L;
         IProgress<(int Done, int Total, string Name)> progress =
             new Progress<(int Done, int Total, string Name)>(value =>
         {
+            // 429 mods can report hundreds of times per second; that made the
+            // footer text/progress jump wildly. Throttle UI updates, but always
+            // let the final 100% through.
+            var now = Environment.TickCount64;
+            if (value.Done < value.Total && now - lastProgressAt < 400) return;
+            lastProgressAt = now;
             ProgressValue = (double)value.Done / value.Total;
             ProgressText = $"检查模组更新 {value.Done}/{value.Total}";
-            StatusText = $"检查模组更新 · {value.Name}";
+            // Keep the footer sentence stable; only the progress widget moves.
         });
 
         try
@@ -2033,10 +2071,32 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedNodeItemChanged(NodeItemViewModel? value)
     {
         RefreshNodeInsights();
-        if (IsStarView && value is not null && !_suppressSelectionSync)
-            _ = RelayoutAsync();
+        if (IsStarView)
+        {
+            var starId = value?.Id;
+            if (!string.Equals(StarSelectedNodeId, starId, StringComparison.OrdinalIgnoreCase))
+                StarSelectedNodeId = starId;
+        }
         if (_suppressSelectionSync || value is null) return;
         SelectNode(value.Id, center: true, fromGraph: false);
+    }
+
+    partial void OnStarSelectedNodeIdChanged(string? value)
+    {
+        if (!IsStarView || _suppressSelectionSync || string.IsNullOrWhiteSpace(value)) return;
+        var node = _graph?.FindNode(value);
+        if (node is null) return;
+
+        _selectedNodeId = node.Id;
+        _selectedEdgeId = null;
+        ShowDetailsPanel = true;
+        UpdateNodeDetail(node);
+        _suppressSelectionSync = true;
+        SelectedNodeItem = NodeItems.FirstOrDefault(item =>
+            string.Equals(item.Id, node.Id, StringComparison.OrdinalIgnoreCase));
+        SelectedManualLink = null;
+        SelectedIssue = null;
+        _suppressSelectionSync = false;
     }
 
     partial void OnSelectedIssueChanged(IssueItemViewModel? value)
@@ -2065,7 +2125,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStarView));
         OnPropertyChanged(nameof(IsGraphSurface));
         if (IsTreeView) BuildDependencyTree();
-        if (IsStarView) _ = RelayoutWhenIdleAsync();
+        if (IsStarView)
+        {
+            ShowDetailsPanel = true;
+            BuildGalaxyScene(force: true);
+        }
+        else
+        {
+            GalaxyScene = null;
+            _galaxyLayoutKey = null;
+            _starFocusNodeId = null;
+        }
 
         if (IsGraphView)
         {
@@ -2686,12 +2756,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            var lastScanProgressAt = 0L;
             var progress = new Progress<ScanProgress>(p =>
             {
+                // A 429-mod scan reports hundreds of files. Keep the footer
+                // sentence stable and throttle the moving widget so the UI does
+                // not flicker or overlap repaints.
+                var now = Environment.TickCount64;
+                if (p.Fraction < 1 && now - lastScanProgressAt < 120) return;
+                lastScanProgressAt = now;
                 ProgressValue = p.Fraction;
-                ProgressText = $"{p.Phase} {p.Processed}/{p.Total}";
-                if (!string.IsNullOrWhiteSpace(p.CurrentFile))
-                    StatusText = $"正在解析 {p.CurrentFile}";
+                ProgressText = string.IsNullOrWhiteSpace(p.CurrentFile)
+                    ? $"{p.Phase} {p.Processed}/{p.Total}"
+                    : $"{p.Phase} {p.Processed}/{p.Total} · {Path.GetFileName(p.CurrentFile)}";
             });
 
             var scan = await _services.Scanner.ScanAsync(PackPath, progress, cts.Token);
@@ -2940,6 +3017,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task RunLogDoctorAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个整合包。";
+            return;
+        }
+        var path = CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+            path = await _dialogs.PickOpenFileAsync("选择日志文件", ["log", "txt"], "Log Doctor");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            var text = await File.ReadAllTextAsync(path);
+            if (text.Length > 4 * 1024 * 1024) text = text[..(4 * 1024 * 1024)];
+            var doctor = LogDoctorAnalyzer.Analyze(text, path, _graph);
+            StatusText = doctor.Summary;
+            await _dialogs.ShowDiagnosticReportAsync(doctor.ToDiagnosticReport());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"Log Doctor 读取日志失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task AnalyzePerformanceAsync()
     {
         if (_scanResult is null) return;
@@ -2961,6 +3065,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var text = await File.ReadAllTextAsync(path);
             if (text.Length > 4 * 1024 * 1024)
                 text = text[..(4 * 1024 * 1024)];
+            var caliperEntries = CaliperReportParser.TryParseEntries(text);
+            if (caliperEntries is { Count: > 0 }) UpdateLoadCosts(caliperEntries);
             var report = CaliperReportParser.TryParse(text, path, _graph)
                          ?? PerformanceAttributionAnalyzer.Analyze(text, path, _graph);
             var source = reports.FirstOrDefault(item =>
@@ -4060,7 +4166,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             (string.Equals(instance.Path, instancePath, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(instance.EffectiveRoot, instancePath, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(instance.GameDirectory, instancePath, StringComparison.OrdinalIgnoreCase)));
-        if (axolotlInstance?.ExternalId is { Length: > 0 } axolotlId)
+        _services.Axolotl.Detect(_services.Settings.AxolotlPath);
+        var directAxolotl = _services.Axolotl.ListInstances().FirstOrDefault(instance =>
+            string.Equals(_services.Axolotl.ResolvePath(instance), instancePath,
+                StringComparison.OrdinalIgnoreCase));
+        var axolotlId = axolotlInstance?.ExternalId ?? directAxolotl?.Id;
+        if (axolotlId is { Length: > 0 })
         {
             StatusText = _services.Axolotl.Launch(axolotlId)
                 ? $"已请求 Axolotl 启动「{axolotlInstance.Name}」；请在启动器中确认。"
@@ -4752,33 +4863,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _graphView?.InvalidateVisual();
     }
 
-    private async Task RelayoutWhenIdleAsync()
-    {
-        for (var attempt = 0; attempt < 100 && IsBusy; attempt++)
-            await Task.Delay(100);
-        if (!IsStarView || _graph is null) return;
-        await RelayoutAsync();
-    }
-
     private async Task LayoutAsync(bool fit, CancellationToken cancellationToken)
     {
         if (_graph is null) return;
 
-        var algorithm = IsStarView ? LayoutAlgorithm.Star : _services.Settings.LayoutAlgorithm;
         var graph = _graph;
         var options = new LayoutOptions
         {
-            Algorithm = algorithm,
-            CenterNodeId = IsStarView ? (_selectedNodeId ?? graph.Nodes.FirstOrDefault()?.Id) : null,
+            Algorithm = _services.Settings.LayoutAlgorithm,
         };
 
         var positions = await Task.Run(
             () => _services.Layout.Compute(graph, options, cancellationToken),
             cancellationToken);
 
-        _starVisibleIds = IsStarView
-            ? positions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase)
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         _positions = new Dictionary<string, LayoutPoint>(positions, StringComparer.OrdinalIgnoreCase);
         BuildScene();
 
@@ -4840,20 +4938,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        if (IsStarView &&
-            (_starVisibleIds.Count == 0 || _starVisibleIds.Count >= _graph.Nodes.Count - 1))
-        {
-            var starPositions = _services.Layout.Compute(_graph, new LayoutOptions
-            {
-                Algorithm = LayoutAlgorithm.Star,
-                CenterNodeId = _selectedNodeId ?? _graph.Nodes.FirstOrDefault()?.Id,
-                StarDepth = 2,
-                StarNodeLimit = 24,
-            });
-            _positions = new Dictionary<string, LayoutPoint>(starPositions, StringComparer.OrdinalIgnoreCase);
-            _starVisibleIds = starPositions.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        }
-
         var term = SearchText.Trim();
         var byId = _graph.Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
         var edgeTypeVisible = EdgeTypeVisible();
@@ -4867,7 +4951,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
             !node.IsEmbedded &&
             (!node.IsOptionalDependency || ShowUninstalledOptional) &&
             (!node.IsRecommendedDependency || ShowUninstalledOptional) &&
-            (!IsStarView || _starVisibleIds.Count == 0 || _starVisibleIds.Contains(node.Id)) &&
             (!IsRelationFocus || _relationFocusIds.Contains(node.Id)) &&
             MatchesStatusFilter(node.Status) &&
             MatchesSideFilter(node.Side) &&
@@ -4970,16 +5053,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var optionalVisible = nodeVms.Count(node =>
             node.Model.IsOptionalDependency || node.Model.IsRecommendedDependency);
         CountSummary = optionalVisible > 0
-            ? $"已安装 {nodeVms.Count - optionalVisible} · 可选 {optionalVisible} / {_graph.Nodes.Count} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系"
-            : $"显示 {nodeVms.Count} / {_graph.Nodes.Count} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系";
+            ? $"已安装 {nodeVms.Count - optionalVisible} · 可选 {optionalVisible} / {InstalledModCount} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系"
+            : $"显示 {nodeVms.Count} / {InstalledModCount} 个模组 · {edgeVms.Count} / {_graph.Edges.Count} 条关系";
+        OnPropertyChanged(nameof(InstalledModCount));
 
         RebuildNodeList(nodeVms, term);
-        if (IsStarView)
-        {
-            Dispatcher.UIThread.Post(() => _graphView?.FitToView(allowTiny: true), DispatcherPriority.Loaded);
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(allowTiny: true), TimeSpan.FromMilliseconds(250));
-            DispatcherTimer.RunOnce(() => _graphView?.FitToView(allowTiny: true), TimeSpan.FromMilliseconds(800));
-        }
+        if (IsStarView) BuildGalaxyScene();
     }
 
     private void RebuildNodeList(IReadOnlyList<GraphNodeVm> visibleNodes, string term)
@@ -5282,6 +5361,75 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedManualLink = null;
         SelectedIssue = null;
         _suppressSelectionSync = false;
+        RefreshDashboard();
+    }
+
+    private void RefreshDashboard()
+    {
+        if (_graph is null)
+        {
+            RelationCount = 0;
+            DashboardHealthScore = 0;
+            DashboardHealthLabel = "等待扫描";
+            DashboardBars.Clear();
+            DashboardProblems.Clear();
+            DashboardLoadCosts.Clear();
+            OnPropertyChanged(nameof(HasDashboardProblems));
+            OnPropertyChanged(nameof(HasDashboardBars));
+            OnPropertyChanged(nameof(HasDashboardLoadCosts));
+            return;
+        }
+
+        var required = _graph.Edges.Count(edge => edge.Type == EdgeType.Requires);
+        var optional = _graph.Edges.Count(edge => edge.Type == EdgeType.Optional);
+        var incompatible = _graph.Edges.Count(edge => edge.Type == EdgeType.Incompatible);
+        var embedded = _graph.Edges.Count(edge => edge.Type == EdgeType.Embedded);
+        RelationCount = _graph.Edges.Count;
+        DashboardBars.Clear();
+        var total = Math.Max(1, RelationCount);
+        AddBar("必需依赖", required, required * 100.0 / total, "#60A5FA");
+        AddBar("可选/推荐", optional, optional * 100.0 / total, "#34D399");
+        AddBar("不兼容", incompatible, incompatible * 100.0 / total, "#F87171");
+        AddBar("内嵌 JAR", embedded, embedded * 100.0 / total, "#A78BFA");
+        OnPropertyChanged(nameof(HasDashboardBars));
+
+        DashboardProblems.Clear();
+        foreach (var node in _graph.Nodes
+                     .Where(node => node.Status is ModStatus.Missing or ModStatus.Conflict or ModStatus.VersionMismatch)
+                     .OrderBy(node => node.Status)
+                     .ThenBy(node => node.Name, StringComparer.OrdinalIgnoreCase)
+                     .Take(6))
+        {
+            var status = node.Status switch
+            {
+                ModStatus.Missing => "缺失",
+                ModStatus.Conflict => "冲突",
+                _ => "版本不匹配",
+            };
+            DashboardProblems.Add(new DashboardProblemItem(
+                node.Name, $"{node.DisplayVersion} · {node.Id}", status,
+                new SolidColorBrush(node.Status switch
+                {
+                    ModStatus.Missing => Color.Parse("#F87171"),
+                    ModStatus.Conflict => Color.Parse("#FBBF24"),
+                    _ => Color.Parse("#F97316"),
+                })));
+        }
+        OnPropertyChanged(nameof(HasDashboardProblems));
+
+        var penalties = MissingCount * 8 + ConflictCount * 6 + MismatchCount * 3;
+        DashboardHealthScore = Math.Clamp(100 - penalties, 0, 100);
+        DashboardHealthLabel = DashboardHealthScore switch
+        {
+            >= 90 => "状态良好",
+            >= 70 => "需要关注",
+            _ => "建议修复",
+        };
+        OnPropertyChanged(nameof(DashboardHealthBrush));
+
+        void AddBar(string label, int count, double percent, string color) =>
+            DashboardBars.Add(new DashboardBarItem(label, count, Math.Clamp(percent, 0, 100),
+                new SolidColorBrush(Color.Parse(color)), $"{count} / {RelationCount}"));
     }
 
     private bool IssueVisibleForFilters(AnalysisIssue issue)
@@ -5625,6 +5773,124 @@ public sealed partial class MainWindowViewModel : ObservableObject
         StatusText = $"已复制 modId：{nodeId}";
     }
 
+    public void FocusGalaxy(string id)
+    {
+        var node = _graph?.FindNode(id);
+        if (node is null) return;
+        _starFocusNodeId = node.Id;
+        if (!string.Equals(StarSelectedNodeId, node.Id, StringComparison.OrdinalIgnoreCase))
+            StarSelectedNodeId = node.Id;
+        BuildGalaxyScene(force: true);
+    }
+
+    private void BuildGalaxyScene(bool force = false)
+    {
+        if (_graph is null)
+        {
+            GalaxyScene = null;
+            _galaxyLayoutKey = null;
+            return;
+        }
+
+        var loaderVisible = LoaderVisible();
+        var edgeTypeVisible = EdgeTypeVisible();
+        var nodes = _graph.Nodes
+            .Where(node => !node.IsEmbedded)
+            .Where(node => !node.IsSynthetic || node.IsOptionalDependency ||
+                           node.IsRecommendedDependency || node.Status == ModStatus.Missing)
+            .Where(node => loaderVisible(node.Loader))
+            .Where(node => ShowMissing || node.Status != ModStatus.Missing)
+            .Where(node => MatchesStatusFilter(node.Status))
+            .Where(node => MatchesSideFilter(node.Side))
+            .Where(node => MatchesCategoryFilter(node.Category))
+            .Where(node => !HideIsolated || _graph.Edges.Any(edge =>
+                string.Equals(edge.From, node.Id, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(edge.To, node.Id, StringComparison.OrdinalIgnoreCase)))
+            .GroupBy(node => node.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        if (nodes.Count == 0)
+        {
+            GalaxyScene = null;
+            _galaxyLayoutKey = null;
+            return;
+        }
+
+        var ids = nodes.Select(node => node.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var edges = _graph.Edges
+            .Where(edge => ids.Contains(edge.From) && ids.Contains(edge.To))
+            .Where(edge => edgeTypeVisible(edge.Type))
+            .ToList();
+
+        var key = GalaxyLayoutKey(nodes, edges, _starFocusNodeId);
+        if (!force && string.Equals(key, _galaxyLayoutKey, StringComparison.Ordinal))
+        {
+            if (GalaxyScene is not null)
+                StarSelectedNodeId = _selectedNodeId;
+            return;
+        }
+
+        var options = new StarGalaxyOptions
+        {
+            FocusNodeId = _starFocusNodeId,
+            // Fully disconnected mods live in the side panel, not in the
+            // constellation; otherwise they dominate the map without relations.
+            SeparateUnconnected = true,
+        };
+        var layout = new StarGalaxyLayoutEngine().Compute(nodes, edges, options);
+        GalaxyScene = global::PackDepTool.App.ViewModels.GalaxyScene.From(layout, nodes, edges, options);
+        _galaxyLayoutKey = key;
+        StarSelectedNodeId = _selectedNodeId;
+        CountSummary = $"{nodes.Count} 个模组 · {edges.Count} 条关系 · {layout.Galaxies.Count} 个星系";
+    }
+
+    private static string GalaxyLayoutKey(
+        IReadOnlyList<ModNode> nodes,
+        IReadOnlyList<DependencyEdge> edges,
+        string? focusId)
+    {
+        var hash = new HashCode();
+        hash.Add(nodes.Count);
+        foreach (var node in nodes)
+            hash.Add(node.Id, StringComparer.OrdinalIgnoreCase);
+        hash.Add(edges.Count);
+        foreach (var edge in edges)
+        {
+            hash.Add(edge.From, StringComparer.OrdinalIgnoreCase);
+            hash.Add(edge.To, StringComparer.OrdinalIgnoreCase);
+            hash.Add((int)edge.Type);
+        }
+        hash.Add(focusId, StringComparer.OrdinalIgnoreCase);
+        return hash.ToHashCode().ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private void UpdateLoadCosts(IReadOnlyList<CaliperLoadEntry> entries)
+    {
+        if (_graph is null) return;
+        var own = CaliperReportParser.ToOwnCosts(entries, _graph);
+        if (own.Count == 0) return;
+        var report = LoadCostAttribution.Analyze(_graph, own);
+        DashboardLoadCosts.Clear();
+        var max = Math.Max(1, report.Costs.FirstOrDefault()?.EffectiveMilliseconds ?? 1);
+        foreach (var row in report.Costs.Take(6))
+        {
+            DashboardLoadCosts.Add(new DashboardBarItem(
+                row.Name,
+                (int)Math.Round(row.EffectiveMilliseconds),
+                Math.Clamp(row.EffectiveMilliseconds / max * 100, 0, 100),
+                new SolidColorBrush(Color.Parse(row.EffectiveMilliseconds switch
+                {
+                    >= 1000 => "#F87171",
+                    >= 300 => "#FBBF24",
+                    _ => "#60A5FA",
+                })),
+                $"{row.EffectiveMilliseconds:0.#} ms（自身 {row.OwnMilliseconds:0.#} / 共享 {row.SharedPrerequisiteMilliseconds:0.#}）"));
+        }
+        DashboardLoadCostSummary = report.Summary;
+        OnPropertyChanged(nameof(HasDashboardLoadCosts));
+        OnPropertyChanged(nameof(DashboardLoadCostSummary));
+    }
+
     private void BuildDependencyTree()
     {
         DependencyTreeRoots.Clear();
@@ -5827,7 +6093,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnPackPathChanged(string value) => OnPropertyChanged(nameof(IsPackLoaded));
 
-    partial void OnSearchTextChanged(string value) => RefreshView();
+    partial void OnSearchTextChanged(string value)
+    {
+        // The galaxy view keeps every installed mod; search only highlights/focuses there.
+        if (IsStarView) return;
+        RefreshView();
+    }
     partial void OnShowRequiresChanged(bool value) => RefreshView();
     partial void OnShowIncompatibleChanged(bool value) => RefreshView();
     partial void OnShowOptionalChanged(bool value)
@@ -6692,6 +6963,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_graph is null) return;
         BuildScene();
+        if (IsStarView) BuildGalaxyScene(force: true);
         if (IsGraphView)
             _ = ScheduleCompactLayoutAsync();
     }

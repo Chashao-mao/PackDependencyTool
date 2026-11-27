@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using PackDepTool.App.Services;
 using PackDepTool.App.ViewModels;
 using PackDepTool.Core.Analysis;
 using PackDepTool.Core.Models;
@@ -45,6 +46,7 @@ public partial class MainWindow : Window
         ModuleList.AddHandler(ScrollViewer.ScrollChangedEvent,
             (_, _) => QueueDependencyRailOverlayUpdate(), RoutingStrategies.Bubble, handledEventsToo: true);
         Closing += (_, _) => _viewModel?.SaveWindowState(this);
+        Closed += (_, _) => Environment.Exit(0);
     }
 
     private void ConstrainHomeContent()
@@ -108,9 +110,15 @@ public partial class MainWindow : Window
         };
         GraphView.QuickLinkToRequested += (fromId, toId, type) =>
             _ = viewModel.CreateManualLinkAsync(fromId, toId, type);
-        _ = viewModel.InitializeAsync(
-            startupPath, openSettings, addLinkFrom, openDownloadPack, openDownloadMod, downloadQuery,
-            selectNodeId, exportPclPath, openGameSetup, installGameSpec, openLoaderSwitch, openGraph, openToolbox);
+        GalaxyView.NodeActivated += id => _viewModel?.FocusGalaxy(id);
+        // Let the window paint its first frame before translation loading,
+        // recent-pack refresh and the initial scan start competing for the UI thread.
+        Dispatcher.UIThread.Post(() =>
+        {
+            _ = viewModel.InitializeAsync(
+                startupPath, openSettings, addLinkFrom, openDownloadPack, openDownloadMod, downloadQuery,
+                selectNodeId, exportPclPath, openGameSetup, installGameSpec, openLoaderSwitch, openGraph, openToolbox);
+        }, DispatcherPriority.Background);
     }
 
     private void OnNodeItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
