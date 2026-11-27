@@ -28,6 +28,14 @@ type LogIssue = {
 
 type LogNoise = { count: number; signature: string; sample: string };
 
+type Conflict = {
+  kind: string;
+  title: string;
+  detail: string;
+  mods: string[];
+  evidence: string;
+};
+
 type LogReport = {
   summary: string;
   total_lines: number;
@@ -44,6 +52,8 @@ const selectedId = ref("");
 const loading = ref(false);
 const message = ref("");
 const report = ref<LogReport | null>(null);
+const conflicts = ref<Conflict[]>([]);
+const conflictScan = ref(false);
 
 const selected = computed(() => instances.value.find((item) => item.id === selectedId.value));
 const nav = [
@@ -88,6 +98,23 @@ async function runLogDoctor() {
   try {
     report.value = await invoke<LogReport>("analyze_log", { instanceId: selectedId.value });
     message.value = report.value.summary;
+  } catch (error) {
+    message.value = String(error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function scanConflicts() {
+  if (!selectedId.value) await loadInstances();
+  if (!selectedId.value) return;
+  loading.value = true;
+  conflictScan.value = false;
+  message.value = "";
+  try {
+    conflicts.value = await invoke<Conflict[]>("scan_conflicts", { instanceId: selectedId.value });
+    conflictScan.value = true;
+    message.value = `扫描完成：${conflicts.value.length} 个冲突`;
   } catch (error) {
     message.value = String(error);
   } finally {
@@ -177,6 +204,14 @@ function openLogDoctor(id: string) {
               @click="runLogDoctor"
             >
               {{ loading ? "分析中…" : "分析日志" }}
+            </button>
+            <button
+              v-if="page === 'conflicts'"
+              class="button primary"
+              :disabled="loading || !selectedId"
+              @click="scanConflicts"
+            >
+              {{ loading ? "扫描中…" : "扫描冲突" }}
             </button>
           </div>
         </header>
@@ -313,6 +348,7 @@ function openLogDoctor(id: string) {
                   <span v-if="issue.culprit" class="tag">{{ issue.culprit }}</span>
                 </div>
                 <p>{{ issue.explanation }}</p>
+                <div v-if="issue.culprit" class="source">潜在来源：{{ issue.culprit }}</div>
                 <div class="fix">修复：{{ issue.fix }}</div>
                 <pre>{{ issue.evidence }}</pre>
               </article>
@@ -337,12 +373,36 @@ function openLogDoctor(id: string) {
           <template v-else>
             <div class="section-head">
               <h2>冲突实验室</h2>
-              <span>下一步</span>
+              <span>{{ conflictScan ? `${conflicts.length} 个` : "未扫描" }}</span>
             </div>
-            <div class="panel empty">
-              <h2>JAR 扫描与字节码冲突</h2>
-              <p>重复类、Mixin 目标重叠、Access Transformer 冲突将在这里展示。</p>
+            <div class="panel toolbar">
+              <select v-model="selectedId">
+                <option value="" disabled>选择实例</option>
+                <option v-for="item in instances" :key="item.id" :value="item.id">
+                  {{ item.name }}
+                </option>
+              </select>
+              <button class="button secondary" :disabled="loading" @click="loadInstances">读取实例</button>
             </div>
+            <div v-if="!conflictScan" class="panel empty">
+              <h2>扫描 JAR 与 Mixin 目标</h2>
+              <p>读取实例 mods 目录，检查重复类、Mixin 目标重叠和 Access Transformer 冲突。</p>
+            </div>
+            <template v-else-if="conflicts.length === 0">
+              <div class="panel empty">
+                <h2>没有发现字节码冲突</h2>
+                <p>只比较了真实 class 注解和 AT 行；不代表没有依赖/版本问题。</p>
+              </div>
+            </template>
+            <article v-for="item in conflicts" :key="item.kind + item.evidence" class="panel issue">
+              <div class="issue-head">
+                <span class="severity warning">{{ item.kind }}</span>
+                <h3>{{ item.title }}</h3>
+              </div>
+              <p>{{ item.detail }}</p>
+              <div class="source">涉及：{{ item.mods.join("、") }}</div>
+              <pre>{{ item.evidence }}</pre>
+            </article>
           </template>
         </div>
       </section>
