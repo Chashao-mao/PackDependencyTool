@@ -36,6 +36,7 @@ public sealed class AxolotlLauncherService
 
     public string? ExecutablePath { get; private set; }
     public string? DatabasePath { get; private set; }
+    public string? LauncherRoot { get; private set; }
     public bool IsInstalled => !string.IsNullOrWhiteSpace(ExecutablePath) ||
                                !string.IsNullOrWhiteSpace(DatabasePath);
 
@@ -51,6 +52,11 @@ public sealed class AxolotlLauncherService
             if (ExecutablePath is not null) break;
             var expanded = Environment.ExpandEnvironmentVariables(candidate);
             if (File.Exists(expanded)) ExecutablePath = expanded;
+        }
+
+        if (ExecutablePath is not null)
+        {
+            LauncherRoot = Directory.GetParent(Path.GetDirectoryName(ExecutablePath) ?? string.Empty)?.FullName;
         }
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -102,9 +108,39 @@ public sealed class AxolotlLauncherService
         return result;
     }
 
+    public string ResolvePath(AxolotlInstance instance)
+    {
+        if (!string.IsNullOrWhiteSpace(instance.GameDirectoryOverride) &&
+            Directory.Exists(instance.GameDirectoryOverride))
+            return instance.GameDirectoryOverride;
+        if (Path.IsPathRooted(instance.Path) && Directory.Exists(instance.Path))
+            return instance.Path;
+
+        var roots = new[]
+        {
+            LauncherRoot,
+            LauncherRoot is null ? null : Directory.GetParent(LauncherRoot)?.FullName,
+        }.Where(root => !string.IsNullOrWhiteSpace(root));
+        foreach (var root in roots)
+        {
+            foreach (var relative in new[]
+                     {
+                         Path.Combine("mc", "profiles"),
+                         "profiles",
+                         Path.Combine("mc", "instances"),
+                         "instances",
+                     })
+            {
+                var candidate = Path.Combine(root!, relative, instance.Path);
+                if (Directory.Exists(candidate)) return candidate;
+            }
+        }
+        return instance.GameDirectoryOverride ?? instance.Path;
+    }
+
     public MinecraftInstanceInfo ToCatalog(AxolotlInstance instance)
     {
-        var root = instance.GameDirectoryOverride ?? instance.Path;
+        var root = ResolvePath(instance);
         var loader = instance.Loader.ToLowerInvariant() switch
         {
             "fabric" => LoaderKind.Fabric,
@@ -120,7 +156,7 @@ public sealed class AxolotlLauncherService
         return new MinecraftInstanceInfo
         {
             Name = instance.Name,
-            Path = instance.Path,
+            Path = root,
             GameDirectory = root,
             EffectiveRoot = root,
             MinecraftVersion = instance.MinecraftVersion,

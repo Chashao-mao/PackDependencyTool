@@ -111,9 +111,14 @@ public partial class MainWindow : Window
         GraphView.QuickLinkToRequested += (fromId, toId, type) =>
             _ = viewModel.CreateManualLinkAsync(fromId, toId, type);
         GalaxyView.NodeActivated += id => _viewModel?.FocusGalaxy(id);
-        _ = viewModel.InitializeAsync(
-            startupPath, openSettings, addLinkFrom, openDownloadPack, openDownloadMod, downloadQuery,
-            selectNodeId, exportPclPath, openGameSetup, installGameSpec, openLoaderSwitch, openGraph, openToolbox);
+        // Let the window paint its first frame before translation loading,
+        // recent-pack refresh and the initial scan start competing for the UI thread.
+        Dispatcher.UIThread.Post(() =>
+        {
+            _ = viewModel.InitializeAsync(
+                startupPath, openSettings, addLinkFrom, openDownloadPack, openDownloadMod, downloadQuery,
+                selectNodeId, exportPclPath, openGameSetup, installGameSpec, openLoaderSwitch, openGraph, openToolbox);
+        }, DispatcherPriority.Background);
     }
 
     private void OnNodeItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)

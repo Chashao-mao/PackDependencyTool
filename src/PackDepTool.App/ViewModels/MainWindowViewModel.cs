@@ -3017,6 +3017,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task RunLogDoctorAsync()
+    {
+        if (_scanResult is null)
+        {
+            StatusText = "请先打开一个整合包。";
+            return;
+        }
+        var path = CrashLogAnalyzer.Discover(_scanResult.RootPath).FirstOrDefault()?.Path;
+        if (string.IsNullOrWhiteSpace(path))
+            path = await _dialogs.PickOpenFileAsync("选择日志文件", ["log", "txt"], "Log Doctor");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            var text = await File.ReadAllTextAsync(path);
+            if (text.Length > 4 * 1024 * 1024) text = text[..(4 * 1024 * 1024)];
+            var doctor = LogDoctorAnalyzer.Analyze(text, path, _graph);
+            StatusText = doctor.Summary;
+            await _dialogs.ShowDiagnosticReportAsync(doctor.ToDiagnosticReport());
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText = $"Log Doctor 读取日志失败：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
     private async Task AnalyzePerformanceAsync()
     {
         if (_scanResult is null) return;
@@ -4141,8 +4168,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
              string.Equals(instance.GameDirectory, instancePath, StringComparison.OrdinalIgnoreCase)));
         _services.Axolotl.Detect(_services.Settings.AxolotlPath);
         var directAxolotl = _services.Axolotl.ListInstances().FirstOrDefault(instance =>
-            string.Equals(instance.Path, instancePath, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(instance.GameDirectoryOverride, instancePath, StringComparison.OrdinalIgnoreCase));
+            string.Equals(_services.Axolotl.ResolvePath(instance), instancePath,
+                StringComparison.OrdinalIgnoreCase));
         var axolotlId = axolotlInstance?.ExternalId ?? directAxolotl?.Id;
         if (axolotlId is { Length: > 0 })
         {
