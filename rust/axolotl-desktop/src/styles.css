@@ -1,8 +1,8 @@
 :root {
   color-scheme: dark;
   font-family: "MiSans", "HarmonyOS Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
-  background: #100c15;
-  color: #f2eef7;
+  background: #141414;
+  color: #f1ecf7;
 }
 
 * {
@@ -22,17 +22,74 @@ select {
 }
 
 body {
-  background:
-    radial-gradient(760px 520px at 0% 0%, rgba(145, 84, 197, 0.3), transparent 62%),
-    radial-gradient(700px 440px at 100% 8%, rgba(201, 118, 72, 0.16), transparent 60%),
-    linear-gradient(155deg, #1b1222 0%, #0f0b14 58%, #09070c 100%);
+  background: #141414;
+}
+
+.window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: #141414;
+}
+
+.titlebar {
+  display: flex;
+  flex: 0 0 38px;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  background: #1b1b1b;
+  user-select: none;
+}
+
+.titlebar-brand {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 100%;
+  padding-left: 12px;
+  color: #d8d8d8;
+  font-size: 11px;
+}
+
+.titlebar-brand img {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+}
+
+.window-controls {
+  display: flex;
+  height: 100%;
+}
+
+.window-controls button {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  border: 0;
+  background: transparent;
+  color: #bdbdbd;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.window-controls button:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.window-controls button:last-child:hover {
+  background: #c42b1c;
+  color: #fff;
 }
 
 .app {
   display: grid;
+  flex: 1;
   grid-template-columns: 68px minmax(0, 1fr);
   width: 100%;
-  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -49,12 +106,15 @@ body {
   place-items: center;
   width: 38px;
   height: 38px;
-  margin-bottom: 18px;
+  margin: 10px 0 18px;
+  overflow: hidden;
   border-radius: 11px;
-  background: linear-gradient(135deg, #b878ff, #6f8dff);
-  color: #fff;
-  font-weight: 800;
-  font-size: 15px;
+}
+
+.brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .rail-button {
@@ -65,10 +125,19 @@ body {
   border: 0;
   border-radius: 11px;
   background: transparent;
-  color: #958ba5;
+  color: #8f8f8f;
   cursor: pointer;
-  font-size: 18px;
   transition: 120ms ease;
+}
+
+.rail-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .rail-button:hover {
@@ -77,7 +146,7 @@ body {
 }
 
 .rail-button.active {
-  background: #2b2535;
+  background: #2c2c2c;
   color: #f6f1fb;
 }
 
@@ -113,8 +182,8 @@ body {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.055);
   border-radius: 20px;
-  background: rgba(22, 18, 28, 0.88);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+  background: #1b1b1b;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.26);
 }
 
 .header {
@@ -139,9 +208,18 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: #292331;
-  color: #d8c9e9;
-  font-size: 17px;
+  background: #272727;
+  color: #cfcfcf;
+}
+
+.header-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 h1 {
@@ -209,13 +287,13 @@ p {
 }
 
 .button.primary {
-  border: 1px solid #8b7cff;
-  background: #6f5ce0;
+  border: 1px solid #5aa9e6;
+  background: #3d86c6;
   color: #fff;
 }
 
 .button.primary:hover {
-  background: #7c6aef;
+  background: #4b96d6;
 }
 
 .button.secondary {
@@ -261,7 +339,7 @@ button:disabled {
 .panel {
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 13px;
-  background: #221d2a;
+  background: #242424;
 }
 
 .stat {
@@ -295,7 +373,7 @@ button:disabled {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #ae98ff;
+  color: #8fc7ff;
   cursor: pointer;
   font-size: 10px;
 }
@@ -343,7 +421,7 @@ button:disabled {
 }
 
 .tool-icon.violet {
-  background: rgba(150, 117, 255, 0.15);
+  background: rgba(90, 169, 230, 0.14);
   color: #b6a2ff;
 }
 
@@ -506,12 +584,18 @@ select {
   color: #e6c889;
 }
 
+.source {
+  margin-top: 8px;
+  color: #8fc7ff;
+  font-size: 10.5px;
+}
+
 .fix {
   margin-top: 8px;
   padding: 8px 10px;
-  border-left: 2px solid #8b7cff;
+  border-left: 2px solid #5aa9e6;
   border-radius: 0 7px 7px 0;
-  background: rgba(139, 124, 255, 0.075);
+  background: rgba(90, 169, 230, 0.08);
   color: #c7bbd8;
   font-size: 10.5px;
 }
@@ -544,7 +628,7 @@ pre {
 }
 
 .noise-row strong {
-  color: #a894ff;
+  color: #8fc7ff;
   font-size: 9.5px;
 }
 
@@ -575,4 +659,96 @@ pre {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+.status-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 12px;
+  color: #9a9a9a;
+  font-size: 10.5px;
+}
+
+.verdict {
+  margin-bottom: 10px;
+  padding: 18px;
+  border-color: rgba(90, 169, 230, 0.28);
+  background: #20262b;
+}
+
+.verdict h2 {
+  margin: 5px 0 6px;
+  font-size: 18px;
+}
+
+.verdict p {
+  max-width: 760px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.issue-block {
+  display: grid;
+  gap: 3px;
+  margin-top: 10px;
+}
+
+.issue-block > span {
+  color: #7f7f7f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.issue-block.next {
+  padding: 9px 11px;
+  border-left: 2px solid #5aa9e6;
+  border-radius: 0 7px 7px 0;
+  background: rgba(90, 169, 230, 0.07);
+}
+
+.issue-block.next > span {
+  color: #8fc7ff;
+}
+
+.source-chip {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #8fc7ff;
+  font-size: 10px;
+}
+
+details.evidence,
+details.noise {
+  margin-top: 10px;
+}
+
+details.evidence summary,
+details.noise summary {
+  color: #858585;
+  cursor: pointer;
+  font-size: 10px;
+  list-style: none;
+}
+
+details.evidence summary::-webkit-details-marker,
+details.noise summary::-webkit-details-marker {
+  display: none;
+}
+
+details.evidence summary::before,
+details.noise summary::before {
+  content: "▸ ";
+  color: #5aa9e6;
+}
+
+details[open].evidence summary::before,
+details[open].noise summary::before {
+  content: "▾ ";
 }

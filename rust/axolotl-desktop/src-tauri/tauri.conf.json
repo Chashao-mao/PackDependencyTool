@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Axolotl Companion",
+        "decorations": false,
         "width": 1040,
         "height": 660,
         "minWidth": 900,

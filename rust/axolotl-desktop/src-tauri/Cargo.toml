@@ -20,3 +20,4 @@ anyhow = "1"
 rmcp = { version = "3.12", features = ["client", "transport-streamable-http-client-reqwest"] }
 tokio = { version = "1", features = ["sync", "time"] }
 regex = "1"
+zip = "2"
