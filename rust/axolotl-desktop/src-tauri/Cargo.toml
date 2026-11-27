@@ -21,3 +21,4 @@ rmcp = { version = "3.12", features = ["client", "transport-streamable-http-clie
 tokio = { version = "1", features = ["sync", "time"] }
 regex = "1"
 zip = "2"
+toml = "0.8"

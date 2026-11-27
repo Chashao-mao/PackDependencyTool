@@ -1,6 +1,7 @@
 mod axolotl;
 pub mod conflicts;
 mod logdoctor;
+mod mods;
 
 use std::sync::Arc;
 
@@ -96,8 +97,12 @@ async fn analyze_log(
         )
     })?;
     let text = std::fs::read_to_string(&log).map_err(|error| error.to_string())?;
-    let mods = logdoctor::collect_mod_names(&root);
-    Ok(logdoctor::analyze(&text, &mods))
+    let mut mod_names = logdoctor::collect_mod_names(&root);
+    for info in mods::scan_mods(&root) {
+        mod_names.push(info.name);
+        mod_names.push(info.id);
+    }
+    Ok(logdoctor::analyze(&text, &mod_names))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
