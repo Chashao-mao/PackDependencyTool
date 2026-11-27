@@ -7,6 +7,7 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1"
+axum = "0.8"
 clap = { version = "4", features = ["derive", "env"] }
 rmcp = { version = "3.12", features = [
     "client",
@@ -14,7 +15,7 @@ rmcp = { version = "3.12", features = [
 ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "net", "signal"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

@@ -1,4 +1,12 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Context, Result};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use clap::{Parser, Subcommand};
 use rmcp::{
     model::{CallToolRequestParams, ClientConfig, Tool},
@@ -35,6 +43,11 @@ enum Command {
     Launch { instance_id: String },
     /// Create a backup snapshot for one instance.
     Backup { instance_id: String },
+    /// Keep one control session alive and expose it over local HTTP.
+    Serve {
+        #[arg(long, default_value_t = 8765)]
+        port: u16,
+    },
     /// Call an arbitrary MCP tool with a JSON object.
     Call {
         name: String,
@@ -122,6 +135,25 @@ async fn main() -> Result<()> {
             print_json(&result)?;
             end_session(&client, &session).await;
         }
+        Command::Serve { port } => {
+            let client = Arc::new(client);
+            println!("axolotl-companion listening on http://127.0.0.1:{port}");
+            println!("the first protected call asks Axolotl for one approval; later calls reuse it");
+            let state = Arc::new(AppState {
+                client,
+                session: tokio::sync::Mutex::new(None),
+            });
+            let app = Router::new()
+                .route("/status", get(api_status))
+                .route("/instances", get(api_instances))
+                .route("/instances/{id}/launch", post(api_launch))
+                .route("/instances/{id}/backup", post(api_backup))
+                .route("/tools/{name}", post(api_tool))
+                .with_state(state);
+            let listener = tokio::net::TcpListener::bind(("127.0.0.1", port)).await?;
+            axum::serve(listener, app).await?;
+            return Ok(());
+        }
         Command::Call { name, args, session } => {
             let args: Value = serde_json::from_str(&args).context("参数必须是 JSON 对象")?;
             let mut args = args.as_object().cloned().unwrap_or_default();
@@ -142,6 +174,90 @@ async fn main() -> Result<()> {
 
     client.cancel().await.ok();
     Ok(())
+}
+
+struct AppState {
+    client: Arc<rmcp::service::RunningService<rmcp::RoleClient, rmcp::model::InitializeRequestParams>>,
+    session: tokio::sync::Mutex<Option<String>>,
+}
+
+type ApiResult = Result<Json<Value>, (StatusCode, String)>;
+
+fn api_error(error: impl std::fmt::Display) -> (StatusCode, String) {
+    (StatusCode::BAD_GATEWAY, error.to_string())
+}
+
+async fn call_named(state: &AppState, name: &str, args: Map<String, Value>) -> Result<Value> {
+    let tools = state.client.list_all_tools().await?;
+    let tool = tools
+        .iter()
+        .find(|tool| tool.name == name)
+        .ok_or_else(|| anyhow!("工具不存在：{name}"))?;
+    call(state.client.as_ref(), tool, args).await
+}
+
+async fn ensure_session(state: &AppState) -> Result<String> {
+    let mut session = state.session.lock().await;
+    if let Some(id) = session.clone() {
+        return Ok(id);
+    }
+    let id = start_session(state.client.as_ref()).await?;
+    *session = Some(id.clone());
+    Ok(id)
+}
+
+async fn api_status(State(state): State<Arc<AppState>>) -> ApiResult {
+    let info = call_named(&state, "get_launcher_info", Map::new())
+        .await
+        .map_err(api_error)?;
+    let approved = state.session.lock().await.is_some();
+    Ok(Json(serde_json::json!({ "launcher": info, "session_active": approved })))
+}
+
+async fn api_instances(State(state): State<Arc<AppState>>) -> ApiResult {
+    let session = ensure_session(&state).await.map_err(api_error)?;
+    let mut args = Map::new();
+    args.insert("session_id".into(), Value::String(session));
+    let result = call_named(&state, "instance_list", args)
+        .await
+        .map_err(api_error)?;
+    Ok(Json(result))
+}
+
+async fn api_launch(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> ApiResult {
+    let session = ensure_session(&state).await.map_err(api_error)?;
+    let mut args = Map::new();
+    args.insert("session_id".into(), Value::String(session));
+    args.insert("instance_id".into(), Value::String(id));
+    let result = call_named(&state, "instance_launch", args)
+        .await
+        .map_err(api_error)?;
+    Ok(Json(result))
+}
+
+async fn api_backup(State(state): State<Arc<AppState>>, Path(id): Path<String>) -> ApiResult {
+    let session = ensure_session(&state).await.map_err(api_error)?;
+    let mut args = Map::new();
+    args.insert("session_id".into(), Value::String(session));
+    args.insert("instance_id".into(), Value::String(id));
+    let result = call_named(&state, "backup_create", args)
+        .await
+        .map_err(api_error)?;
+    Ok(Json(result))
+}
+
+async fn api_tool(
+    State(state): State<Arc<AppState>>,
+    Path(name): Path<String>,
+    Json(body): Json<Value>,
+) -> ApiResult {
+    let session = ensure_session(&state).await.map_err(api_error)?;
+    let mut args = body.as_object().cloned().unwrap_or_default();
+    args.insert("session_id".into(), Value::String(session));
+    let result = call_named(&state, &name, args)
+        .await
+        .map_err(api_error)?;
+    Ok(Json(result))
 }
 
 async fn start_session(

@@ -49,6 +49,34 @@ axolotl-companion backup <instance_id>
 axolotl-companion call instance_get '{\"instance_id\":\"...\"}' --session
 ```
 
+## 常驻模式（推荐）
+
+一次性启动，只让 Axolotl 审批一次，后续复用同一会话：
+
+```powershell
+axolotl-companion serve --port 8765
+```
+
+接口：
+
+```text
+GET  /status
+GET  /instances
+POST /instances/{id}/launch
+POST /instances/{id}/backup
+POST /tools/{tool_name}      body: JSON object
+```
+
+示例：
+
+```powershell
+curl http://127.0.0.1:8765/instances
+curl -X POST http://127.0.0.1:8765/instances/<id>/launch
+curl -X POST -H "Content-Type: application/json" -d '{\"instance_id\":\"<id>\"}' http://127.0.0.1:8765/tools/instance_get
+```
+
+会话在 companion 进程内保持；Axolotl 重启或会话超时后，下一次受保护调用会重新申请一次审批。
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
