@@ -45,6 +45,8 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
         } else if lower.contains("mixin apply failed")
             || lower.contains("mixin transform")
             || lower.contains("mixin apply")
+            || lower.contains("invalidmixinexception")
+            || lower.contains("invalidinjectionexception")
         {
             Some("mixin")
         } else if lower.contains("classnotfoundexception")
@@ -68,14 +70,28 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
             || (lower.contains("description:") && lower.contains("exception"))
         {
             Some("crash")
-        } else if lower.contains("unsupported class file major version") {
+        } else if lower.contains("unsupported class file major version")
+            || lower.contains("unsupportedclassversionerror")
+        {
             Some("java-version")
         } else if lower.contains("access transformer") || lower.contains("accesstransformer") {
             Some("access-transformer")
-        } else if lower.contains("failed to load mod") || lower.contains("mod file") && lower.contains("missing") {
+        } else if lower.contains("failed to load mod")
+            || lower.contains("modresolutionexception")
+            || lower.contains("modloadingexception")
+            || lower.contains("failed to create mod")
+            || lower.contains("mod file") && lower.contains("missing")
+        {
             Some("mod-load")
-        } else if lower.contains("duplicate mod") || lower.contains("duplicatemod") {
+        } else if lower.contains("duplicate mod")
+            || lower.contains("duplicatemod")
+            || lower.contains("duplicatemodsfound")
+        {
             Some("duplicate-mod")
+        } else if lower.contains("trying to register duplicate")
+            || lower.contains("registry") && lower.contains("duplicate")
+        {
+            Some("duplicate-registry")
         } else if lower.contains("exception ticking") || lower.contains("ticking entity") {
             Some("tick-crash")
         } else if lower.contains("opengl error") || lower.contains("gl error") {
@@ -216,6 +232,7 @@ fn title(rule: &str) -> &'static str {
         "duplicate-mod" => "重复安装模组",
         "tick-crash" => "游戏 tick 崩溃",
         "opengl" => "OpenGL 渲染错误",
+        "duplicate-registry" => "注册表重复注册",
         _ => "日志问题",
     }
 }
@@ -235,6 +252,7 @@ fn explanation(rule: &str) -> &'static str {
         "duplicate-mod" => "同一个 modId 被安装了多份，加载器不知道该用哪一个。",
         "tick-crash" => "世界运行中某个方块/实体每 tick 抛异常，通常能定位到具体模组类。",
         "opengl" => "渲染线程报告 OpenGL 错误，可能是驱动、光影或渲染模组。",
+        "duplicate-registry" => "两个模组注册了同一个 ID，通常是版本冲突或重复安装。",
         _ => "日志中出现异常模式。",
     }
 }
@@ -253,6 +271,7 @@ fn fix(rule: &str) -> &'static str {
         "duplicate-mod" => "在 mods 目录里只保留一个同 modId 的 JAR。",
         "tick-crash" => "从堆栈第一个非 Minecraft/加载器类开始查，通常就是肇事模组。",
         "opengl" => "先移除光影/渲染优化模组，再更新显卡驱动。",
+        "duplicate-registry" => "从堆栈/注册 ID 找到两个来源，移除重复或改用兼容版本。",
         _ => "结合证据行检查对应模组版本和前置。",
     }
 }

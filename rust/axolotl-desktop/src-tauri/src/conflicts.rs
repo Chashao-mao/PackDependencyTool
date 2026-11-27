@@ -14,6 +14,7 @@ pub struct Conflict {
     pub detail: String,
     pub mods: Vec<String>,
     pub evidence: String,
+    pub recommendation: String,
 }
 
 pub fn scan(root: &Path) -> Vec<Conflict> {
@@ -109,6 +110,7 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
                 detail: format!("{target} 被多个模组的 Mixin 同时修改。"),
                 mods: unique.clone(),
                 evidence: format!("target: {target}\nmods: {}", unique.join(", ")),
+                recommendation: "先备份；比较两边注入的方法/字段，保留主功能模组，移除重复的兼容层或附属注入。".to_string(),
             });
         }
     }
@@ -132,6 +134,7 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
                 ),
                 mods: unique_mods.clone(),
                 evidence: format!("target: {target}\naccess: {}\nmods: {}", accesses.join(", "), unique_mods.join(", ")),
+                recommendation: "同一成员被改成不同访问级别；通常只保留一个 AT，或换成与对方兼容的版本。".to_string(),
             });
         }
     }
@@ -144,6 +147,7 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
                 detail: format!("{class} 同时存在于多个 JAR。"),
                 mods: unique.clone(),
                 evidence: format!("class: {class}\nmods: {}", unique.join(", ")),
+                recommendation: "两个 JAR 包含同一个类，常见于重复前置或 shaded 依赖；保留被其他模组依赖的版本，移除重复独立 JAR。".to_string(),
             });
         }
     }

@@ -2,6 +2,7 @@ mod axolotl;
 pub mod conflicts;
 mod logdoctor;
 mod mods;
+mod performance;
 
 use std::sync::Arc;
 
@@ -105,6 +106,28 @@ async fn analyze_log(
     Ok(logdoctor::analyze(&text, &mod_names))
 }
 
+#[tauri::command]
+async fn analyze_performance(
+    state: State<'_, AppState>,
+    instance_id: String,
+) -> Result<performance::PerformanceReport, String> {
+    let client = client(&state).await?;
+    let instances = client
+        .list_instances()
+        .await
+        .map_err(|error| error.to_string())?;
+    let instance = instances
+        .into_iter()
+        .find(|instance| instance.id == instance_id)
+        .ok_or_else(|| format!("实例不存在：{instance_id}"))?;
+    let root = std::path::Path::new(&instance.resolved_path);
+    let (path, kind) = performance::discover(root).ok_or_else(|| {
+        "没有找到 spark / caliper 报告；请放到 config/spark、logs/spark 或 logs 下".to_string()
+    })?;
+    performance::analyze(&path, &kind)
+        .ok_or_else(|| format!("无法解析报告：{}", path.display()))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -115,7 +138,8 @@ pub fn run() {
             launch_instance,
             backup_instance,
             analyze_log,
-            scan_conflicts
+            scan_conflicts,
+            analyze_performance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

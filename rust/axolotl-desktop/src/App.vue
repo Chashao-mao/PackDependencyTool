@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-type Page = "instances" | "logdoctor" | "conflicts";
+type Page = "instances" | "logdoctor" | "conflicts" | "performance";
 
 type Instance = {
   id: string;
@@ -44,6 +44,22 @@ type Conflict = {
   detail: string;
   mods: string[];
   evidence: string;
+  recommendation: string;
+};
+
+type PerfEntry = {
+  name: string;
+  detail: string;
+  milliseconds: number;
+  percent?: number | null;
+};
+
+type PerformanceReport = {
+  source: string;
+  kind: string;
+  summary: string;
+  entries: PerfEntry[];
+  notes: string[];
 };
 
 const page = ref<Page>("instances");
@@ -55,6 +71,7 @@ const message = ref("");
 const report = ref<LogReport | null>(null);
 const conflicts = ref<Conflict[]>([]);
 const conflictScan = ref(false);
+const perfReport = ref<PerformanceReport | null>(null);
 const bodyEl = ref<HTMLElement | null>(null);
 
 const selected = computed(() => instances.value.find((item) => item.id === selectedId.value));
@@ -62,8 +79,12 @@ const nav = [
   { id: "instances" as Page, label: "实例", icon: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" },
   { id: "logdoctor" as Page, label: "Log Doctor", icon: "M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" },
   { id: "conflicts" as Page, label: "冲突", icon: "M5 21V4m0 1h11l-2 4 2 4H5" },
+  { id: "performance" as Page, label: "性能", icon: "M4 19V5M4 19h16M8 15l3-4 3 2 4-6" },
 ];
 const current = computed(() => nav.find((item) => item.id === page.value)!);
+const perfMax = computed(() =>
+  Math.max(1, ...(perfReport.value?.entries.map((item) => item.milliseconds) ?? [1])),
+);
 const conflictGroups = computed(() => {
   const groups: Record<string, number> = {};
   for (const item of conflicts.value) groups[item.kind] = (groups[item.kind] ?? 0) + 1;
@@ -151,6 +172,23 @@ async function scanConflicts() {
     conflicts.value = await invoke<Conflict[]>("scan_conflicts", { instanceId: selectedId.value });
     conflictScan.value = true;
     message.value = conflicts.value.length ? "" : "没有发现字节码冲突。";
+    await nextTick();
+    bodyEl.value?.scrollTo({ top: 0 });
+  } catch (error) {
+    message.value = String(error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function runPerformance() {
+  if (!selectedId.value) return;
+  loading.value = true;
+  message.value = "";
+  try {
+    perfReport.value = await invoke<PerformanceReport>("analyze_performance", {
+      instanceId: selectedId.value,
+    });
     await nextTick();
     bodyEl.value?.scrollTo({ top: 0 });
   } catch (error) {
@@ -251,6 +289,9 @@ const kindLabel: Record<string, string> = {
               </button>
               <button v-if="page === 'conflicts'" class="button primary" :disabled="loading || !selectedId" @click="scanConflicts">
                 {{ loading ? "扫描中…" : "扫描冲突" }}
+              </button>
+              <button v-if="page === 'performance'" class="button primary" :disabled="loading || !selectedId" @click="runPerformance">
+                {{ loading ? "分析中…" : "分析报告" }}
               </button>
             </div>
           </header>
@@ -362,6 +403,48 @@ const kindLabel: Record<string, string> = {
               </template>
             </template>
 
+            <template v-else-if="page === 'performance'">
+              <div v-if="!selectedId" class="connect">
+                <h2>先选择实例</h2>
+                <button class="button primary" @click="go('instances')">去实例页</button>
+              </div>
+              <template v-else>
+                <div v-if="!perfReport" class="connect">
+                  <h2>分析 spark / caliper 报告</h2>
+                  <p>自动查找 config/spark、logs/spark、caliper 和 logs 下的报告文件。</p>
+                  <button class="button primary" :disabled="loading" @click="runPerformance">扫描报告</button>
+                </div>
+                <template v-else>
+                  <div class="verdict">
+                    <span class="verdict-icon">◔</span>
+                    <div class="verdict-copy">
+                      <span class="label">{{ perfReport.kind }} 归因</span>
+                      <h2>{{ perfReport.summary }}</h2>
+                      <p class="perf-source">{{ perfReport.source }}</p>
+                      <div class="chips">
+                        <span v-for="note in perfReport.notes" :key="note" class="tag">{{ note }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="section-head"><h2>热点 / 加载耗时</h2><span>只按报告数字排序</span></div>
+                  <div class="perf-list">
+                    <div v-for="entry in perfReport.entries" :key="entry.name + entry.detail" class="perf-row">
+                      <div class="perf-name">
+                        <strong>{{ entry.name }}</strong>
+                        <span v-if="entry.detail">{{ entry.detail }}</span>
+                      </div>
+                      <div class="perf-bar"><i :style="{ width: `${Math.max(3, (entry.milliseconds / perfMax) * 100)}%` }"></i></div>
+                      <span class="perf-value">
+                        {{ entry.percent != null ? `${entry.percent.toFixed(1)}%` : `${entry.milliseconds.toFixed(1)} ms` }}
+                      </span>
+                    </div>
+                  </div>
+                  <p class="perf-disclaimer">采样只说明“时间花在哪里”，不自动等于“删掉这个模组就更快”。</p>
+                </template>
+              </template>
+            </template>
+
             <template v-else>
               <div v-if="!selectedId" class="connect">
                 <h2>先选择实例</h2>
@@ -395,6 +478,7 @@ const kindLabel: Record<string, string> = {
                     </div>
                     <p class="issue-source">涉及：{{ item.mods.join("、") }}</p>
                     <p>{{ item.detail }}</p>
+                    <div class="conflict-fix"><span class="label">处理建议</span><p>{{ item.recommendation }}</p></div>
                     <details>
                       <summary>证据</summary>
                       <pre>{{ item.evidence }}</pre>
