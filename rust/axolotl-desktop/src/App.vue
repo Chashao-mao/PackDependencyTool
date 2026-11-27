@@ -72,7 +72,10 @@ const appWindow = getCurrentWindow();
 
 onMounted(() => {
   invoke<string>("ping")
-    .then(() => (backendOk.value = true))
+    .then(() => {
+      backendOk.value = true;
+      return loadInstances();
+    })
     .catch(() => (backendOk.value = false));
 });
 
