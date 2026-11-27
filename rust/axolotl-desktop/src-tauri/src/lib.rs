@@ -1,4 +1,5 @@
 mod axolotl;
+pub mod conflicts;
 mod logdoctor;
 
 use std::sync::Arc;
@@ -63,6 +64,20 @@ async fn backup_instance(state: State<'_, AppState>, instance_id: String) -> Res
 }
 
 #[tauri::command]
+async fn scan_conflicts(
+    state: State<'_, AppState>,
+    instance_id: String,
+) -> Result<Vec<conflicts::Conflict>, String> {
+    let client = client(&state).await?;
+    let instances = client.list_instances().await.map_err(|error| error.to_string())?;
+    let instance = instances
+        .into_iter()
+        .find(|instance| instance.id == instance_id)
+        .ok_or_else(|| format!("实例不存在：{instance_id}"))?;
+    Ok(conflicts::scan(std::path::Path::new(&instance.resolved_path)))
+}
+
+#[tauri::command]
 async fn analyze_log(
     state: State<'_, AppState>,
     instance_id: String,
@@ -81,7 +96,8 @@ async fn analyze_log(
         )
     })?;
     let text = std::fs::read_to_string(&log).map_err(|error| error.to_string())?;
-    Ok(logdoctor::analyze(&text))
+    let mods = logdoctor::collect_mod_names(&root);
+    Ok(logdoctor::analyze(&text, &mods))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -93,7 +109,8 @@ pub fn run() {
             list_instances,
             launch_instance,
             backup_instance,
-            analyze_log
+            analyze_log,
+            scan_conflicts
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
