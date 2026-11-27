@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -55,6 +55,7 @@ const message = ref("");
 const report = ref<LogReport | null>(null);
 const conflicts = ref<Conflict[]>([]);
 const conflictScan = ref(false);
+const bodyEl = ref<HTMLElement | null>(null);
 
 const selected = computed(() => instances.value.find((item) => item.id === selectedId.value));
 const nav = [
@@ -69,6 +70,11 @@ const conflictGroups = computed(() => {
   return groups;
 });
 const appWindow = getCurrentWindow();
+
+watch(page, async () => {
+  await nextTick();
+  bodyEl.value?.scrollTo({ top: 0 });
+});
 
 onMounted(() => {
   invoke<string>("ping")
@@ -97,6 +103,15 @@ async function loadInstances() {
   }
 }
 
+function loaderInitial(loader: string) {
+  const value = loader.toLowerCase();
+  if (value.includes("neo")) return "N";
+  if (value.includes("forge")) return "F";
+  if (value.includes("fabric")) return "Fa";
+  if (value.includes("quilt")) return "Q";
+  return "?";
+}
+
 function selectInstance(id: string) {
   selectedId.value = id;
   report.value = null;
@@ -117,6 +132,8 @@ async function runLogDoctor() {
   try {
     report.value = await invoke<LogReport>("analyze_log", { instanceId: selectedId.value });
     message.value = "";
+    await nextTick();
+    bodyEl.value?.scrollTo({ top: 0 });
   } catch (error) {
     message.value = String(error);
   } finally {
@@ -134,6 +151,8 @@ async function scanConflicts() {
     conflicts.value = await invoke<Conflict[]>("scan_conflicts", { instanceId: selectedId.value });
     conflictScan.value = true;
     message.value = conflicts.value.length ? "" : "没有发现字节码冲突。";
+    await nextTick();
+    bodyEl.value?.scrollTo({ top: 0 });
   } catch (error) {
     message.value = String(error);
   } finally {
@@ -182,9 +201,15 @@ const kindLabel: Record<string, string> = {
         <span>Axolotl Companion</span>
       </div>
       <div class="window-controls">
-        <button title="最小化" @click="minimizeWindow">—</button>
-        <button title="最大化" @click="toggleMaximizeWindow">□</button>
-        <button title="关闭" @click="closeWindow">×</button>
+        <button title="最小化" @click="minimizeWindow">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14" /></svg>
+        </button>
+        <button title="最大化" @click="toggleMaximizeWindow">
+          <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
+        </button>
+        <button title="关闭" @click="closeWindow">
+          <svg viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17" /></svg>
+        </button>
       </div>
     </header>
 
@@ -230,7 +255,7 @@ const kindLabel: Record<string, string> = {
             </div>
           </header>
 
-          <div class="body">
+          <div ref="bodyEl" class="body">
             <p v-if="message" class="banner">{{ message }}</p>
 
             <template v-if="page === 'instances'">
@@ -249,9 +274,12 @@ const kindLabel: Record<string, string> = {
                     :class="{ active: item.id === selectedId }"
                     @click="selectInstance(item.id)"
                   >
-                    <div class="instance-name">
-                      <strong>{{ item.name }}</strong>
-                      <span>{{ item.game_version }} · {{ item.loader }} {{ item.loader_version }}</span>
+                    <div class="instance-leading">
+                      <span class="instance-badge" :class="item.loader">{{ loaderInitial(item.loader) }}</span>
+                      <div class="instance-name">
+                        <strong>{{ item.name }}</strong>
+                        <span>{{ item.game_version }} · {{ item.loader }} {{ item.loader_version }}</span>
+                      </div>
                     </div>
                     <span class="tag">{{ item.install_stage }}</span>
                     <span v-if="item.id === selectedId" class="selected-mark">已选择</span>
@@ -287,13 +315,16 @@ const kindLabel: Record<string, string> = {
 
                 <template v-else>
                   <div class="verdict">
-                    <span class="label">诊断结论</span>
-                    <h2>{{ report.issues.length ? report.issues[0].title : "没有发现明确错误" }}</h2>
-                    <p>{{ report.summary }}</p>
-                    <div class="chips">
-                      <span class="tag">{{ report.total_lines }} 行日志</span>
-                      <span class="tag">{{ report.issues.length }} 类问题</span>
-                      <span class="tag">{{ report.noise_lines }} 行已隔离噪声</span>
+                    <span class="verdict-icon" :class="{ ok: !report.issues.length }">{{ report.issues.length ? "!" : "✓" }}</span>
+                    <div class="verdict-copy">
+                      <span class="label">诊断结论</span>
+                      <h2>{{ report.issues.length ? report.issues[0].title : "没有发现明确错误" }}</h2>
+                      <p>{{ report.summary }}</p>
+                      <div class="chips">
+                        <span class="tag">{{ report.total_lines }} 行日志</span>
+                        <span class="tag">{{ report.issues.length }} 类问题</span>
+                        <span class="tag">{{ report.noise_lines }} 行已隔离噪声</span>
+                      </div>
                     </div>
                   </div>
 
@@ -302,10 +333,10 @@ const kindLabel: Record<string, string> = {
                       <span class="severity" :class="issue.severity">{{ issue.severity }}</span>
                       <h3>{{ issue.title }}</h3>
                       <span class="count">×{{ issue.count }}</span>
-                      <span v-if="issue.culprit" class="source-chip">可能相关：{{ issue.culprit }}</span>
                     </div>
+                    <p v-if="issue.culprit" class="issue-source">可能相关：{{ issue.culprit }}</p>
                     <div class="issue-grid">
-                      <div>
+                      <div class="issue-explain">
                         <span class="label">发生了什么</span>
                         <p>{{ issue.explanation }}</p>
                       </div>
@@ -345,6 +376,8 @@ const kindLabel: Record<string, string> = {
 
                 <template v-else-if="conflicts.length">
                   <div class="verdict">
+                    <span class="verdict-icon">!</span>
+                    <div class="verdict-copy">
                     <span class="label">扫描结果</span>
                     <h2>{{ conflicts.length }} 个冲突</h2>
                     <div class="chips">
@@ -352,14 +385,15 @@ const kindLabel: Record<string, string> = {
                         {{ kindLabel[kind] ?? kind }} {{ count }}
                       </span>
                     </div>
+                    </div>
                   </div>
 
                   <article v-for="item in conflicts" :key="item.kind + item.evidence" class="issue">
                     <div class="issue-head">
                       <span class="severity warning">{{ kindLabel[item.kind] ?? item.kind }}</span>
                       <h3>{{ item.title }}</h3>
-                      <span class="source-chip">涉及：{{ item.mods.join("、") }}</span>
                     </div>
+                    <p class="issue-source">涉及：{{ item.mods.join("、") }}</p>
                     <p>{{ item.detail }}</p>
                     <details>
                       <summary>证据</summary>

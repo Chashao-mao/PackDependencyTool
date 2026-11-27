@@ -1390,3 +1390,235 @@ details pre {
   background: var(--surface-2);
   color: var(--color-text-default);
 }
+
+/* Final hierarchy pass: compact action card, aligned source, crisp chrome. */
+.window-controls {
+  padding-right: 2px;
+}
+
+.window-controls button {
+  width: 46px;
+  padding: 0;
+}
+
+.window-controls svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.brand {
+  background: #0c0e12;
+}
+
+.brand img {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.body {
+  padding-top: 20px;
+}
+
+.issue {
+  padding: 18px 20px;
+  border-radius: 16px;
+}
+
+.verdict {
+  padding: 20px 22px;
+  border-radius: 16px;
+}
+
+.issue-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.issue-head h3 {
+  font-size: 16px;
+  letter-spacing: -0.1px;
+}
+
+.issue-source {
+  margin-top: 5px;
+  color: var(--color-brand);
+  font-size: 11px;
+}
+
+.issue-head .source-chip {
+  margin-left: 0;
+}
+
+.issue-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.issue-explain {
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.issue-grid .next {
+  margin-top: 0;
+  padding: 13px 14px;
+  border: 1px solid #333a46;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 11px;
+  background: var(--surface-2-5);
+}
+
+.issue-grid .next .label {
+  color: var(--color-brand);
+}
+
+.issue-grid .next p {
+  color: #d7e7fb;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+details > summary {
+  padding: 7px 9px;
+  border: 1px solid #2b313b;
+  border-radius: 8px;
+  background: #171b21;
+  color: var(--color-text-tertiary);
+  font-size: 10.5px;
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary::before {
+  content: "▸";
+  margin-right: 6px;
+  color: var(--color-brand);
+}
+
+details[open] > summary::before {
+  content: "▾";
+}
+
+details > pre {
+  margin-top: 8px;
+  border-radius: 10px;
+}
+
+details[open] > summary {
+  border-color: #3a4350;
+  color: var(--color-text-default);
+}
+
+.banner {
+  border-radius: 10px;
+}
+
+.instance-detail {
+  align-items: center;
+}
+
+@media (max-width: 860px) {
+  .issue-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Typography and final visual texture. */
+:root {
+  font-family: "Inter Variable", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(900px 560px at 0% -10%, rgba(79, 156, 255, 0.10), transparent 62%),
+    radial-gradient(700px 520px at 100% 110%, rgba(255, 163, 71, 0.055), transparent 62%),
+    var(--surface-1);
+}
+
+.instance-leading {
+  display: flex;
+  min-width: 0;
+  gap: 11px;
+  align-items: center;
+}
+
+.instance-badge {
+  display: grid;
+  flex: 0 0 34px;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #2b313b;
+  color: #c9d4e1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.instance-badge.neoforge {
+  background: rgba(249, 158, 107, 0.16);
+  color: #f9b184;
+}
+
+.instance-badge.forge {
+  background: rgba(149, 158, 239, 0.16);
+  color: #b6bdf7;
+}
+
+.instance-badge.fabric {
+  background: rgba(219, 182, 155, 0.16);
+  color: #e7c8ae;
+}
+
+.instance-badge.quilt {
+  background: rgba(199, 150, 249, 0.16);
+  color: #d9b7fb;
+}
+
+.verdict {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.verdict-icon {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-top: 2px;
+  border-radius: 12px;
+  background: rgba(255, 73, 110, 0.16);
+  color: #ff8ba0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.verdict-icon.ok {
+  background: rgba(27, 217, 106, 0.14);
+  color: #42e686;
+}
+
+.verdict-copy {
+  min-width: 0;
+}
+
+.verdict-icon ~ .verdict-copy h2 {
+  margin-top: 1px;
+}
