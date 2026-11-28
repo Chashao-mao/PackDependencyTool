@@ -88,7 +88,7 @@ const perfFile = ref<HTMLInputElement | null>(null);
 const bodyEl = ref<HTMLElement | null>(null);
 
 const selected = computed(() => instances.value.find((item) => item.id === selectedId.value));
-const isLocal = computed(() => selected.value?.id.startsWith("local:") ?? false);
+const isLocal = computed(() => selected.value?.id.startsWith("path:") ?? false);
 const localPath = ref("");
 const nav = [
   { id: "instances" as Page, label: "实例", icon: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" },

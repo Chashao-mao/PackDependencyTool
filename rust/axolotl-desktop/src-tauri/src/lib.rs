@@ -77,7 +77,7 @@ async fn add_local_instance(
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| resolved.clone());
-    let id = format!("local:{}", resolved.to_ascii_lowercase());
+    let id = format!("path:{}", resolved.to_ascii_lowercase());
     let instance = Instance {
         id: id.clone(),
         name,
@@ -98,7 +98,7 @@ async fn add_local_instance(
 
 #[tauri::command]
 async fn launch_instance(state: State<'_, AppState>, instance_id: String) -> Result<Value, String> {
-    if instance_id.starts_with("local:") {
+    if instance_id.starts_with("path:") {
         return Err("本地目录只用于只读分析；启动请使用 Axolotl 实例".to_string());
     }
     let client = client(&state).await?;
