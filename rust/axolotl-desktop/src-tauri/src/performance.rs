@@ -80,13 +80,17 @@ pub fn discover(root: &Path) -> Option<(PathBuf, String)> {
 
 pub fn analyze(path: &Path, kind: &str) -> Option<PerformanceReport> {
     let text = std::fs::read_to_string(path).ok()?;
-    let mut entries = parse_json(&text)
+    analyze_text(&text, &path.to_string_lossy(), kind)
+}
+
+pub fn analyze_text(text: &str, source: &str, kind: &str) -> Option<PerformanceReport> {
+    let mut entries = parse_json(text)
         .or_else(|| parse_csv(&text))
         .unwrap_or_default();
     let mut notes = Vec::new();
 
     if entries.is_empty() {
-        entries = parse_percent_frames(&text, &mut notes);
+        entries = parse_percent_frames(text, &mut notes);
     }
     if entries.is_empty() {
         return None;
@@ -109,7 +113,7 @@ pub fn analyze(path: &Path, kind: &str) -> Option<PerformanceReport> {
     }
 
     Some(PerformanceReport {
-        source: path.to_string_lossy().to_string(),
+        source: source.to_string(),
         kind: kind.to_string(),
         summary,
         entries,

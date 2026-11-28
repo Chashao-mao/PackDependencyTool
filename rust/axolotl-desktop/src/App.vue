@@ -23,8 +23,10 @@ type LogIssue = {
   title: string;
   explanation: string;
   culprit: string;
+  confidence: string;
   fix: string;
   evidence: string;
+  targets: string[];
   count: number;
 };
 
@@ -44,6 +46,7 @@ type Conflict = {
   detail: string;
   mods: string[];
   evidence: string;
+  sources: string[];
   recommendation: string;
 };
 
@@ -52,6 +55,14 @@ type PerfEntry = {
   detail: string;
   milliseconds: number;
   percent?: number | null;
+};
+
+type ProfilerStatus = {
+  spark_installed: boolean;
+  caliper_available: boolean;
+  report_found: boolean;
+  report_path?: string | null;
+  guidance: string[];
 };
 
 type PerformanceReport = {
@@ -72,9 +83,13 @@ const report = ref<LogReport | null>(null);
 const conflicts = ref<Conflict[]>([]);
 const conflictScan = ref(false);
 const perfReport = ref<PerformanceReport | null>(null);
+const profilerStatus = ref<ProfilerStatus | null>(null);
+const perfFile = ref<HTMLInputElement | null>(null);
 const bodyEl = ref<HTMLElement | null>(null);
 
 const selected = computed(() => instances.value.find((item) => item.id === selectedId.value));
+const isLocal = computed(() => selected.value?.id.startsWith("local:") ?? false);
+const localPath = ref("");
 const nav = [
   { id: "instances" as Page, label: "实例", icon: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" },
   { id: "logdoctor" as Page, label: "Log Doctor", icon: "M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" },
@@ -90,6 +105,23 @@ const conflictGroups = computed(() => {
   for (const item of conflicts.value) groups[item.kind] = (groups[item.kind] ?? 0) + 1;
   return groups;
 });
+const conflictGroupList = computed(() => {
+  const groups: Record<string, Conflict[]> = {};
+  for (const item of conflicts.value) (groups[item.kind] ??= []).push(item);
+  return Object.entries(groups).map(([kind, items]) => ({
+    kind,
+    label: kindLabel[kind] ?? kind,
+    items,
+    recommendation: items[0]?.recommendation ?? "",
+  }));
+});
+
+function conflictTarget(item: Conflict) {
+  const line = item.evidence
+    .split("\n")
+    .find((value) => value.startsWith("target:") || value.startsWith("class:"));
+  return line ? line.replace(/^(target|class):\s*/, "") : item.title;
+}
 const appWindow = getCurrentWindow();
 
 watch(page, async () => {
@@ -143,6 +175,19 @@ function selectInstance(id: string) {
 function go(next: Page, id?: string) {
   if (id) selectInstance(id);
   page.value = next;
+  if (next === "performance") void loadProfilerStatus();
+}
+
+async function loadProfilerStatus() {
+  if (!selectedId.value) await loadInstances();
+  if (!selectedId.value) return;
+  try {
+    profilerStatus.value = await invoke<ProfilerStatus>("profiler_status", {
+      instanceId: selectedId.value,
+    });
+  } catch (error) {
+    message.value = String(error);
+  }
 }
 
 async function runLogDoctor() {
@@ -181,6 +226,29 @@ async function scanConflicts() {
   }
 }
 
+async function importPerformance(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  loading.value = true;
+  try {
+    const text = await file.text();
+    const kind = file.name.toLowerCase().includes("caliper") ? "Caliper" : "Spark";
+    perfReport.value = await invoke<PerformanceReport>("analyze_performance_text", {
+      text,
+      source: file.name,
+      kind,
+    });
+    await nextTick();
+    bodyEl.value?.scrollTo({ top: 0 });
+  } catch (error) {
+    message.value = String(error);
+  } finally {
+    loading.value = false;
+    input.value = "";
+  }
+}
+
 async function runPerformance() {
   if (!selectedId.value) return;
   loading.value = true;
@@ -191,6 +259,21 @@ async function runPerformance() {
     });
     await nextTick();
     bodyEl.value?.scrollTo({ top: 0 });
+  } catch (error) {
+    message.value = String(error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function addLocal() {
+  if (!localPath.value.trim()) return;
+  loading.value = true;
+  try {
+    const instance = await invoke<Instance>("add_local_instance", { path: localPath.value.trim() });
+    if (!instances.value.some((item) => item.id === instance.id)) instances.value.push(instance);
+    selectInstance(instance.id);
+    message.value = "已添加本地目录，只读分析可用；启动仍走 Axolotl。";
   } catch (error) {
     message.value = String(error);
   } finally {
@@ -211,18 +294,6 @@ async function launch() {
   }
 }
 
-async function backup() {
-  if (!selectedId.value) return;
-  loading.value = true;
-  try {
-    await invoke("backup_instance", { instanceId: selectedId.value });
-    message.value = "备份请求已提交。";
-  } catch (error) {
-    message.value = String(error);
-  } finally {
-    loading.value = false;
-  }
-}
 
 const kindLabel: Record<string, string> = {
   "access-transformer": "AT",
@@ -260,7 +331,7 @@ const kindLabel: Record<string, string> = {
           class="rail-button"
           :class="{ active: page === item.id }"
           :title="item.label"
-          @click="page = item.id"
+          @click="go(item.id)"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
         </button>
@@ -304,6 +375,11 @@ const kindLabel: Record<string, string> = {
                 <h2>连接 Axolotl 实例</h2>
                 <p>第一次读取会在 Axolotl 里请求一次授权，之后会话复用。</p>
                 <button class="button primary" :disabled="loading" @click="loadInstances">读取实例</button>
+                <div class="local-open">
+                  <span>或直接打开本地实例目录：</span>
+                  <input v-model="localPath" placeholder="E:\\...\\minecraft\\versions\\..." />
+                  <button class="button secondary" :disabled="loading" @click="addLocal">打开</button>
+                </div>
               </div>
 
               <template v-else>
@@ -333,11 +409,16 @@ const kindLabel: Record<string, string> = {
                     <code>{{ selected.resolved_path }}</code>
                   </div>
                   <div class="detail-actions">
-                    <button class="button secondary" :disabled="loading" @click="backup">备份</button>
                     <button class="button secondary" @click="go('logdoctor')">Log Doctor</button>
                     <button class="button secondary" @click="go('conflicts')">扫描冲突</button>
-                    <button class="button primary" :disabled="loading" @click="launch">启动游戏</button>
+                    <span v-if="isLocal" class="tag">本地只读</span>
+                    <button v-else class="button primary" :disabled="loading" @click="launch">启动游戏</button>
                   </div>
+                </div>
+                <div class="local-open">
+                  <span>本地目录：</span>
+                  <input v-model="localPath" placeholder="E:\\...\\minecraft\\versions\\..." />
+                  <button class="button secondary" :disabled="loading" @click="addLocal">打开</button>
                 </div>
               </template>
             </template>
@@ -375,7 +456,14 @@ const kindLabel: Record<string, string> = {
                       <h3>{{ issue.title }}</h3>
                       <span class="count">×{{ issue.count }}</span>
                     </div>
-                    <p v-if="issue.culprit" class="issue-source">可能相关：{{ issue.culprit }}</p>
+                    <p v-if="issue.culprit" class="issue-source">
+                      可能相关：{{ issue.culprit }}
+                      <span class="confidence">{{ issue.confidence }}</span>
+                    </p>
+                    <div v-if="issue.targets.length" class="target-list">
+                      <span v-for="target in issue.targets.slice(0, 12)" :key="target" class="target-chip">{{ target }}</span>
+                      <span v-if="issue.targets.length > 12" class="target-more">+{{ issue.targets.length - 12 }} 个</span>
+                    </div>
                     <div class="issue-grid">
                       <div class="issue-explain">
                         <span class="label">发生了什么</span>
@@ -410,9 +498,20 @@ const kindLabel: Record<string, string> = {
               </div>
               <template v-else>
                 <div v-if="!perfReport" class="connect">
-                  <h2>分析 spark / caliper 报告</h2>
-                  <p>自动查找 config/spark、logs/spark、caliper 和 logs 下的报告文件。</p>
-                  <button class="button primary" :disabled="loading" @click="runPerformance">扫描报告</button>
+                  <h2>生成性能报告</h2>
+                  <p v-if="profilerStatus">
+                    Spark：{{ profilerStatus.spark_installed ? "已安装" : "未安装" }} ·
+                    Caliper：不是模组，需要 JVM agent
+                  </p>
+                  <ul v-if="profilerStatus" class="guidance">
+                    <li v-for="line in profilerStatus.guidance" :key="line">{{ line }}</li>
+                  </ul>
+                  <div class="actions">
+                    <button v-if="profilerStatus?.spark_installed" class="button secondary" @click="launch">启动游戏</button>
+                    <button class="button primary" :disabled="loading" @click="runPerformance">扫描报告</button>
+                    <button class="button secondary" :disabled="loading" @click="perfFile?.click()">导入报告…</button>
+                    <input ref="perfFile" type="file" accept=".json,.csv,.txt" hidden @change="importPerformance" />
+                  </div>
                 </div>
                 <template v-else>
                   <div class="verdict">
@@ -427,7 +526,11 @@ const kindLabel: Record<string, string> = {
                     </div>
                   </div>
 
-                  <div class="section-head"><h2>热点 / 加载耗时</h2><span>只按报告数字排序</span></div>
+                  <div class="section-head">
+                    <h2>热点 / 加载耗时</h2>
+                    <button class="button secondary" :disabled="loading" @click="perfFile?.click()">导入其他报告…</button>
+                  </div>
+                  <input ref="perfFile" type="file" accept=".json,.csv,.txt" hidden @change="importPerformance" />
                   <div class="perf-list">
                     <div v-for="entry in perfReport.entries" :key="entry.name + entry.detail" class="perf-row">
                       <div class="perf-name">
@@ -471,19 +574,33 @@ const kindLabel: Record<string, string> = {
                     </div>
                   </div>
 
-                  <article v-for="item in conflicts" :key="item.kind + item.evidence" class="issue">
-                    <div class="issue-head">
-                      <span class="severity warning">{{ kindLabel[item.kind] ?? item.kind }}</span>
-                      <h3>{{ item.title }}</h3>
+                  <section v-for="group in conflictGroupList" :key="group.kind" class="conflict-group">
+                    <div class="section-head">
+                      <h2>{{ group.label }}</h2>
+                      <span>{{ group.items.length }} 处</span>
                     </div>
-                    <p class="issue-source">涉及：{{ item.mods.join("、") }}</p>
-                    <p>{{ item.detail }}</p>
-                    <div class="conflict-fix"><span class="label">处理建议</span><p>{{ item.recommendation }}</p></div>
-                    <details>
-                      <summary>证据</summary>
-                      <pre>{{ item.evidence }}</pre>
+                    <div class="conflict-advice">
+                      <span class="label">处理建议</span>
+                      <p>{{ group.recommendation }}</p>
+                    </div>
+                    <details v-for="item in group.items" :key="item.kind + item.evidence" class="conflict-row">
+                      <summary>
+                        <strong>{{ conflictTarget(item) }}</strong>
+                        <span>{{ item.mods.join(" + ") }}</span>
+                        <em>详情</em>
+                      </summary>
+                      <div class="conflict-detail">
+                        <p>{{ item.detail }}</p>
+                        <ul v-if="item.sources.length" class="conflict-sources">
+                          <li v-for="source in item.sources" :key="source">{{ source }}</li>
+                        </ul>
+                        <details>
+                          <summary>原始证据</summary>
+                          <pre>{{ item.evidence }}</pre>
+                        </details>
+                      </div>
                     </details>
-                  </article>
+                  </section>
                 </template>
 
                 <div v-else class="connect">

@@ -14,6 +14,7 @@ pub struct Conflict {
     pub detail: String,
     pub mods: Vec<String>,
     pub evidence: String,
+    pub sources: Vec<String>,
     pub recommendation: String,
 }
 
@@ -31,6 +32,7 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
     let mut classes: HashMap<String, Vec<String>> = HashMap::new();
     let mut mixin_targets: HashMap<String, Vec<String>> = HashMap::new();
     let mut at_entries: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    let mut mixin_sources: HashMap<String, Vec<String>> = HashMap::new();
 
     for jar in jars {
         let mod_name = jar
@@ -93,9 +95,13 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
             }
             for target in read_mixin_targets(&bytes) {
                 mixin_targets
-                    .entry(target)
+                    .entry(target.clone())
                     .or_default()
                     .push(mod_name.clone());
+                mixin_sources
+                    .entry(target)
+                    .or_default()
+                    .push(format!("{mod_name} :: {}", entry.name()));
             }
         }
     }
@@ -110,7 +116,10 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
                 detail: format!("{target} 被多个模组的 Mixin 同时修改。"),
                 mods: unique.clone(),
                 evidence: format!("target: {target}\nmods: {}", unique.join(", ")),
-                recommendation: "先备份；比较两边注入的方法/字段，保留主功能模组，移除重复的兼容层或附属注入。".to_string(),
+                sources: mixin_sources.get(&target).cloned().unwrap_or_default(),
+                recommendation: format!(
+                    "两边的 Mixin 都在修改 {target}。先确认哪个是兼容/附属层；若不确定，保留被更多模组依赖的一方，移除另一边，并在操作前备份。"
+                ),
             });
         }
     }
@@ -134,7 +143,11 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
                 ),
                 mods: unique_mods.clone(),
                 evidence: format!("target: {target}\naccess: {}\nmods: {}", accesses.join(", "), unique_mods.join(", ")),
-                recommendation: "同一成员被改成不同访问级别；通常只保留一个 AT，或换成与对方兼容的版本。".to_string(),
+                sources: entries.iter().map(|(access, module)| format!("{module} :: {access}")).collect(),
+                recommendation: format!(
+                    "同一成员被改成不同访问级别（{}）。检查这两个 JAR 的 AT 文件，只保留一方的改写；通常不需要同时安装两个修改同一成员的模组。",
+                    accesses.join(" / ")
+                ),
             });
         }
     }
@@ -147,7 +160,10 @@ pub fn scan(root: &Path) -> Vec<Conflict> {
                 detail: format!("{class} 同时存在于多个 JAR。"),
                 mods: unique.clone(),
                 evidence: format!("class: {class}\nmods: {}", unique.join(", ")),
-                recommendation: "两个 JAR 包含同一个类，常见于重复前置或 shaded 依赖；保留被其他模组依赖的版本，移除重复独立 JAR。".to_string(),
+                sources: unique.iter().map(|module| format!("{module} :: {class}")).collect(),
+                recommendation: format!(
+                    "两个 JAR 都包含 {class}，常见于重复前置或 shaded 依赖。保留被其他模组依赖的版本，移除重复的独立 JAR；不要只删 class。"
+                ),
             });
         }
     }

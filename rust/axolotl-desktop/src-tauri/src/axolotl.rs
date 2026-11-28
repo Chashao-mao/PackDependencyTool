@@ -151,17 +151,6 @@ impl AxolotlClient {
         self.call_named("instance_launch", args).await
     }
 
-    pub async fn backup(&self, instance_id: &str) -> Result<Value> {
-        let mut args = Map::new();
-        args.insert("instance_id".into(), Value::String(instance_id.to_string()));
-        self.call_named("backup_create", args).await
-    }
-
-    pub async fn backup_config(&self, instance_id: &str) -> Result<Value> {
-        let mut args = Map::new();
-        args.insert("instance_id".into(), Value::String(instance_id.to_string()));
-        self.call_named("backup_get_config", args).await
-    }
 }
 
 async fn call(client: &Client, tool: &Tool, args: Map<String, Value>) -> Result<Value> {

@@ -1,6 +1,8 @@
 use regex::Regex;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fs::File;
+use zip::ZipArchive;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LogIssue {
@@ -9,8 +11,10 @@ pub struct LogIssue {
     pub title: String,
     pub explanation: String,
     pub culprit: String,
+    pub confidence: String,
     pub fix: String,
     pub evidence: String,
+    pub targets: Vec<String>,
     pub count: usize,
 }
 
@@ -19,6 +23,162 @@ pub struct LogNoise {
     pub count: usize,
     pub signature: String,
     pub sample: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ModRef {
+    id: String,
+    name: String,
+    jar: String,
+}
+
+#[derive(Debug, Default)]
+pub struct ClassIndex {
+    classes: HashMap<String, Vec<ModRef>>,
+}
+
+impl ClassIndex {
+    pub fn build(root: &std::path::Path) -> Self {
+        let mods = crate::mods::scan_mods(root);
+        let mut by_jar: HashMap<String, Vec<ModRef>> = HashMap::new();
+        for info in mods {
+            by_jar.entry(info.jar_file.clone()).or_default().push(ModRef {
+                id: info.id,
+                name: info.name,
+                jar: info.jar_file,
+            });
+        }
+        let mut classes: HashMap<String, Vec<ModRef>> = HashMap::new();
+        let Ok(entries) = std::fs::read_dir(root.join("mods")) else {
+            return Self { classes };
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("jar")) {
+                continue;
+            }
+            let jar = path
+                .file_name()
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let Some(owners) = by_jar.get(&jar).cloned() else { continue };
+            let Ok(file) = File::open(&path) else { continue };
+            let Ok(mut archive) = ZipArchive::new(file) else { continue };
+            for index in 0..archive.len() {
+                let Ok(entry) = archive.by_index(index) else { continue };
+                let name = entry.name().to_string();
+                if !name.ends_with(".class") || name.starts_with("META-INF/") {
+                    continue;
+                }
+                for owner in &owners {
+                    let bucket = classes.entry(name.clone()).or_default();
+                    if !bucket.iter().any(|item| item.jar == owner.jar && item.id == owner.id) {
+                        bucket.push(owner.clone());
+                    }
+                }
+            }
+        }
+        Self { classes }
+    }
+
+    fn exact(&self, class: &str) -> Vec<ModRef> {
+        let key = class.replace('.', "/") + ".class";
+        self.classes.get(&key).cloned().unwrap_or_default()
+    }
+
+    fn package(&self, class: &str) -> Vec<ModRef> {
+        let package = class
+            .split('$')
+            .next()
+            .unwrap_or(class)
+            .rsplit_once('.')
+            .map(|(package, _)| package)
+            .unwrap_or("");
+        if package.is_empty() {
+            return Vec::new();
+        }
+        let segments: Vec<&str> = package.split('.').collect();
+        let mut owners: Vec<ModRef> = Vec::new();
+        for depth in (2..=segments.len().min(4)).rev() {
+            let prefix = format!("{}/", segments[..depth].join("/"));
+            for (path, refs) in &self.classes {
+                if path.starts_with(&prefix) {
+                    for owner in refs {
+                        if !owners.iter().any(|item| item.jar == owner.jar && item.id == owner.id) {
+                            owners.push(owner.clone());
+                        }
+                    }
+                }
+            }
+            if !owners.is_empty() {
+                break;
+            }
+        }
+        owners
+    }
+
+    fn describe(&self, owners: &[ModRef], exact: bool) -> (String, String) {
+        if owners.is_empty() {
+            return ("未定位".to_string(), "线索".to_string());
+        }
+        let mut unique: Vec<&ModRef> = Vec::new();
+        for owner in owners {
+            if !unique.iter().any(|item| item.jar == owner.jar && item.id == owner.id) {
+                unique.push(owner);
+            }
+        }
+        let text = unique
+            .iter()
+            .take(3)
+            .map(|owner| format!("{} ({})", owner.name, owner.jar))
+            .collect::<Vec<_>>()
+            .join("、");
+        if unique.len() == 1 && exact {
+            (text, "确定".to_string())
+        } else if unique.len() == 1 {
+            (text, "高".to_string())
+        } else {
+            (text, "高（多个 JAR 含同名类）".to_string())
+        }
+    }
+
+    fn attribute_stack(&self, evidence: &str) -> (String, String) {
+        for raw in evidence.lines() {
+            let trimmed = raw.trim();
+            let Some(frame) = trimmed.strip_prefix("at ") else { continue };
+            let Some(class) = frame.split('(').next() else { continue };
+            let class = class.rsplit_once('.').map(|(owner, _)| owner).unwrap_or(class);
+            if ignored_class(class) {
+                continue;
+            }
+            let exact = self.exact(class);
+            if !exact.is_empty() {
+                return self.describe(&exact, true);
+            }
+        }
+        ("未定位".to_string(), "线索".to_string())
+    }
+}
+
+fn ignored_class(class: &str) -> bool {
+    [
+        "java.",
+        "javax.",
+        "jdk.",
+        "sun.",
+        "net.minecraft.",
+        "com.mojang.",
+        "net.minecraftforge.",
+        "net.neoforged.",
+        "net.fabricmc.",
+        "org.spongepowered.",
+        "org.lwjgl.",
+        "com.google.",
+        "org.apache.",
+        "com.electronwill.",
+    ]
+    .iter()
+    .any(|prefix| class.starts_with(prefix))
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -30,7 +190,7 @@ pub struct LogDoctorReport {
     pub noise: Vec<LogNoise>,
 }
 
-pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
+pub fn analyze(text: &str, class_index: &ClassIndex) -> LogDoctorReport {
     let normalized_text = text.replace("\r\n", "\n");
     let lines: Vec<&str> = normalized_text.split('\n').collect();
     let mut issues: Vec<LogIssue> = Vec::new();
@@ -101,9 +261,15 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
         };
 
         let Some(rule) = rule else { continue };
-        let key = format!("{rule}:{}", exception_target(line).unwrap_or_else(|| normalize(line)));
+        let target = exception_target(line);
+        let key = format!("{rule}:{}", target.clone().unwrap_or_else(|| normalize(line)));
         if let Some(existing) = seen.get(&key).copied() {
             issues[existing].count += 1;
+            if let Some(target) = &target {
+                if !issues[existing].targets.iter().any(|item| item.eq_ignore_ascii_case(target)) {
+                    issues[existing].targets.push(target.clone());
+                }
+            }
             if issues[existing].evidence.lines().count() < 12 {
                 issues[existing].evidence =
                     format!("{}\n{}", issues[existing].evidence, line.trim());
@@ -116,7 +282,23 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
             .join("\n")
             .trim()
             .to_string();
-        let culprit = source_for(&evidence, line, mods);
+        let (culprit, confidence) = if let Some(target) = target.as_deref() {
+            let owners = class_index.package(target);
+            if owners.is_empty() {
+                let package = target
+                    .split('$')
+                    .next()
+                    .unwrap_or(target)
+                    .rsplit_once('.')
+                    .map(|(package, _)| package)
+                    .unwrap_or(target);
+                (format!("缺失类属于 {package}"), "线索".to_string())
+            } else {
+                class_index.describe(&owners, false)
+            }
+        } else {
+            class_index.attribute_stack(&evidence)
+        };
         issues.push(LogIssue {
             rule: rule.to_string(),
             severity: if rule == "crash" { "warning" } else { "error" }.to_string(),
@@ -124,7 +306,9 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
             explanation: explanation(rule).to_string(),
             culprit,
             fix: fix(rule).to_string(),
+            confidence,
             evidence,
+            targets: target.clone().into_iter().collect(),
             count: 1,
         });
         seen.insert(key, issues.len() - 1);
@@ -134,6 +318,10 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
     for issue in issues {
         if let Some(existing) = merged.iter_mut().find(|item| item.rule == issue.rule) {
             existing.count += issue.count;
+            if rank(&issue.confidence) > rank(&existing.confidence) {
+                existing.confidence = issue.confidence.clone();
+                existing.culprit = issue.culprit.clone();
+            }
             let mut sources: Vec<&str> = existing
                 .culprit
                 .split('、')
@@ -142,11 +330,18 @@ pub fn analyze(text: &str, mods: &[String]) -> LogDoctorReport {
                 .collect();
             sources.sort();
             sources.dedup();
-            existing.culprit = if sources.is_empty() {
+            existing.culprit = if existing.rule == "class-not-found" && existing.targets.len() > 1 {
+                format!("{} 个不同的缺失类（见下方）", existing.targets.len())
+            } else if sources.is_empty() {
                 "未定位".to_string()
             } else {
                 sources.join("、")
             };
+            for target in issue.targets {
+                if !existing.targets.iter().any(|item| item.eq_ignore_ascii_case(&target)) {
+                    existing.targets.push(target);
+                }
+            }
             if existing.evidence.lines().count() < 12 {
                 existing.evidence = format!("{}\n{}", existing.evidence, issue.evidence);
             }
@@ -299,43 +494,10 @@ fn exception_target(line: &str) -> Option<String> {
     None
 }
 
-fn source_for(evidence: &str, line: &str, mods: &[String]) -> String {
-    let lower = evidence.to_ascii_lowercase();
-    let mut matches: Vec<&String> = mods
-        .iter()
-        .filter(|name| {
-            let token = name.trim();
-            token.len() >= 3 && lower.contains(&token.to_ascii_lowercase())
-        })
-        .collect();
-    matches.sort();
-    matches.dedup();
-    if !matches.is_empty() {
-        return matches
-            .into_iter()
-            .take(3)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("、");
-    }
-
-    // No filename match: show the first third-party package from the stack so
-    // the user still has a concrete lead instead of a generic "unknown".
-    for raw in evidence.lines() {
-        let trimmed = raw.trim();
-        let Some(rest) = trimmed.strip_prefix("at ") else { continue };
-        let Some(class) = rest.split('(').next() else { continue };
-        let package = class.rsplit_once('.').map(|(pkg, _)| pkg).unwrap_or(class);
-        if !package.starts_with("net.minecraft")
-            && !package.starts_with("java.")
-            && !package.starts_with("jdk.")
-            && !package.starts_with("org.spongepowered")
-        {
-            return format!("未定位模组（堆栈：{package}）");
-        }
-    }
-    let _ = line;
-    "未定位".to_string()
+fn rank(confidence: &str) -> u8 {
+    if confidence.starts_with("确定") { 3 }
+    else if confidence.starts_with("高") { 2 }
+    else { 1 }
 }
 
 pub fn collect_mod_names(root: &std::path::Path) -> Vec<String> {
@@ -390,10 +552,23 @@ mod tests {
     fn analyzes_real_log() {
         let root = std::path::Path::new(r"E:\Axolotl\mc\profiles\测试");
         let text = std::fs::read_to_string(root.join("logs").join("latest.log")).unwrap_or_default();
-        let report = analyze(&text, &collect_mod_names(root));
+        let report = analyze(&text, &ClassIndex::build(root));
         println!("{}", report.summary);
         for issue in report.issues.iter().take(6) {
             println!("- [{}] {} | source={} | {}", issue.rule, issue.title, issue.culprit, issue.fix);
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn attributes_real_log() {
+        let root = std::path::Path::new(r"E:\Axolotl\mc\profiles\测试");
+        let text = std::fs::read_to_string(root.join("logs").join("latest.log")).unwrap_or_default();
+        let index = ClassIndex::build(root);
+        let report = analyze(&text, &index);
+        println!("{}", report.summary);
+        for issue in report.issues.iter().take(6) {
+            println!("- [{}] {} | {} | {}", issue.rule, issue.title, issue.confidence, issue.culprit);
         }
     }
 
@@ -407,7 +582,7 @@ mod tests {
                 "[12:00:0{index}] [Render thread/INFO] Loaded texture atlas part {index}\n"
             ));
         }
-        let report = analyze(&text, &[]);
+        let report = analyze(&text, &ClassIndex::default());
         assert!(report.issues.iter().any(|issue| issue.rule == "missing-dependency"));
         assert!(report.noise_lines >= 6);
     }
